@@ -1,0 +1,19 @@
+CompartmentType:
+  'pathogen.tree':
+    rates: 
+    - transmission:               # named vector of transmission rates for different Compartments
+    - migration:                  # named vector of migration rates
+    coalescent.rate:              # single rate to be applied to all objects of this CompartmentType
+    bottleneck:                   # bottleneck size when transmission event occurs
+  'host.tree':
+    tip.labels:                   # **NOTE** this formatting is different than example2.yaml and example3.yaml
+    node.labels:                  # how to incorporate node.labels and tip.labels if tree is given?
+Compartments:
+  'host.tips':
+    type:                         # reference to CompartmentType object
+    samplingTimes:                # sampling times of lineages
+    lineages:                     # vector of tip labels that will (later?) record parent information or total number of lineages in this Compartment
+  'host.nodes':
+    type:
+    samplingTimes:
+    lineages:

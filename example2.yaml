@@ -1,0 +1,18 @@
+CompartmentType:
+  'S':
+    rates: 
+    - transmission:               # named vector of transmission rates for different Compartments
+    - migration:                  # named vector of migration rates
+    coalescent.rate:              # single rate to be applied to all objects of this CompartmentType
+    bottleneck:                   # bottleneck size when transmission event occurs
+  'I':
+    rates: 
+    - transmission:
+    - migration:
+    coalescent.rate: 
+    bottleneck: 
+Compartments:
+  'I.sampled':
+    type:                          # reference to CompartmentType object
+    samplingTimes:                 # sampling times of lineages
+    lineages:                      # vector of labels or total number of this Compartment object to be generated

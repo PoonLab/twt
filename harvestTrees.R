@@ -86,4 +86,3 @@ timer <- iter( sapply(1:(ntips-1), function(x) {rexp(n=1, rate = (k*rate))}) )
 }
 
 
-

@@ -15,10 +15,10 @@ CompartmentType <- R6Class("CompartmentType",
                           coalescent.rate=NA, bottleneck.size=NA, 
                           migration.rates=NA) {
       self$name <- name
-      self$transmission.rates  <- transmission.rates
+      self$transmission.rates  <- transmission.rates   # named vector of transmission rates corresponding to different Compartment objects
       self$coalescent.rate <- coalescent.rate
       self$bottleneck.size <- bottleneck.size
-      self$migration.rates <- migration.rates
+      self$migration.rates <- migration.rates          # named vector of migrations rates of different Compartments
     }
   ),
   private = list()
