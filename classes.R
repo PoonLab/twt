@@ -1,7 +1,5 @@
 library(R6)
 
-# TODO: how are we going to handle varying probabilities of 
-# a lineage being transmitted from one type to another?
 
 # CompartmentType
 #  Defines a type of compartment such as a class of host
@@ -9,18 +7,18 @@ library(R6)
 CompartmentType <- R6Class("CompartmentType",
   public = list(
     name = NULL,
-    transmission.rate = NULL,
+    transmission.rates = NULL,
     coalescent.rate = NULL,
     bottleneck.size = NULL,
-    migration.rate = NULL,
-    initialize = function(name=NA, transmission.rate=NA,
+    migration.rates = NULL,
+    initialize = function(name=NA, transmission.rates=NA,
                           coalescent.rate=NA, bottleneck.size=NA, 
-                          migration.rate=NA) {
+                          migration.rates=NA) {
       self$name <- name
-      self$transmission.rate  <- transmission.rate
+      self$transmission.rates  <- transmission.rates
       self$coalescent.rate <- coalescent.rate
       self$bottleneck.size <- bottleneck.size
-      self$migration.rate <- migration.rate
+      self$migration.rates <- migration.rates
     }
   ),
   private = list()
