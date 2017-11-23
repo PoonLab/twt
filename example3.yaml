@@ -1,17 +1,16 @@
 CompartmentType:
-  'host':                         # single infected host
-    rates: 
-    - transmission:               # named vector of transmission rates for different Compartments
-    - migration:                  # named vector of migration rates
-    coalescent.rate:              # single rate to be applied to all objects of this CompartmentType
-    bottleneck:                   # bottleneck size when transmission event occurs
+  'host':                                               # single infected host
+    transmission.rates: (blood=0.1, adipose=0.05)       # named vector of transmission rates for different Compartments
+    migration.rates: (blood=0.001, adipose=0.0001)      # named vector of migration rates
+    coalescent.rate: 0.1                                # single rate to be applied to all objects of this CompartmentType
+    bottleneck.size: 2                                  # bottleneck size when transmission event occurs
 Compartments:
   'blood':
-    type:                         # reference to CompartmentType object
-    samplingTimes:                # sampling times of lineages
-    lineages:                     # vector of labels or total number of this Compartment object to be generated
+    type: host                          # reference to CompartmentType object
+    samplingTimes: (3,7,7,2,5,1)        # sampling times of lineages
+    lineages: (A,B,C,D,E,F)             # vector of labels or total number of this Compartment object to be generated
   'adipose':
-    type:
-    samplingTimes:
-    lineages:
+    type: host
+    samplingTimes: (3,6,7,2,4,1)
+    lineages: (G,H,I,J,K,L)
 
