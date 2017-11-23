@@ -1,16 +1,15 @@
 CompartmentType:
-  'S':
-    transmission.rates: NA               # named vector of transmission rates for different Compartments
-    migration.rates: NA                  # named vector of migration rates
+  'population':
+    transmission.rates: (S=0, I=0.1)     # named vector of transmission rates for different Compartments
+    migration.rates: (S=0, I=0.0001)     # named vector of migration rates
     coalescent.rate: 0.1                 # single rate to be applied to all objects of this CompartmentType
     bottleneck.size: 1                   # bottleneck size when transmission event occurs
-  'I':
-    transmission.rates: (I.sampled=0.1)
-    migration.rates: (I.sampled=0.0001)
-    coalescent.rate: 0.1
-    bottleneck.size: 1 
 Compartments:
-  'I.sampled':
-    type: I                           # reference to CompartmentType object
-    samplingTimes: NA                 # sampling times of lineages
-    lineages: 100                     # vector of labels or total number of this Compartment object to be generated
+  'S':
+    type: population                     # reference to CompartmentType object
+    samplingTimes: NA                    # transition times from I to S compartment
+    lineages: 0                          # vector of labels or total number of this Compartment object to be generated
+  'I':
+    type: population
+    samplingTimes: (0,0,1,3,2,7,9,10,2,1)
+    lineages: 10
