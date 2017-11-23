@@ -8,6 +8,25 @@ load.compartments <- function(file) {
   settings <- yaml.load_file(file)
   
   # parse settings and load into CompartmentType and Compartment objects
+  compartmentTypes <- names(settings$CompartmentType)
+  compartments <- names(settings$Compartments)
+  
+  init.objects <- sapply(compartmentTypes, function(x) {
+    params <- settings$CompartmentType[[x]]
+    x <- CompartmentType$new(name = x,
+                             transmission.rates = params$transmission.rates,
+                             coalescent.rate = params$coalescent.rate,
+                             bottleneck.size = params$bottleneck.size,
+                             migration.rates = params$migration.rates
+                             )
+  })
+  
+  init.compartments <- sapply(compartments, function(x) {
+    params <- settings$Compartments[[x]]
+    x <- Compartment$new(type = params$type,
+                         lineages = params$lineages            # TODO: samplingTimes and parents not stored properly
+                         )
+  })
   
 }
 

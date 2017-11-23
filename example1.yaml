@@ -11,14 +11,17 @@ CompartmentType:
     bottleneck.size: 1
 Compartments:
   'host.tips':
-    type: host.tree                         # reference to CompartmentType object
-    samplingTimes: (1,2,1,2,1,2,1,2,1,2)    # sampling times of lineages
-    lineages: 10                            # vector of tip labels that will (later?) record parent information or total number of lineages in this Compartment
+    type: host.tree                           # reference to CompartmentType object
+    lineages:                                 # vector of tip labels that will (later?) record parent information or total number of lineages in this Compartment
+    - samplingTimes: (1,2,1,2,1,2,1,2,1,2)    # sampling times of lineages
+    - parents:                                # vector of parents matching that of the tip labels
   'host.nodes':
     type: host.tree
-    samplingTimes: (3,4,3,4,3,4,3,4,3,4)
-    lineages: 9
+    lineages:
+    - samplingTimes: (3,4,3,4,3,4,3,4,3,4)
+    - parents:
   'pathogen.tips':
     type: pathogen.tree
-    samplingTimes: NA
-    lineages: 10
+    lineages:
+    - samplingTimes: 10                       # could also be a numeric stating total number of lineages desired in this Compartment
+    - parents:

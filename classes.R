@@ -29,8 +29,8 @@ Compartment <- R6Class("Compartment",
     type = NULL,  # reference to CompartmentType object
     lineages = NULL,
     initialize = function(type=NA, lineages=list()) {
-      self.type <- type
-      self.lineages <- lineages
+      self$type <- type
+      self$lineages <- lineages
     }
   )
 )
