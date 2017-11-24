@@ -8,10 +8,10 @@ Compartments:
   'S':
     type: population                     # reference to CompartmentType object
     lineages:                            # vector of labels or total number of this Compartment object to be generated
-    - samplingTimes: NA                  # transition times from I to S compartment
-    - parents:                           # vector of parents matching that of the tip labels
+      samplingTimes: NA                  # transition times from I to S compartment
+      parents: NA                        # vector of parents matching that of the tip labels
   'I':
     type: population
     lineages:
-    - samplingTimes: (0,0,1,3,2,7,9,10,2,1)
-    - parents:
+      samplingTimes: 100
+      parents: NA

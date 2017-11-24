@@ -1,3 +1,7 @@
+# As the user, I want to specify a transmission tree with sampling times, transmission times and direction of transmission events (who infected whom):
+# Example Newick Tree:
+# ((C:1,B:1)B:2,A:3)A:1;
+# Internal node labels specify who infected whom, and branch lengths indicate the timing of transmission events and host sampling
 CompartmentType:
   'pathogen.tree':
     transmission.rates: (pathogen.tree=0.2)           # named vector of transmission rates for different Compartments
@@ -11,22 +15,17 @@ CompartmentType:
     bottleneck.size: 1
 Compartments:
   'host.tips':
-    type: host.tree                           # reference to CompartmentType object
-    lineages:                                 # vector of tip labels that will (later?) record parent information or total number of lineages in this Compartment
-    - samplingTimes: (1,2,1,2,1,2,1,2,1,2)    # sampling times of lineages
-    - parents:                                # vector of parents matching that of the tip labels
+    type: host.tree                                               # reference to CompartmentType object
+    lineages:                                                     # vector of tip labels that will (later?) record parent information or total number of lineages in this Compartment
+    - samplingTimes: (A=1,B=2,C=1,D=2,E=1,F=2,G=1,H=2,I=1,J=2)    # sampling times of lineages
+    - parents: (K,K,L,L,M,M,N,N,O,O)                              # vector of parents matching that of the tip labels
   'host.nodes':
     type: host.tree
     lineages:
-    - samplingTimes: (3,4,3,4,3,4,3,4,3,4)
-    - parents:
+      samplingTimes: (K=3,L=4,M=3,N=4,O=7,P=5,Q=6,R=7,S=9)
+      parents: (P,P,Q,Q,S,R,R,S,NULL)                             # parent of the root is NULL
   'pathogen.tips':
     type: pathogen.tree
     lineages:
-    - samplingTimes: 10                       # could also be a numeric stating total number of lineages desired in this Compartment
-    - parents:
-
-# As the user, I want to specify a transmission tree with sampling times, transmission times and direction of transmission events (who infected whom):
-# Example Newick Tree:
-# ((C:1,B:1)B:2,A:3)A:1;
-# Internal node labels specify who infected whom, and branch lengths indicate the timing of transmission events and host sampling
+      samplingTimes: 10                       # could also be a numeric stating total number of lineages desired in this Compartment
+      parents: NA
