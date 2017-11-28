@@ -1,17 +1,14 @@
+# how would we encode an SI model?
 CompartmentType:
-  'population':
-    transmission.rates: (S=0, I=0.1)     # named vector of transmission rates for different Compartments
-    migration.rates: (S=0, I=0.0001)     # named vector of migration rates
-    coalescent.rate: 0.1                 # single rate to be applied to all objects of this CompartmentType
-    bottleneck.size: 1                   # bottleneck size when transmission event occurs
-Compartments:
-  'S':
-    type: population                     # reference to CompartmentType object
-    lineages:                            # vector of labels or total number of this Compartment object to be generated
-      samplingTimes: NA                  # transition times from I to S compartment
-      parents: NA                        # vector of parents matching that of the tip labels
+  'host':
+    transmission.rates: (host:0.1)     # named vector of transmission rates to different CompartmentTypes
+    migration.rates: ()                # no migration (assume no superinfection)
+    coalescent.rate: 0.1               # single rate to be applied to all objects of this CompartmentType
+    bottleneck.size: 1                 # bottleneck size when transmission event occurs
+Population:
   'I':
-    type: population
-    lineages:
-      samplingTimes: 100
-      parents: NA
+    type: host              # CompartmentType 
+    pop.size: 100  
+LineageGroup:
+  population: I
+  sampling.time: undefined  # or can provide a vector
