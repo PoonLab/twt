@@ -1,13 +1,14 @@
+# draft proposal for specification of within-host coalescent process
 CompartmentType:
   'blood':                                        # assume only one blood compartment
     transmission.rates: (blood=0.0, cell=0.05)    # no transmission to blood - transmission is to uninfected cell
     migration.rates: (blood=0.0, cell=0)          # assume no migration to infected cells
-    coalescent.rate: 0.1                          # extinction of lineages cannot be sampled, is expressed by coalescent rate
+    coalescent.rate: 0.0                          # no replication in blood
     bottleneck.size: 1                            # assume a single virus enters an uninfected cell
   'cell':
     transmission.rates: (blood=0.0, cell=0.0)     # assume no direct cell-to-cell transmission
     migration.rates: (blood=0.01, cell=0)         # release of virus particles into blood
-    coalescent.rate: 0.01                         
+    coalescent.rate: 0.01                         # extinction of lineages cannot be sampled, is expressed by coalescent rate
     bottleneck.size: undefined
 Population:
   'blood':
@@ -17,3 +18,11 @@ Population:
     type: cell
     pop.size: 100                                # sampled, not total!
 LineageGroup:
+  'blood':
+    location: blood
+    population.size: 100
+    sampling.time: undefined
+  'cell':
+    location: cell
+    population.size: 1           # if location has pop.size, then this is applied to each
+    sampling.time: undefined
