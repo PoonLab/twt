@@ -27,18 +27,28 @@ CompartmentType <- R6Class("CompartmentType",
 Compartment <- R6Class("Compartment",
   public = list(
     type = NULL,  # reference to CompartmentType object
-    lineages = NULL,
-    initialize = function(type=NA, lineages=list()) {
+    source = NULL,
+    inf.time = NULL,
+    sampling.time = NULL,
+    initialize = function(type=NA, source=NA, inf.time=NA, sampling.time=NA) {
       self$type <- type
-      self$lineages <- lineages
+      self$source <- source
+      self$inf.time <- inf.time
+      self$sampling.time <- sampling.time
     }
   )
 )
 
 Lineage <- R6Class("Lineage",
   public = list(
+    type = NULL,           # potential reference to LineageType object
     sampling.time = NULL,
-    parent = NULL
+    location = NULL,
+    initialize = function(type=NA, sampling.time=NA, location=NA) {
+      self$type <- type
+      self$sampling.time <- sampling.time
+      self$location <- location
+    }
   ),
   private = list()
 )

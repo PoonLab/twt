@@ -10,27 +10,47 @@ load.compartments <- function(file) {
   # parse settings and load into CompartmentType and Compartment objects
   compartmentTypes <- names(settings$CompartmentType)
   compartments <- names(settings$Compartments)
+  lineages <- names(settings$Lineages)
   
   init.objects <- sapply(compartmentTypes, function(x) {
     params <- settings$CompartmentType[[x]]
     x <- CompartmentType$new(name = x,
                              transmission.rates = params$transmission.rates,
+                             migration.rates = params$migration.rates,
                              coalescent.rate = params$coalescent.rate,
-                             bottleneck.size = params$bottleneck.size,
-                             migration.rates = params$migration.rates
+                             bottleneck.size = params$bottleneck.size
                              )
   })
-  # invisible(list2env(init.objects, .GlobalEnv))               # Should the objects be stored in a list or as indiividual objects accessed in the global environment?
+  # invisible(list2env(init.objects, .GlobalEnv))               # Should the objects be stored in a list or as indiividual objects accessible in the global environment?
   
   init.compartments <- sapply(compartments, function(x) {
     params <- settings$Compartments[[x]]
-    x <- Compartment$new(type = params$type,
-                         lineages = lapply(params$lineages, function(x) names(x) <- x)
-                         )
+    nComparts <- params$pop.size                                # potential replication of generic object w/ same params --> if more than 1, need to generate distinct names
+    for (obj in 1:nComparts) {
+      x <- paste0(x, '.', obj)                                  # need to create a unique identifier if multiple of the same object (maybe use assign?)
+      x <- Compartment$new(type = params$type,
+                           source = params$source,
+                           inf.time = params$inf.time,
+                           sampling.time = params$sampling.time
+                           )
+    }
   })
   # invisible(list2env(init.compartments, .GlobalEnv))
   
-  return (c(init.objects, init.compartments))
+  init.lineages <- sapply(lineages, function(x) {
+    params <- settings$Lineages[[x]]
+    nLineages <- params$pop.size
+    for(obj in 1:nLineages) {
+      unique.ident <- paste0(x, '.', obj)
+      unique.ident <- Lineage$new(type = params$type,
+                                  sampling.time = params$sampling.time,
+                                  location = params$location
+                                  )
+    }
+  })
+  # invisible(list2env(init.lineages, .GlobalEnv))
+  
+  return (c(init.objects, init.compartments, init.lineages))
 }
 
 
