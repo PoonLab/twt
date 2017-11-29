@@ -10,19 +10,19 @@ CompartmentType:
     migration.rates: (blood=0.01, cell=0)         # release of virus particles into blood
     coalescent.rate: 0.01                         # extinction of lineages cannot be sampled, is expressed by coalescent rate
     bottleneck.size: undefined
-Population:
+Compartments:
   'blood':
     type: blood                                  # reference to CompartmentType object
     pop.size: 1
   'cell':
     type: cell
     pop.size: 100                                # sampled, not total!
-LineageGroup:
+Lineages:
   'blood':
     location: blood
-    population.size: 100
+    pop.size: 100
     sampling.time: undefined
   'cell':
     location: cell
-    population.size: 1           # if location has pop.size, then this is applied to each
+    pop.size: 1                                   # if location has pop.size, then this is applied to each
     sampling.time: undefined

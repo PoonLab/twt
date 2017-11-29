@@ -35,16 +35,16 @@ Lineages:
   '1': 
     type: virus
     sampling.time: 0.0
-    host: A                         # at sampling, will change as we go back in time
+    location: A                     # at sampling, will change as we go back in time
     pop.size: 1
   '2': 
     type: virus
     sampling.time: 0.0
-    host: B
+    location: B
     pop.size: 1
   '3': 
     type: virus
     sampling.time: 0.0
-    host: C
+    location: C
     pop.size: 1
 

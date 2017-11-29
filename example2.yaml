@@ -5,11 +5,11 @@ CompartmentType:
     migration.rates: ()                # no migration (assume no superinfection)
     coalescent.rate: 0.1               # single rate to be applied to all objects of this CompartmentType
     bottleneck.size: 1                 # bottleneck size when transmission event occurs
-Population:
+Compartments:
   'I':
     type: host              # CompartmentType 
     pop.size: 100  
-LineageGroup:
+Lineages:
   'I':
     location: I
     pop.size: 1              # implied to be per-host
