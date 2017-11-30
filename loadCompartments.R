@@ -27,12 +27,13 @@ load.compartments <- function(file) {
     params <- settings$Compartments[[x]]
     nComparts <- params$pop.size                                # potential replication of generic object w/ same params --> if more than 1, need to generate distinct names
     for (obj in 1:nComparts) {
-      x <- paste0(x, '.', obj)                                  # need to create a unique identifier if multiple of the same object (maybe use assign?)
-      x <- Compartment$new(type = params$type,
+      unique.ident <- paste0(x, '.', obj)                                  # need to create a unique identifier if multiple of the same object (maybe use assign?)
+      y <- Compartment$new(type = params$type,
                            source = params$source,
                            inf.time = params$inf.time,
                            sampling.time = params$sampling.time
                            )
+      assign(unique.ident, y, .GlobalEnv)
     }
   })
   # invisible(list2env(init.compartments, .GlobalEnv))
@@ -42,10 +43,11 @@ load.compartments <- function(file) {
     nLineages <- params$pop.size
     for(obj in 1:nLineages) {
       unique.ident <- paste0(x, '.', obj)
-      unique.ident <- Lineage$new(type = params$type,
-                                  sampling.time = params$sampling.time,
-                                  location = params$location
-                                  )
+      y <- Lineage$new(type = params$type,
+                       sampling.time = params$sampling.time,
+                       location = params$location
+                      )
+      assign(unique.ident, y, .GlobalEnv)
     }
   })
   # invisible(list2env(init.lineages, .GlobalEnv))
