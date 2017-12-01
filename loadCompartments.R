@@ -55,8 +55,17 @@ load.compartments <- function(file) {
   return (c(init.objects, init.compartments, init.lineages))
 }
 
+# if objects should be contained in a list, populate a data frame, assign IDs, then update data frame
 
 
+#Assuming your data are in a data.frame named Data, this will do the trick:
+  
+  # ensure Data is in the correct order
+#  Data <- Data[order(Data$personid),]
+# tabulate() calculates the number of each personid
+# sequence() creates a n-length vector for each element in the input,
+# and concatenates the result
+#Data$id <- sequence(tabulate(Data$personid))
 
 
 
