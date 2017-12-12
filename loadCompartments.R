@@ -21,51 +21,42 @@ load.compartments <- function(file) {
                              bottleneck.size = params$bottleneck.size
                              )
   })
-  # invisible(list2env(init.objects, .GlobalEnv))               # Should the objects be stored in a list or as indiividual objects accessible in the global environment?
+  
   
   init.compartments <- sapply(compartments, function(x) {
+    compartX <- list()
     params <- settings$Compartments[[x]]
-    nComparts <- params$pop.size                                # potential replication of generic object w/ same params --> if more than 1, need to generate distinct names
-    for (obj in 1:nComparts) {
-      unique.ident <- paste0(x, '.', obj)                                  # need to create a unique identifier if multiple of the same object (maybe use assign?)
-      y <- Compartment$new(type = params$type,
+    nIndiv <- params$pop.size                                # potential for multiple generic objects w/ same params
+    for (obj in 1:nIndiv) {                                  
+      x <- Compartment$new(type = params$type,
                            source = params$source,
                            inf.time = params$inf.time,
                            sampling.time = params$sampling.time
                            )
-      assign(unique.ident, y, .GlobalEnv)
+      compartX[[obj]] <- x
     }
+    compartX
   })
-  # invisible(list2env(init.compartments, .GlobalEnv))
+  
   
   init.lineages <- sapply(lineages, function(x) {
+    lineageX <- list()
     params <- settings$Lineages[[x]]
-    nLineages <- params$pop.size
-    for(obj in 1:nLineages) {
-      unique.ident <- paste0(x, '.', obj)
-      y <- Lineage$new(type = params$type,
+    nIndiv <- params$pop.size
+    for(obj in 1:nIndiv) {
+      x <- Lineage$new(type = params$type,
                        sampling.time = params$sampling.time,
                        location = params$location
                       )
-      assign(unique.ident, y, .GlobalEnv)
+      lineageX[[obj]] <- x
     }
+    lineageX
   })
-  # invisible(list2env(init.lineages, .GlobalEnv))
+  
   
   return (c(init.objects, init.compartments, init.lineages))
 }
 
-# if objects should be contained in a list, populate a data frame, assign IDs, then update data frame
-
-
-#Assuming your data are in a data.frame named Data, this will do the trick:
-  
-  # ensure Data is in the correct order
-#  Data <- Data[order(Data$personid),]
-# tabulate() calculates the number of each personid
-# sequence() creates a n-length vector for each element in the input,
-# and concatenates the result
-#Data$id <- sequence(tabulate(Data$personid))
 
 
 
