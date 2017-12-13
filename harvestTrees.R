@@ -6,23 +6,47 @@
   # edge.length = branch lengths (indices correspond to tip.label or node.label)
   # attr(*, 'class') = chr 'phylo'
   # attr(*, 'order') = chr 'cladewise'
-harvest.tree <- function(ntips, transmission, migration, compartments, simulationTime) {
+harvest.tree <- function(compartmentTypes, compartments, lineages, simulationTime) {
   require(ape)
+  
+  ntips <- length(lineages)
   
   edge <- matrix(nrow=(ntips*2-2), ncol=2)
   Nnode <- ntips - 1
-  tip.label <- character(ntips)
+  tip.label <- names(lineages)
   edge.length <- numeric(ntips*2-2)
   
   extant <- 1:ntips                   # list of nodes that have not yet coalesced
   nodes <- ntips+1 : ntips*2-1        # list of ancestors to sample from
   
   while(length(extant) > 1) {
-    # draw waiting time to coalescent event
-    tau <- time1(rate, length(extant))
+    # create a list of all possible combinations, and then eliminate the ones that cannot coalesce
+    #  * lineages cannot coalesce before the sources coalesce
+    all.pairs <- t(combn(extant, 2))
+    selectable <- list()
+    ind <- 1
+    for (row in 1:nrow(all.pairs)) {
+      pair <- all.pairs[row,]
+      sources <- sapply(pair, function(x) {init.compartments[[lineages[[x]]$location]]$source})
+      # if the location of any of the tips in extant match any of the sources of the Compartment objects, that means the tips haven't coalesced yet, so the pair isn't possible
+      others.present <- sapply(setdiff(extant,pair), function(x) {is.element(lineages[[x]]$location, sources)})   # doesn't work yet
+      if (sum(others.present) == 0) {
+        selectable[[ind]] <- pair
+        ind <- ind + 1
+      }
+    }
     
     # pick two nodes to coalesce at random (sampled without replacement)
-    to.coalesce <- sample(extant, 2)
+    to.coalesce <- sample(selectable, 1)
+    
+    # draw relevant transmission rate
+    lineageName <- lineages[[to.coalesce[1]]]
+    compartmentName <- lineageName$location
+    compartmentType <- compartments[[compartmentName]]$type
+    rate <- compartmentTypes[[compartmentType]]$coalescent.rate
+      
+    # draw waiting time to coalescent event
+    tau <- time1(rate, length(extant))
     
     # create the new ancestor of these nodes
     new.ancestor <- sample(nodes, 1)
