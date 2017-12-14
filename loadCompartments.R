@@ -94,3 +94,14 @@ set.migration.rate <- function(CompartmentType, Compartment, new.migration.rate)
   index <- which(names(CompartmentType$migration.rates) == Compartment)
   CompartmentType$migration.rates[index] <- as.numeric(new.migration.rate)
 }
+
+# retrieve the source Compartment object from a given Lineage object
+get.source <- function(compartments, lineages, single_lineage) {
+  split.str <- unlist(strsplit(lineages[[single_lineage]]$name$source, '_'))
+  compart <- split.str[1]
+  index <- split.str[2]
+  inf.time <- compartments[[compart]][[index]]$inf.time
+  return(inf.time)
+}
+
+

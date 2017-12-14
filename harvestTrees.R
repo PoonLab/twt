@@ -27,10 +27,13 @@ harvest.tree <- function(compartmentTypes, compartments, lineages, simulationTim
     ind <- 1
     for (row in 1:nrow(all.pairs)) {
       pair <- all.pairs[row,]
-      sources <- sapply(pair, function(x) {init.compartments[[lineages[[x]]$location]]$source})
-      # if the location of any of the tips in extant match any of the sources of the Compartment objects, that means the tips haven't coalesced yet, so the pair isn't possible
-      others.present <- sapply(setdiff(extant,pair), function(x) {is.element(lineages[[x]]$location, sources)})   # doesn't work yet
-      if (sum(others.present) == 0) {
+      sources <- sapply(pair, function(x) {get.source(compartments, lineages, x)})
+      # if the infection times of any of the remaining compartments precedes the infection times of the pair's sources, 
+        # this means the tips haven't coalesced yet, so the pair isn't possible
+      pair.inf.times <- sapply(sources, function(x) {x$inf.time})
+      other.inf.times <- sapply(setdiff(compartments, sources), function(x) {min(pair.inf.times) < x$inf.time && max(pair.inf.times) > x$inf.time})
+      # if not 0, then at least one of the remaining compartments have an infection time earlier than those of the pair chosen
+      if (sum(other.inf.times) == 0) {    
         selectable[[ind]] <- pair
         ind <- ind + 1
       }
