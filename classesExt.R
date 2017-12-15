@@ -153,8 +153,14 @@ Lineage <- R6Class("Lineage",
 Mastermind <- R6Class("Mastermind",
   public = list(
     settings = NULL,
+    types = NULL,
+    compartments = NULL,
+    lineages = NULL,
     
     initialize = function(settings=NA) {
+      #self$types <- settings
+      #self$compartments <- settings
+      #self$lineages <- settings
       self$load.types(settings)
       self$load.compartments(settings)
       self$load.lineages(settings)
@@ -171,7 +177,7 @@ Mastermind <- R6Class("Mastermind",
                                           bottleneck.size = params$bottleneck.size
                                           )
       })
-      types
+      self$types <- types
     },
     
     
@@ -190,7 +196,7 @@ Mastermind <- R6Class("Mastermind",
         }
         compartX
       })
-      compartments
+      self$compartments <- compartments
     },
     
     
@@ -208,7 +214,7 @@ Mastermind <- R6Class("Mastermind",
         }
         lineageX
       })
-      lineages
+      self$lineages <- lineages
     },
     
     
