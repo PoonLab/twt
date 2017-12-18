@@ -79,7 +79,7 @@ Compartment <- R6Class("Compartment",
     inf.time = NULL,
     sampling.time = NULL,
     
-    initialize = function(type=NA, source=NA, ing.time=NA, sampling.time=NA) {
+    initialize = function(type=NA, source=NA, inf.time=NA, sampling.time=NA) {
       self$type <- type
       self$source <- source
       self$inf.time <- inf.time
@@ -158,24 +158,36 @@ Mastermind <- R6Class("Mastermind",
     lineages = NULL,
     
     initialize = function(settings=NA) {
-      #self$types <- settings
-      #self$compartments <- settings
-      #self$lineages <- settings
-      self$load.types(settings)
-      self$load.compartments(settings)
-      self$load.lineages(settings)
+      private$load.types(settings)
+      private$load.compartments(settings)
+      private$load.lineages(settings)
     },
+    
+    get.types = function() {
+      self$types
+    },
+    
+    get.compartments = function() {
+      self$compartments
+    },
+    
+    get.lineages = function() {
+      self$lineages
+    }
+    
+  ),
+  private = list(
     
     
     load.types = function(settings) {
       types <- sapply(names(settings$CompartmentType), function(x) {
-                 params <- settings$CompartmentType[[x]]
-                 x <- CompartmentType$new(name = x,
-                                          transmission.rates = params$transmission.rates,
-                                          migration.rates = params$migration.rates,
-                                          coalescent.rate = params$coalescent.rate,
-                                          bottleneck.size = params$bottleneck.size
-                                          )
+        params <- settings$CompartmentType[[x]]
+        x <- CompartmentType$new(name = x,
+                                 transmission.rates = params$transmission.rates,
+                                 migration.rates = params$migration.rates,
+                                 coalescent.rate = params$coalescent.rate,
+                                 bottleneck.size = params$bottleneck.size
+        )
       })
       self$types <- types
     },
@@ -191,7 +203,7 @@ Mastermind <- R6Class("Mastermind",
                                source = params$source,
                                inf.time = params$inf.time,
                                sampling.time = params$sampling.time
-                               )
+          )
           compartX[[obj]] <- x
         }
         compartX
@@ -209,28 +221,15 @@ Mastermind <- R6Class("Mastermind",
           x <- Lineage$new(type = params$type,
                            sampling.time = params$sampling.time,
                            location = params$location
-                           )
+          )
           lineageX[[obj]] <- x
         }
         lineageX
       })
       self$lineages <- lineages
-    },
-    
-    
-    get.types = function() {
-      self$types
-    },
-    
-    get.compartments = function() {
-      self$compartments
-    },
-    
-    get.lineages = function() {
-      self$lineages
     }
     
-  ),
-  private = list()
+    
+  )
 )
 
