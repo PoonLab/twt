@@ -1,4 +1,13 @@
-# Bring them all together
+## test script
+require(R6)
+require(yaml)
+setwd('~/git/treeswithintrees')
+settings <- yaml.load_file('example1.yaml')
+test <- NestedCoalescent$new(settings)
+
+
+
+# Load all of the different objects into one larger class
 NestedCoalescent <- R6Class("NestedCoalescent",
   public = list(
     settings = NULL,
@@ -26,7 +35,7 @@ NestedCoalescent <- R6Class("NestedCoalescent",
       sapply(locations, function(x) {
         if (length(x) > 1) {
           for (pair in combn(x, 2)) {
-            self$choices[[pair]] <- x
+            self$choices[[pair]] <- c(self$choices[[pair]], x)    # update list of pathogen pairs in same host
           }
         }
       })
@@ -39,11 +48,11 @@ NestedCoalescent <- R6Class("NestedCoalescent",
     
     ## collect host locations of all extant lineages into named list of host1:[pathogen1, pathogen2, ...] name-value pairs
     get.locations = function() {
-      self$locations <- list()
-      sapply(self$lineages, function(node) {
-        self$locations[[node$get.location()]] <- c(self$locations[[node$get.location()]], node)
+      locations <- list()
+      sapply(self$lineages, function(node) {    # should be lineages which are extant during this cycle  <- self$lineages might not cut it
+        private$locations[[node$get.location()$get.type()]] <- c(private$locations[[node$get.location()]], node)
       })
-      self$locations
+      private$locations
     },
     
     
@@ -65,10 +74,16 @@ NestedCoalescent <- R6Class("NestedCoalescent",
       compartments <- sapply(names(settings$Compartments), function(x) {
         compartX <- list()
         params <- settings$Compartments[[x]]
+        # set 'pointer' to CompartmentType object for type
+        if (params$type %in% names(self$types)) {
+          typeObj <- self$types[[ which(names(self$types) == params$type) ]]
+        } else {
+          stop(params$type, ' of Compartment ', x, ' is not a specified Compartment Type object')
+        }
         nIndiv <- params$pop.size
         for(obj in 1:nIndiv) {
-          x <- Compartment$new(type = params$type,
-                               source = params$source,
+          x <- Compartment$new(type = typeObj,
+                               source = params$source,        # can't set 'pointers' to other Compartment objects bc they're all being generated here
                                inf.time = params$inf.time,
                                sampling.time = params$sampling.time
           )
@@ -84,11 +99,17 @@ NestedCoalescent <- R6Class("NestedCoalescent",
       lineages <- sapply(names(settings$Lineages), function(x) {
         lineageX <- list()
         params <- settings$Lineages[[x]]
+        # set 'pointer' to Compartment object for location
+        if (params$location %in% names(self$compartments)) {
+          locationObj <- self$compartments[[ which(names(self$compartments) == params$location) ]]
+        } else {
+          stop(params$location, ' of Lineage ', x, ' is not a specified Compartment object')
+        }
         nIndiv <- params$pop.size
         for (obj in 1:nIndiv) {
           x <- Lineage$new(type = params$type,
                            sampling.time = params$sampling.time,
-                           location = params$location
+                           location = locationObj
           )
           lineageX[[obj]] <- x
         }
@@ -99,6 +120,9 @@ NestedCoalescent <- R6Class("NestedCoalescent",
     
   )
 )
+
+
+
 
 
 
