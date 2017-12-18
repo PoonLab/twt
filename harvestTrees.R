@@ -1,3 +1,107 @@
+# Bring them all together
+NestedCoalescent <- R6Class("NestedCoalescent",
+  public = list(
+    settings = NULL,
+    types = NULL,
+    compartments = NULL,
+    lineages = NULL,
+
+    choices = NULL,
+    
+    initialize = function(settings=NA) {
+      private$load.types(settings)
+      private$load.compartments(settings)
+      private$load.lineages(settings)
+    },
+    
+    get.types = function() {self$types},
+    get.compartments = function() {self$compartments},
+    get.lineages = function() {self$lineages},
+    
+    
+    ## function to extract all pairs of lineages that may coalesce
+    get.pairs = function() {
+      locations <- private$get.locations()
+      self$choices <- list()
+      sapply(locations, function(x) {
+        if (length(x) > 1) {
+          for (pair in combn(x, 2)) {
+            self$choices[[pair]] <- x
+          }
+        }
+      })
+    }
+    
+  ),
+  private = list(
+    locations = NULL,
+    
+    
+    ## collect host locations of all extant lineages into named list of host1:[pathogen1, pathogen2, ...] name-value pairs
+    get.locations = function() {
+      self$locations <- list()
+      sapply(self$lineages, function(node) {
+        self$locations[[node$get.location()]] <- c(self$locations[[node$get.location()]], node)
+      })
+      self$locations
+    },
+    
+    
+    load.types = function(settings) {
+      types <- sapply(names(settings$CompartmentType), function(x) {
+        params <- settings$CompartmentType[[x]]
+        x <- CompartmentType$new(name = x,
+                                 transmission.rates = params$transmission.rates,
+                                 migration.rates = params$migration.rates,
+                                 coalescent.rate = params$coalescent.rate,
+                                 bottleneck.size = params$bottleneck.size
+        )
+      })
+      self$types <- types
+    },
+    
+    
+    load.compartments = function(settings) {
+      compartments <- sapply(names(settings$Compartments), function(x) {
+        compartX <- list()
+        params <- settings$Compartments[[x]]
+        nIndiv <- params$pop.size
+        for(obj in 1:nIndiv) {
+          x <- Compartment$new(type = params$type,
+                               source = params$source,
+                               inf.time = params$inf.time,
+                               sampling.time = params$sampling.time
+          )
+          compartX[[obj]] <- x
+        }
+        compartX
+      })
+      self$compartments <- compartments
+    },
+    
+    
+    load.lineages = function(settings) {
+      lineages <- sapply(names(settings$Lineages), function(x) {
+        lineageX <- list()
+        params <- settings$Lineages[[x]]
+        nIndiv <- params$pop.size
+        for (obj in 1:nIndiv) {
+          x <- Lineage$new(type = params$type,
+                           sampling.time = params$sampling.time,
+                           location = params$location
+          )
+          lineageX[[obj]] <- x
+        }
+        lineageX
+      })
+      self$lineages <- lineages
+    }
+    
+  )
+)
+
+
+
 # simulate a (bifurcating) tree under the coalescent model
 # end goal --> ape::phylo object with the following attributes:
   # edge = 1x2 matrix int [1:ntips*2-2, 1:2] 
@@ -6,10 +110,10 @@
   # edge.length = branch lengths (indices correspond to tip.label or node.label)
   # attr(*, 'class') = chr 'phylo'
   # attr(*, 'order') = chr 'cladewise'
-harvest.tree <- function(compartmentTypes, compartments, lineages, simulationTime) {
+simulate.tree <- function(test, simulationTime) {
   require(ape)
   
-  ntips <- length(lineages)
+  ntips <- length(test$get.lineages())
   
   edge <- matrix(nrow=(ntips*2-2), ncol=2)
   Nnode <- ntips - 1
@@ -21,9 +125,9 @@ harvest.tree <- function(compartmentTypes, compartments, lineages, simulationTim
   
   while(length(extant) > 1) {
     # create a list of all possible combinations, and then eliminate the ones that cannot coalesce
-    #  * lineages cannot coalesce before the sources coalesce
+    #  * lineages cannot coalesce before the sources coalesce -- is this "looking forward" in time?
     all.pairs <- t(combn(extant, 2))
-    selectable <- list()
+    choices <- list()
     ind <- 1
     for (row in 1:nrow(all.pairs)) {
       pair <- all.pairs[row,]
@@ -34,13 +138,13 @@ harvest.tree <- function(compartmentTypes, compartments, lineages, simulationTim
       other.inf.times <- sapply(setdiff(compartments, sources), function(x) {min(pair.inf.times) < x$inf.time && max(pair.inf.times) > x$inf.time})
       # if not 0, then at least one of the remaining compartments have an infection time earlier than those of the pair chosen
       if (sum(other.inf.times) == 0) {    
-        selectable[[ind]] <- pair
+        choices[[ind]] <- pair
         ind <- ind + 1
       }
     }
     
     # pick two nodes to coalesce at random (sampled without replacement)
-    to.coalesce <- sample(selectable, 1)
+    to.coalesce <- sample(choices, 1)
     
     # draw relevant transmission rate
     lineageName <- lineages[[to.coalesce[1]]]
@@ -83,6 +187,11 @@ harvest.tree <- function(compartmentTypes, compartments, lineages, simulationTim
   tree
 }
 
+
+
+
+
+
 # returns a single waiting time for the coalescence of two pathogen lineages w/ an exponential distribution
 # randomly generated waiting time (in continuous time) for 2 pathogens to coalesce out of a sample of n_pathogens
 time1 <- function(rate, ntips) {
@@ -111,5 +220,7 @@ timer <- iter( sapply(1:(ntips-1), function(x) {rexp(n=1, rate = (k*rate))}) )
 .coalesce.paths <- function(n1, n2) {
   
 }
+
+
 
 
