@@ -104,6 +104,10 @@ Compartment <- R6Class("Compartment",
     
     set.type = function(new.type) {
       self$type <- new.type
+    },
+    
+    set.source = function(new.source) {
+      self$source <- new.source
     }
   
   ),

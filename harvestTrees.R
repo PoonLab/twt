@@ -20,6 +20,7 @@ NestedCoalescent <- R6Class("NestedCoalescent",
     initialize = function(settings=NA) {
       private$load.types(settings)
       private$load.compartments(settings)
+      private$set.sources()
       private$load.lineages(settings)
     },
     
@@ -86,13 +87,25 @@ NestedCoalescent <- R6Class("NestedCoalescent",
         nIndiv <- params$pop.size
         for(obj in 1:nIndiv) {
           x <- Compartment$new(type = typeObj,
-                               source = params$source,        # can't set 'pointers' to other Compartment objects bc they're all being generated here
+                               source = params$source,        
                                inf.time = params$inf.time,
                                sampling.time = params$sampling.time
           )
           compartX[[obj]] <- x
         }
         compartX
+      })
+      self$compartments <- compartments
+    },
+    
+    # set 'pointers' to other Compartment objects, after all compartments have been generated with private$load.compartments()
+    set.sources = function() {
+      compartments <- sapply(self$compartments, function(x) {
+        if (x$get.source() %in% names(self$compartments)) {
+          sourceObj <- self$compartments[[ which(names(self$compartments) == x$get.source()) ]]
+          x$set.source(sourceObj)
+        }
+        x
       })
       self$compartments <- compartments
     },
