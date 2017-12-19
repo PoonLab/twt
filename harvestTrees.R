@@ -48,9 +48,12 @@ NestedCoalescent <- R6Class("NestedCoalescent",
     
     ## collect host locations of all extant lineages into named list of host1:[pathogen1, pathogen2, ...] name-value pairs
     get.locations = function() {
-      locations <- list()
+      private$locations <- list()  # reset the list
       sapply(self$lineages, function(node) {    # should be lineages which are extant during this cycle  <- self$lineages might not cut it
-        private$locations[[node$get.location()$get.type()]] <- c(private$locations[[node$get.location()]], node)
+        # TODO: check that lineage is extant
+        my.comp.type <- node$get.location()$get.type()
+        # append this lineage to the vector
+        private$locations[[my.comp.type]] <- c(private$locations[[my.comp.type]], node)
       })
       private$locations
     },
