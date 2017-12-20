@@ -15,6 +15,7 @@ NestedCoalescent <- R6Class("NestedCoalescent",
     compartments = NULL,
     lineages = NULL,
 
+    extant = NULL,
     choices = NULL,
     
     initialize = function(settings=NA) {
@@ -22,43 +23,46 @@ NestedCoalescent <- R6Class("NestedCoalescent",
       private$load.compartments(settings)
       private$set.sources()
       private$load.lineages(settings)
+      # TODO: populate extant with extant lineages
     },
     
     get.types = function() {self$types},
     get.compartments = function() {self$compartments},
     get.lineages = function() {self$lineages},
     
+    ## collect host locations of all extant lineages into named list of host1:[pathogen1, pathogen2, ...] name-value pairs
+    get.locations = function() {
+      locations <- list()  # reset the list
+      for (node in self$extant) {    # sapply does not work here... will create list of `$1.host`, `$2.host`, etc
+        # TODO: check that lineage is extant
+        my.comp.type <- node$get.location()$get.type()$get.name()
+        # append this lineage to the vector
+        locations[[my.comp.type]] <- c(locations[[my.comp.type]], node)
+      }
+      locations
+    },
     
     ## function to extract all pairs of lineages that may coalesce
     get.pairs = function() {
-      locations <- private$get.locations()
-      self$choices <- list()
+      locations <- self$get.locations()
+      choices <- list()
       sapply(locations, function(x) {
         if (length(x) > 1) {
-          for (pair in combn(x, 2)) {
-            self$choices[[pair]] <- c(self$choices[[pair]], x)    # update list of pathogen pairs in same host
-          }
+          pairs <- t(combn(1:length(x), 2))
+          for (row in 1:nrow(pairs)) {
+            pair <- pairs[row,]
+            choices[[pair]] <- c(choices[[pair]], x)    # update list of pathogen pairs in same host
+          } # TODO: store not in tuples, but in some other data structure
         }
       })
+      self$choices <- choices
     }
     
+    
   ),
+  
+  
   private = list(
-    locations = NULL,
-    
-    
-    ## collect host locations of all extant lineages into named list of host1:[pathogen1, pathogen2, ...] name-value pairs
-    get.locations = function() {
-      private$locations <- list()  # reset the list
-      sapply(self$lineages, function(node) {    # should be lineages which are extant during this cycle  <- self$lineages might not cut it
-        # TODO: check that lineage is extant
-        my.comp.type <- node$get.location()$get.type()
-        # append this lineage to the vector
-        private$locations[[my.comp.type]] <- c(private$locations[[my.comp.type]], node)
-      })
-      private$locations
-    },
-    
     
     load.types = function(settings) {
       types <- sapply(names(settings$CompartmentType), function(x) {
