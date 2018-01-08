@@ -1,7 +1,8 @@
 # treeswithintrees/Wiki/Simulation Pseudocode step 2
 # after the objects are generated from user inputs, we need to initialize the list of fixed events
-init.fixed.events <- function(inputs) {
-  
+
+
+init.fixed.samplings <- function(inputs) {
   # add lineage sampling events from Lineage objects
   lineages <- inputs$get.lineages()
   samplings <- lapply(lineages, function(x) {
@@ -13,8 +14,10 @@ init.fixed.events <- function(inputs) {
     res
   })
   samplings
-  
-  
+}
+
+
+init.fixed.transmissions <- function(inputs) {
   # if the user input includes a tree (host tree) then add transmission events
   comps <- inputs$get.compartments()
   fixed.events <- c()

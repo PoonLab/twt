@@ -127,10 +127,16 @@ NestedCoalescent <- R6Class("NestedCoalescent",
           stop(params$location, ' of Lineage ', x, ' is not a specified Compartment object')
         }
         nIndiv <- params$pop.size
+        if (is.character(params$sampling.time)) {
+          vec <- unlist(strsplit(params$sampling.time, split='[`(`|,|`)`]'))
+          sampleTimes <- as.double(vec[nzchar(x=vec)])
+        } else {
+          sampleTimes <- params$sampling.time
+        }
         for (obj in 1:nIndiv) {
           x <- Lineage$new(name = x,
                            type = params$type,
-                           sampling.time = params$sampling.time,
+                           sampling.time = sampleTimes,
                            location = locationObj
           )
           lineageX[[obj]] <- x
