@@ -74,16 +74,22 @@ CompartmentType  <- R6Class("CompartmentType",
 # Compartment
 Compartment <- R6Class("Compartment",
   public = list(
+    name = NULL,
     type = NULL,          # reference to CompartmentType object
     source = NULL,
     inf.time = NULL,
     sampling.time = NULL,
     
-    initialize = function(type=NA, source=NA, inf.time=NA, sampling.time=NA) {
+    initialize = function(name=NA, type=NA, source=NA, inf.time=NA, sampling.time=NA) {
+      self$name <- name
       self$type <- type
       self$source <- source
       self$inf.time <- inf.time
       self$sampling.time <- sampling.time
+    },
+    
+    get.name = function() {
+      self$name
     },
     
     get.type = function() {
@@ -120,13 +126,19 @@ Compartment <- R6Class("Compartment",
 # Lineage
 Lineage <- R6Class("Lineage",
   public = list(
+    name = NULL,
     type = NULL,            # potential reference to LineageType object
     sampling.time = NULL,
     location = NULL,
-    initialize = function(type=NA, sampling.time=NA, location=NA) {
+    initialize = function(name=NA, type=NA, sampling.time=NA, location=NA) {
+      self$name <- name
       self$type <- type
       self$sampling.time <- sampling.time
       self$location <- location
+    },
+    
+    get.name = function() {
+      self$name
     },
     
     get.type = function() {

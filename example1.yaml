@@ -34,7 +34,7 @@ Compartments:
 Lineages:
   '1': 
     type: virus
-    sampling.time: 0.0
+    sampling.time: (0.0, 2.0, 3.0)
     location: A                     # at sampling, will change as we go back in time
     pop.size: 1
   '2': 

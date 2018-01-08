@@ -90,7 +90,8 @@ NestedCoalescent <- R6Class("NestedCoalescent",
         }
         nIndiv <- params$pop.size
         for(obj in 1:nIndiv) {
-          x <- Compartment$new(type = typeObj,
+          x <- Compartment$new(name = x,                     # unique identifier here?
+                               type = typeObj,
                                source = params$source,        
                                inf.time = params$inf.time,
                                sampling.time = params$sampling.time
@@ -127,7 +128,8 @@ NestedCoalescent <- R6Class("NestedCoalescent",
         }
         nIndiv <- params$pop.size
         for (obj in 1:nIndiv) {
-          x <- Lineage$new(type = params$type,
+          x <- Lineage$new(name = x,
+                           type = params$type,
                            sampling.time = params$sampling.time,
                            location = locationObj
           )
