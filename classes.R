@@ -162,3 +162,42 @@ Lineage <- R6Class("Lineage",
 )
 
 
+
+
+# Event Logger (tracks migration, transmission, coalescent, and bottleneck events)
+EventLogger <- R6Class("EventLogger",
+  public = list(
+    migrations = NULL,
+    transmissions = NULL,
+    coalescences = NULL,
+    bottlenecks = NULL,
+    initialize = function(migrations=NA, transmissions=NA, coalescences=NA, bottlenecks=NA) {
+      self$migrations <- migrations
+      self$transmissions <- transmissions
+      self$coalescences <- coalescences
+      self$bottlenecks <- bottlenecks
+    },
+    
+    add.migration = function(time, lineage1, compartment1, compartment2) {
+      new.event <- list(time=time, L1=lineage1, C1=compartment1, C2=compartment2)
+      self$migrations <- c(self$migrations, new.event)
+    },
+    
+    add.transmission = function(time, lineage1, compartment1, compartment2) {
+     new.event <- list(time=time, L1=lineage1, C1=compartment1, C2=compartment2)
+     self$transmissions <- c(self$transmissions, new.event)
+    },
+    
+    add.coalescence = function(time, lineage1, lineage2, compartment1) {
+      new.event <- list(time=time, L1=lineage1, L2=lineage2, C1=compartment1)
+      self$coalescences <- c(self$coalescences, new.event)
+    },
+    
+    add.bottleneck = function(time, lineage1, lineage2, compartment1) {
+      new.event <- list(time=time, L1=lineage1, L2=lineage2, C1=compartment1)
+      self$bottlenecks <- c(self$bottlenecks, new.event)
+    }
+    
+  ),
+  private = list()
+)

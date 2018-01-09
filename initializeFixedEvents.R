@@ -8,10 +8,10 @@ init.fixed.samplings <- function(inputs) {
   samplings <- lapply(lineages, function(x) {
     indiv.sampled <- c()
     sampling.times <- x$get.sampling.time()     # could either be a single sampling time or a vector of multiple sampling times
-    res <- sapply(sampling.times, function(x) {
-      indiv.sampled <- rbind(indiv.sampled, c(x))
+    res <- sapply(sampling.times, function(y) {
+      indiv.sampled <- rbind(indiv.sampled, c(y, x$get.name()))
     })
-    res
+    t(res)
   })
   samplings
 }
