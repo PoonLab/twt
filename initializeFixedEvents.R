@@ -1,7 +1,7 @@
 # treeswithintrees/Wiki/Simulation Pseudocode step 2
 # after the objects are generated from user inputs, we need to initialize the list of fixed events
 
-
+# retrieve sampling time and populate tip labels / times in ape::phylo object (building it tips up)
 init.fixed.samplings <- function(inputs) {
   # add lineage sampling events from Lineage objects
   lineages <- inputs$get.lineages()

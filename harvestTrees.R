@@ -12,6 +12,7 @@ NestedCoalescent <- R6Class("NestedCoalescent",
   public = list(
     settings = NULL,
     types = NULL,
+    unsampled.hosts = NULL,
     compartments = NULL,
     lineages = NULL,
 
@@ -20,6 +21,7 @@ NestedCoalescent <- R6Class("NestedCoalescent",
     
     initialize = function(settings=NA) {
       private$load.types(settings)
+      private$load.unsampled.hosts()
       private$load.compartments(settings)
       private$set.sources()
       private$load.lineages(settings)
@@ -27,6 +29,7 @@ NestedCoalescent <- R6Class("NestedCoalescent",
     },
     
     get.types = function() {self$types},
+    get.unsampled.hosts = function() {self$unsampled.hosts},
     get.compartments = function() {self$compartments},
     get.lineages = function() {self$lineages},
     
@@ -68,13 +71,34 @@ NestedCoalescent <- R6Class("NestedCoalescent",
       types <- sapply(names(settings$CompartmentType), function(x) {
         params <- settings$CompartmentType[[x]]
         x <- CompartmentType$new(name = x,
-                                 transmission.rates = params$transmission.rates,
-                                 migration.rates = params$migration.rates,
+                                 no.unsampled = eval(parse(text=paste('list', params$no.unsampled))),
+                                 no.susceptible = eval(parse(text=paste('list', params$no.susceptible))),
+                                 transmission.rates = eval(parse(text=paste('list', params$transmission.rates))),
+                                 migration.rates = eval(parse(text=paste('list', params$migration.rates))),
                                  coalescent.rate = params$coalescent.rate,
                                  bottleneck.size = params$bottleneck.size
         )
       })
       self$types <- types
+    },
+    
+    
+    # stored in a list as "blank" compartments
+    load.unsampled.hosts = function() {
+      us.hosts <- sapply(self$types, function(x) {
+        types.unsampled <- names(x$no.unsampled)           # accessing a private variable here; maybe add another public method in CompartmentType instead
+        indiv <- lapply(types.unsampled, function(y) {
+          compartY <- list()
+          nBlanks <- x$get.no.unsampled(y)
+          for(blank in 1:nBlanks) {
+            x <- Compartment$new()
+            compartY[[blank]] <- x
+          }
+          compartY
+        })
+        indiv
+      })
+      self$unsampled.hosts <- us.hosts
     },
     
     

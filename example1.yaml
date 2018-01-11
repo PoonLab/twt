@@ -4,6 +4,8 @@
 # Internal node labels specify who infected whom, and branch lengths indicate the timing of transmission events and host sampling
 CompartmentType:
   'host':
+    no.unsampled: (host=20)
+    no.susceptible: (host=1000)
     transmission.rates: (host=0.2)  # only one CompartmentType
     migration.rates: ()             # assume no migration
     coalescent.rate: 0.1            # single rate to be applied to all objects of this CompartmentType

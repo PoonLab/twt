@@ -7,15 +7,20 @@ library(R6)
 CompartmentType  <- R6Class("CompartmentType",
   public = list(
     name = NULL,
+    no.unsampled = NULL,
+    no.susceptible = NULL,
     transmission.rates = NULL,
     coalescent.rate = NULL,
     bottleneck.size = NULL,
     migration.rates = NULL,
     
-    initialize = function(name=NA, transmission.rates=NA,
+    initialize = function(name=NA, no.unsampled = NA,
+                          no.susceptible=NA, transmission.rates=NA,
                           coalescent.rate=NA, bottleneck.size=NA,
                           migration.rates=NA) {
       self$name <- name
+      self$no.unsampled = no.unsampled
+      self$no.susceptible = no.susceptible
       self$transmission.rates <- transmission.rates               # named vector of transmission rates corresponding to different Compartment objects
       self$coalescent.rate <- coalescent.rate
       self$bottleneck.size <- bottleneck.size
@@ -32,6 +37,16 @@ CompartmentType  <- R6Class("CompartmentType",
     
     get.name = function() {
       self$name
+    },
+    
+    get.no.unsampled = function(name.type) {
+      num <- self$no.unsampled[[name.type]]
+      num
+    },
+    
+    get.no.susceptible = function(name.type) {
+      num <- self$no.susceptible[[name.type]]
+      num
     },
     
     get.transmission.rate = function(name.type) {
@@ -54,6 +69,14 @@ CompartmentType  <- R6Class("CompartmentType",
     
     set.name = function(new.name) {
       self$name <- new.name
+    },
+    
+    set.no.unsampled = function(name.type, new.no) {
+      self$no.unsampled[[name.type]] <- new.no
+    },
+    
+    set.no.susceptible = function(name.type, new.no) {
+      self$no.susceptible[[name.type]] <- new.no
     },
     
     set.transmission.rate = function(name.type, new.rate) {
