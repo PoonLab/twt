@@ -130,13 +130,14 @@ NestedCoalescent <- R6Class("NestedCoalescent",
         if (is.character(params$sampling.time)) {
           vec <- unlist(strsplit(params$sampling.time, split='[`(`|,|`)`]'))
           sampleTimes <- as.double(vec[nzchar(x=vec)])
+          if (length(sampleTimes) != nIndiv) { stop(paste('Lineage', x, 'sampling.time does not match pop.size specified for respective Lineage.'))}
         } else {
           sampleTimes <- params$sampling.time
         }
         for (obj in 1:nIndiv) {
           x <- Lineage$new(name = x,
                            type = params$type,
-                           sampling.time = sampleTimes,
+                           sampling.time = sampleTimes[obj],
                            location = locationObj
           )
           lineageX[[obj]] <- x
