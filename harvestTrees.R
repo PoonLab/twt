@@ -33,6 +33,7 @@ NestedCoalescent <- R6Class("NestedCoalescent",
     get.compartments = function() {self$compartments},
     get.lineages = function() {self$lineages},
     
+    
     ## collect host locations of all extant lineages into named list of host1:[pathogen1, pathogen2, ...] name-value pairs
     get.locations = function() {
       locations <- list()  # reset the list
@@ -44,6 +45,7 @@ NestedCoalescent <- R6Class("NestedCoalescent",
       }
       locations
     },
+    
     
     ## function to extract all pairs of lineages that may coalesce
     get.pairs = function() {
@@ -67,6 +69,8 @@ NestedCoalescent <- R6Class("NestedCoalescent",
   
   private = list(
     
+    ## function creates CompartmentType objects
+    ## within each CompartmentType, there are distinct compartments with individual transmission & migration rates, and unsampled host & susceptible populations 
     load.types = function(settings) {
       types <- sapply(names(settings$CompartmentType), function(x) {
         params <- settings$CompartmentType[[x]]
@@ -83,7 +87,8 @@ NestedCoalescent <- R6Class("NestedCoalescent",
     },
     
     
-    # stored in a list as "blank" compartments
+    ## function creates "blank" Compartment objects for Unsampled Hosts (US) 
+    ## stored in lists for each section within a CompartmentType object
     load.unsampled.hosts = function() {
       us.hosts <- sapply(self$types, function(x) {
         types.unsampled <- names(x$no.unsampled)           # accessing a private variable here; maybe add another public method in CompartmentType instead
@@ -102,19 +107,20 @@ NestedCoalescent <- R6Class("NestedCoalescent",
     },
     
     
+    ## function creates Compartment objects
+    ## `type` attr points directly back to a CompartmentType object, and `name` attr is a unique identifier
     load.compartments = function(settings) {
-      compartments <- sapply(names(settings$Compartments), function(x) {
+      compartments <- sapply(names(settings$Compartments), function(comp) {
         compartX <- list()
-        params <- settings$Compartments[[x]]
-        # set 'pointer' to CompartmentType object for type
+        params <- settings$Compartments[[comp]]
         if (params$type %in% names(self$types)) {
-          typeObj <- self$types[[ which(names(self$types) == params$type) ]]
+          typeObj <- self$types[[ which(names(self$types) == params$type) ]]    # pointer to CompartmentType object
         } else {
-          stop(params$type, ' of Compartment ', x, ' is not a specified Compartment Type object')
+          stop(params$type, ' of Compartment ', comp, ' is not a specified Compartment Type object')
         }
         nIndiv <- params$pop.size
         for(obj in 1:nIndiv) {
-          x <- Compartment$new(name = x,                     # unique identifier here?
+          x <- Compartment$new(name = paste0(comp,'_', obj),                     # unique identifier
                                type = typeObj,
                                source = params$source,        
                                inf.time = params$inf.time,
@@ -127,39 +133,43 @@ NestedCoalescent <- R6Class("NestedCoalescent",
       self$compartments <- compartments
     },
     
-    # set 'pointers' to other Compartment objects, after all compartments have been generated with private$load.compartments()
+    ## re-iterates over generated Compartment objects and populates `source` attr with R6 objects
+    ## sets 'pointers' to other Compartment objects after all have been generated with function call private$load.compartments()
     set.sources = function() {
+      compNames <- sapply(self$compartments, function(n){n$get.name()})
       compartments <- sapply(self$compartments, function(x) {
-        if (x$get.source() %in% names(self$compartments)) {
-          sourceObj <- self$compartments[[ which(names(self$compartments) == x$get.source()) ]]
+        if (paste0(x$get.source(),'_1') %in% compNames) {                                        # FIXME: arbitrary assignment of source
+          sourceObj <- self$compartments[[ which(compNames == paste0(x$get.source(),'_1')) ]]    # FIXME: arbitrarily assigning source to first object in Compartment with $name == x$get.source()
           x$set.source(sourceObj)
-        }
+        } # TODO: else statement { if source is 'undefined' or not in the list, must be assigned to an unsampled host (US) }
         x
       })
       self$compartments <- compartments
     },
     
     
+    ## function creates Lineage objects
+    ## `location` attr points directly to a Compartment object, and `name` attr is unique identifier
     load.lineages = function(settings) {
-      lineages <- sapply(names(settings$Lineages), function(x) {
+      lineages <- sapply(names(settings$Lineages), function(label) {
         lineageX <- list()
-        params <- settings$Lineages[[x]]
-        # set 'pointer' to Compartment object for location
-        if (params$location %in% names(self$compartments)) {
-          locationObj <- self$compartments[[ which(names(self$compartments) == params$location) ]]
+        params <- settings$Lineages[[label]]
+        
+        if (params$location %in% names(self$compartments)) {                            # set 'pointer' to Compartment object for location
+          locationObj <- self$compartments[[ which( sapply(self$compartments, function(y){which(y$get.name() == paste0(params$location,'_1'))}) ==1) ]]  # FIXME: arbitrarily assigns location to first object in Compartment with $name == params$location
         } else {
-          stop(params$location, ' of Lineage ', x, ' is not a specified Compartment object')
+          stop(params$location, ' of Lineage ', label, ' is not a specified Compartment object')
         }
         nIndiv <- params$pop.size
         if (is.character(params$sampling.time)) {
           vec <- unlist(strsplit(params$sampling.time, split='[`(`|,|`)`]'))
           sampleTimes <- as.double(vec[nzchar(x=vec)])
-          if (length(sampleTimes) != nIndiv) { stop(paste('Lineage', x, 'sampling.time does not match pop.size specified for respective Lineage.'))}
+          if (length(sampleTimes) != nIndiv) { stop(paste('Lineage', label, 'sampling.time does not match pop.size specified for respective Lineage.'))}
         } else {
           sampleTimes <- params$sampling.time
         }
         for (obj in 1:nIndiv) {
-          x <- Lineage$new(name = x,
+          x <- Lineage$new(name = paste0(label,'_',obj),                                 # unique identifier
                            type = params$type,
                            sampling.time = sampleTimes[obj],
                            location = locationObj
