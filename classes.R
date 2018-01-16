@@ -190,35 +190,43 @@ Lineage <- R6Class("Lineage",
 # Event Logger (tracks migration, transmission, coalescent, and bottleneck events)
 EventLogger <- R6Class("EventLogger",
   public = list(
-    migrations = NULL,
-    transmissions = NULL,
-    coalescences = NULL,
-    bottlenecks = NULL,
-    initialize = function(migrations=NA, transmissions=NA, coalescences=NA, bottlenecks=NA) {
-      self$migrations <- migrations
-      self$transmissions <- transmissions
-      self$coalescences <- coalescences
-      self$bottlenecks <- bottlenecks
+    events = NULL,
+    initialize = function(events=data.frame(event.name=character(),
+                                            time=numeric(),
+                                            lineage1=character(),
+                                            lineage2=character(),
+                                            compartment1=character(),
+                                            compartment2=character()
+                                            )
+                          ) 
+    {
+      self$events <- events
     },
     
-    add.migration = function(time, lineage1, compartment1, compartment2) {
-      new.event <- list(time=time, L1=lineage1, C1=compartment1, C2=compartment2)
-      self$migrations <- c(self$migrations, new.event)
+    get.events = function() {
+      if (nrow(self$events) == 0) {cat('No events to display.')}
+      else {self$events}
     },
     
-    add.transmission = function(time, lineage1, compartment1, compartment2) {
-     new.event <- list(time=time, L1=lineage1, C1=compartment1, C2=compartment2)
-     self$transmissions <- c(self$transmissions, new.event)
+    add.event = function(name, time, obj1, obj2, obj3) {
+      if (tolower(name) == 'transmission' || tolower(name) == 'migration') {
+        new.event <- list(event.name=name, time=time, lineage1=obj1, lineage2=NA, compartment1=obj2, compartment2=obj3)
+      } else if (tolower(name) == 'coalescent' || tolower(name) == 'bottleneck') {
+        new.event <- list(event.name=name, time=time, lineage1=obj1, lineage2=obj2, compartment1=obj3, compartment2=NA)
+      } else {
+        stop(name, 'is not an event name.')
+      }
+      self$events <- rbind(self$events, new.event, stringsAsFactors=F)
     },
     
-    add.coalescence = function(time, lineage1, lineage2, compartment1) {
-      new.event <- list(time=time, L1=lineage1, L2=lineage2, C1=compartment1)
-      self$coalescences <- c(self$coalescences, new.event)
-    },
-    
-    add.bottleneck = function(time, lineage1, lineage2, compartment1) {
-      new.event <- list(time=time, L1=lineage1, L2=lineage2, C1=compartment1)
-      self$bottlenecks <- c(self$bottlenecks, new.event)
+    clear.events = function() {
+      self$events <- data.frame(event.name=character(),
+                                time=numeric(),
+                                lineage1=character(),
+                                lineage2=character(),
+                                compartment1=character(),
+                                compartment2=character()
+                                )
     }
     
   ),
