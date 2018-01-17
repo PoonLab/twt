@@ -2,6 +2,7 @@
 # after the objects are generated from user inputs, we need to initialize the list of fixed events
 
 # retrieve sampling time and populate tip labels / times in ape::phylo object (building it tips up)
+# @param inputs = NestedCoalescent object
 init.fixed.samplings <- function(inputs) {
   # add lineage sampling events from Lineage objects
   lineages <- unlist(inputs$get.lineages())
@@ -19,6 +20,8 @@ init.fixed.samplings <- function(inputs) {
 }
 
 
+# @param inputs = NestedCoalescent object
+# @params eventlog = EventLogger object
 init.fixed.transmissions <- function(inputs, eventlog) {
   # if the user input includes a tree (host tree) then add transmission events
   comps <- unlist(inputs$get.compartments())
@@ -29,7 +32,8 @@ init.fixed.transmissions <- function(inputs, eventlog) {
       
     if (is.R6(x$get.source())) {
       source <- x$get.source()$get.name()
-      lineage <- lineages[[ which( sapply(lineages, function(y){which(y$get.location()$get.name() == x$get.name())}) == 1) ]]$get.name()
+      xLin <- sapply(lineages, function(y){which(y$get.location()$get.name() == x$get.name())})
+      lineage <- lineages[[ which(xLin == 1) ]]$get.name()
     } else {
       source <- x$get.source()
       lineage <- NA
@@ -37,5 +41,26 @@ init.fixed.transmissions <- function(inputs, eventlog) {
 
     # add transmission event to EventLogger object
     eventlog$add.event('transmission',  inf.time, lineage, x$get.name(), source)
+  })
+}
+
+
+# treeswithintrees/Wiki/Simulation Pseudocode step 3 & 4
+# simulate transmission events and fix them to the timeline of lineage sampled events
+generate.transmission.events <- function(inputs) {
+# for each CompartmentType
+  types <- inputs$get.types()
+  comps.types <- sapply(inputs$get.compartments(), function(a){a$get.type()$get.name()})
+  init.data <- sapply(types, function(x) {
+    list.U <- x$get.unsampled.popns()
+  # enumerate active compartments, including unsampled hosts (U) at time t=0
+    list.A <- sapply(names(list.U), function(y) {
+      compY <- sapply(which(comps.types == y), function(z){inputs$get.compartments()[[z]]})
+      y <- compY
+    })
+  # enumerate active lineages of infected (I), pairs of active lineages within hosts at time t=0
+    #list.I <- 
+  # enumerate number of susceptibles (S) at time t=0
+    list.S <- x$get.susceptible.popns()
   })
 }

@@ -39,9 +39,17 @@ CompartmentType  <- R6Class("CompartmentType",
       self$name
     },
     
+    get.unsampled.popns = function() {
+      self$no.unsampled
+    },
+    
     get.no.unsampled = function(name.type) {
       num <- self$no.unsampled[[name.type]]
       num
+    },
+    
+    get.susceptible.popns = function() {
+      self$no.susceptible
     },
     
     get.no.susceptible = function(name.type) {
@@ -49,9 +57,17 @@ CompartmentType  <- R6Class("CompartmentType",
       num
     },
     
+    get.transmission.rates = function() {
+      self$transmission.rates
+    },
+    
     get.transmission.rate = function(name.type) {
       rate <- self$transmission.rates[[name.type]]
       rate
+    },
+    
+    get.migration.rates = function() {
+      self$migration.rates
     },
     
     get.migration.rate = function(name.type) {
@@ -191,7 +207,7 @@ Lineage <- R6Class("Lineage",
 EventLogger <- R6Class("EventLogger",
   public = list(
     events = NULL,
-    initialize = function(events=data.frame(event.name=character(),
+    initialize = function(events=data.frame(event.type=character(),
                                             time=numeric(),
                                             lineage1=character(),
                                             lineage2=character(),
@@ -210,9 +226,9 @@ EventLogger <- R6Class("EventLogger",
     
     add.event = function(name, time, obj1, obj2, obj3) {
       if (tolower(name) == 'transmission' || tolower(name) == 'migration') {
-        new.event <- list(event.name=name, time=time, lineage1=obj1, lineage2=NA, compartment1=obj2, compartment2=obj3)
+        new.event <- list(event.type=name, time=time, lineage1=obj1, lineage2=NA, compartment1=obj2, compartment2=obj3)
       } else if (tolower(name) == 'coalescent' || tolower(name) == 'bottleneck') {
-        new.event <- list(event.name=name, time=time, lineage1=obj1, lineage2=obj2, compartment1=obj3, compartment2=NA)
+        new.event <- list(event.type=name, time=time, lineage1=obj1, lineage2=obj2, compartment1=obj3, compartment2=NA)
       } else {
         stop(name, 'is not an event name.')
       }
@@ -220,7 +236,7 @@ EventLogger <- R6Class("EventLogger",
     },
     
     clear.events = function() {
-      self$events <- data.frame(event.name=character(),
+      self$events <- data.frame(event.type=character(),
                                 time=numeric(),
                                 lineage1=character(),
                                 lineage2=character(),
@@ -232,3 +248,4 @@ EventLogger <- R6Class("EventLogger",
   ),
   private = list()
 )
+
