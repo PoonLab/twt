@@ -50,17 +50,25 @@ init.fixed.transmissions <- function(inputs, eventlog) {
 generate.transmission.events <- function(inputs) {
 # for each CompartmentType
   types <- inputs$get.types()
-  comps.types <- sapply(inputs$get.compartments(), function(a){a$get.type()$get.name()})
+  comps.types <- sapply(unlist(inputs$get.compartments()), function(a){a$get.type()$get.name()})
   init.data <- sapply(types, function(x) {
-    list.U <- x$get.unsampled.popns()
+    
   # enumerate active compartments, including unsampled hosts (U) at time t=0
+    list.U <- unlist(x$get.unsampled.popns())
     list.A <- sapply(names(list.U), function(y) {
-      compY <- sapply(which(comps.types == y), function(z){inputs$get.compartments()[[z]]})
+      compY <- length(which(comps.types == y))
       y <- compY
     })
+    
   # enumerate active lineages of infected (I), pairs of active lineages within hosts at time t=0
-    #list.I <- 
+    lineage.times <- sapply(unlist(inputs$get.lineages()), function(b){b$get.sampling.time()})
+    list.I <- length(which(lineage.times == 0)) 
+    
   # enumerate number of susceptibles (S) at time t=0
-    list.S <- x$get.susceptible.popns()
+    list.S <- unlist(x$get.susceptible.popns())
+    
+    enumerate <- list(U=list.U, A=list.A, I=list.I, S=list.S)
+    enumerate
   })
+  init.data
 }
