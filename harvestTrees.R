@@ -2,7 +2,7 @@
 require(R6)
 require(yaml)
 setwd('~/git/treeswithintrees')
-settings <- yaml.load_file('example1.yaml')
+settings <- yaml.load_file('example3.yaml')
 test <- NestedCoalescent$new(settings)
 e <- EventLogger$new()
 tips.n.heights <- init.fixed.samplings(test)
@@ -12,6 +12,7 @@ init.fixed.transmissions(test, e)
 # Load all of the different objects into one larger class
 NestedCoalescent <- R6Class("NestedCoalescent",
   public = list(
+    
     settings = NULL,
     types = NULL,
     unsampled.hosts = NULL,
@@ -33,38 +34,7 @@ NestedCoalescent <- R6Class("NestedCoalescent",
     get.types = function() {self$types},
     get.unsampled.hosts = function() {self$unsampled.hosts},
     get.compartments = function() {self$compartments},
-    get.lineages = function() {self$lineages},
-    
-    
-    ## collect host locations of all extant lineages into named list of host1:[pathogen1, pathogen2, ...] name-value pairs
-    get.locations = function() {
-      locations <- list()  # reset the list
-      for (node in self$extant) {    # sapply does not work here... will create list of `$1.host`, `$2.host`, etc
-        # TODO: check that lineage is extant
-        my.comp.type <- node$get.location()$get.type()$get.name()
-        # append this lineage to the vector
-        locations[[my.comp.type]] <- c(locations[[my.comp.type]], node)
-      }
-      locations
-    },
-    
-    
-    ## function to extract all pairs of lineages that may coalesce
-    get.pairs = function() {
-      locations <- self$get.locations()
-      choices <- list()
-      sapply(locations, function(x) {
-        if (length(x) > 1) {
-          pairs <- t(combn(1:length(x), 2))
-          for (row in 1:nrow(pairs)) {
-            pair <- pairs[row,]
-            choices[[pair]] <- c(choices[[pair]], x)    # update list of pathogen pairs in same host
-          } # TODO: store not in tuples, but in some other data structure
-        }
-      })
-      self$choices <- choices
-    }
-    
+    get.lineages = function() {self$lineages}
     
   ),
   
@@ -85,7 +55,7 @@ NestedCoalescent <- R6Class("NestedCoalescent",
                                  bottleneck.size = params$bottleneck.size
         )
       })
-      self$types <- types
+      self$types <- unlist(types)
     },
     
     
@@ -105,7 +75,7 @@ NestedCoalescent <- R6Class("NestedCoalescent",
         })
         indiv
       })
-      self$unsampled.hosts <- us.hosts
+      self$unsampled.hosts <- unlist(us.hosts)
     },
     
     
@@ -115,8 +85,8 @@ NestedCoalescent <- R6Class("NestedCoalescent",
       compartments <- sapply(names(settings$Compartments), function(comp) {
         compartX <- list()
         params <- settings$Compartments[[comp]]
-        if (params$type %in% names(self$types)) {
-          typeObj <- self$types[[ which(names(self$types) == params$type) ]]    # pointer to CompartmentType object
+        if (params$type %in% names(settings$CompartmentType)) {
+          typeObj <- self$types[[ which(names(settings$CompartmentType) == params$type) ]]    # pointer to CompartmentType object
         } else {
           stop(params$type, ' of Compartment ', comp, ' is not a specified Compartment Type object')
         }
@@ -132,7 +102,7 @@ NestedCoalescent <- R6Class("NestedCoalescent",
         }
         compartX
       })
-      self$compartments <- compartments
+      self$compartments <- unlist(compartments)
     },
     
     ## re-iterates over generated Compartment objects and populates `source` attr with R6 objects
@@ -157,30 +127,48 @@ NestedCoalescent <- R6Class("NestedCoalescent",
         lineageX <- list()
         params <- settings$Lineages[[label]]
         
-        if (params$location %in% names(self$compartments)) {                            # set 'pointer' to Compartment object for location
-          locationObj <- self$compartments[[ which( sapply(self$compartments, function(y){which(y$get.name() == paste0(params$location,'_1'))}) ==1) ]]  # FIXME: arbitrarily assigns location to first object in Compartment with $name == params$location
+        if (params$location %in% names(settings$Compartments)) {
+          nlocationObj <- settings$Compartments[[ which(names(settings$Compartments) == params$location) ]]$pop.size
         } else {
           stop(params$location, ' of Lineage ', label, ' is not a specified Compartment object')
         }
+        
         nIndiv <- params$pop.size
+        
         if (is.character(params$sampling.time)) {
           vec <- unlist(strsplit(params$sampling.time, split='[`(`|,|`)`]'))
-          sampleTimes <- as.double(vec[nzchar(x=vec)])
-          if (length(sampleTimes) != nIndiv) { stop(paste('Lineage', label, 'sampling.time does not match pop.size specified for respective Lineage.'))}
+          
+          if (length(vec) == 1) { # FIXME: for 'undefined' sampling.time case, assumes that after regexp '[`(`|,|`)`]', 'undefined' or otherwise would remain as 1 element in the strsplit list
+            sampleTimes <- params$sampling.time
+          } else {
+            sampleTimes <- as.double(vec[nzchar(x=vec)])
+            if (length(sampleTimes) != nIndiv) { 
+              stop(paste('Lineage', label, 'sampling.time does not match pop.size specified for respective Lineage.'))
+              }
+          }
+        
         } else {
           sampleTimes <- params$sampling.time
         }
-        for (obj in 1:nIndiv) {
-          x <- Lineage$new(name = paste0(label,'_',obj),                                 # unique identifier
-                           type = params$type,
-                           sampling.time = sampleTimes[obj],
-                           location = locationObj
-          )
-          lineageX[[obj]] <- x
+        
+        for (compNum in 1:nlocationObj) {
+          group <- list()
+          for (obj in 1:nIndiv) {
+            # set 'pointer' to Compartment object for location
+            locationObj <- self$compartments[[ which( sapply(self$compartments, function(y){which(y$get.name() == paste0(params$location, '_', compNum))}) ==1) ]]
+            x <- Lineage$new(name = paste0(label,'_',obj),                                 # unique identifier
+                             type = params$type,
+                             sampling.time = sampleTimes[obj],
+                             location = locationObj
+            )
+            group[[obj]] <- x
+            group
+          }
+          lineageX[[compNum]] <- group
         }
         lineageX
       })
-      self$lineages <- lineages
+      self$lineages <- unlist(lineages)
     }
     
   )
