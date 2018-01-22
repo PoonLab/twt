@@ -6,7 +6,8 @@ settings <- yaml.load_file('example3.yaml')
 test <- NestedCoalescent$new(settings)
 e <- EventLogger$new()
 tips.n.heights <- init.fixed.samplings(test)
-init.fixed.transmissions(test, e)
+#init.fixed.transmissions(test, e)    # applies only to example1.yaml for now
+generate.transmission.events(test)
 
 
 # Load all of the different objects into one larger class

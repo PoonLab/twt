@@ -24,8 +24,8 @@ init.fixed.samplings <- function(inputs) {
 # @params eventlog = EventLogger object
 init.fixed.transmissions <- function(inputs, eventlog) {
   # if the user input includes a tree (host tree) then add transmission events
-  comps <- unlist(inputs$get.compartments())
-  lineages <- unlist(inputs$get.lineages())
+  comps <- inputs$get.compartments()
+  lineages <- inputs$get.lineages()
 
   transmissions <- sapply(comps, function(x) {
     inf.time <- x$get.inf.time()
@@ -51,8 +51,8 @@ generate.transmission.events <- function(inputs) {
 # for each CompartmentType
   types <- inputs$get.types()
   comps.types <- sapply(unlist(inputs$get.compartments()), function(a){a$get.type()$get.name()})
-  init.data <- sapply(types, function(x) {
-    
+  
+  init.data <- lapply(types, function(x) {
   # enumerate active compartments, including unsampled hosts (U) at time t=0
     list.U <- unlist(x$get.unsampled.popns())
     list.A <- sapply(names(list.U), function(y) {
@@ -67,7 +67,7 @@ generate.transmission.events <- function(inputs) {
   # enumerate number of susceptibles (S) at time t=0
     list.S <- unlist(x$get.susceptible.popns())
     
-    enumerate <- list(U=list.U, A=list.A, I=list.I, S=list.S)
+    enumerate <- data.frame(U=list.U, A=list.A, I=list.I, S=list.S)
     enumerate
   })
   init.data
