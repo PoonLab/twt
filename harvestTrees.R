@@ -110,8 +110,9 @@ NestedCoalescent <- R6Class("NestedCoalescent",
     set.sources = function() {
       compNames <- sapply(self$compartments, function(n){n$get.name()})
       compartments <- sapply(self$compartments, function(x) {
-        if (paste0(x$get.source(),'_1') %in% compNames) {                                        # FIXME: arbitrary assignment of source
-          sourceObj <- self$compartments[[ which(compNames == paste0(x$get.source(),'_1')) ]]    # FIXME: arbitrarily assigning source to first object in Compartment with $name == x$get.source()
+        if (paste0(x$get.source(),'_1') %in% compNames) {                         # FIXME: arbitrary assignment of source
+          searchComps <- which(compNames == paste0(x$get.source(),'_1'))          # FIXME: arbitrarily assigning source to first object in Compartment with $name == x$get.source()
+          sourceObj <- self$compartments[[ searchComps ]]    
           x$set.source(sourceObj)
         } # TODO: else statement { if source is 'undefined' or not in the list, must be assigned to an unsampled host (US) }
         x
@@ -122,13 +123,16 @@ NestedCoalescent <- R6Class("NestedCoalescent",
     
     ## function creates Lineage objects
     ## `location` attr points directly to a Compartment object, and `name` attr is unique identifier
+    ## identifiers create unique Lineages for each Compartment, 
+    ## but Compartment A_1 could have Lineage cell_1 and Compartment B_1 also have a separate Lineage cell_1
     load.lineages = function(settings) {
       lineages <- sapply(names(settings$Lineages), function(label) {
         lineageX <- list()
         params <- settings$Lineages[[label]]
         
         if (params$location %in% names(settings$Compartments)) {
-          nlocationObj <- settings$Compartments[[ which(names(settings$Compartments) == params$location) ]]$pop.size
+          searchComps <- which(names(settings$Compartments) == params$location)
+          nlocationObj <- settings$Compartments[[ searchComps ]]$pop.size
         } else {
           stop(params$location, ' of Lineage ', label, ' is not a specified Compartment object')
         }
@@ -143,7 +147,7 @@ NestedCoalescent <- R6Class("NestedCoalescent",
           } else {
             sampleTimes <- as.double(vec[nzchar(x=vec)])
             if (length(sampleTimes) != nIndiv) { 
-              stop(paste('Lineage', label, 'sampling.time does not match pop.size specified for respective Lineage.'))
+              stop(paste('Lineage', label, ' attr `sampling.time` does not match pop.size specified for respective Lineage.'))
               }
           }
         
@@ -155,8 +159,9 @@ NestedCoalescent <- R6Class("NestedCoalescent",
           group <- list()
           for (obj in 1:nIndiv) {
             # set 'pointer' to Compartment object for location
-            locationObj <- self$compartments[[ which( sapply(self$compartments, function(y){which(y$get.name() == paste0(params$location, '_', compNum))}) ==1) ]]
-            x <- Lineage$new(name = paste0(label,'_',obj),                                 # unique identifier
+            serachComps <- sapply(self$compartments, function(y){which(y$get.name() == paste0(params$location, '_', compNum))})
+            locationObj <- self$compartments[[ which( searchComps == 1) ]]
+            x <- Lineage$new(name = paste0(label,'_',obj),                          # unique identifier
                              type = params$type,
                              sampling.time = sampleTimes[obj],
                              location = locationObj
