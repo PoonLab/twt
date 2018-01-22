@@ -54,21 +54,40 @@ generate.transmission.events <- function(inputs) {
   
   init.data <- lapply(types, function(x) {
   # enumerate active compartments, including unsampled hosts (U) at time t=0
-    list.U <- unlist(x$get.unsampled.popns())
-    list.A <- sapply(names(list.U), function(y) {
+    list.N_U <- unlist(x$get.unsampled.popns())
+    list.N_A <- sapply(names(list.N_U), function(y) {
       compY <- length(which(comps.types == y))
       y <- compY
     })
     
   # enumerate active lineages of infected (I), pairs of active lineages within hosts at time t=0
     lineage.times <- sapply(unlist(inputs$get.lineages()), function(b){b$get.sampling.time()})
-    list.I <- length(which(lineage.times == 0)) 
+    list.N_I <- length(which(lineage.times == 0)) 
     
   # enumerate number of susceptibles (S) at time t=0
-    list.S <- unlist(x$get.susceptible.popns())
+    list.N_S <- unlist(x$get.susceptible.popns())
     
-    enumerate <- data.frame(U=list.U, A=list.A, I=list.I, S=list.S)
+    enumerate <- data.frame(U=list.N_U, A=list.N_A, I=list.N_I, S=list.N_S)
     enumerate
   })
-  init.data
+  
+  
+  # total event rate (lambda) = intrinsic base rate (ie. rate of TypeA --> TypeB transmission) x N_TypeA x N_TypeB
+  # include N_U and N_S for each type 
+  # retrieves intrinsic base transmission rate of X --> Y transmission
+  .get.lambda <- function(X, Y) {
+    base.rate <- types[[X]]$get.transmission.rate(Y)
+    popN <- init.data[[X]][Y,]
+    total.event.rate <- base.rate * (popN['U'] + popN['I']) * popN['S']
+    total.event.rate
+  }
+  
+  
+
+  
+  # all counts need to be updated with each transmission event
+  
+  
 }
+
+
