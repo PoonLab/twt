@@ -1,28 +1,28 @@
 # treeswithintrees/Wiki/Simulation Pseudocode step 2
 # after the objects are generated from user inputs, we need to initialize the list of fixed events
 
-# retrieve sampling time and populate tip labels / times in ape::phylo object (building it tips up)
-# @param inputs = NestedCoalescent object
+
 init.fixed.samplings <- function(inputs) {
+  # retrieve sampling time and populate tip labels / times in ape::phylo object (building it tips up)
+  # @param inputs = NestedCoalescent object
+
   # add lineage sampling events from Lineage objects
   lineages <- unlist(inputs$get.lineages())
-  tips.n.heights <- list(tip.label=character(), edge.length=numeric())
-  for (x in 1:length(lineages)) {
-    tip <- lineages[[x]]
-    label <- tip$get.name()
-    tip.height <- tip$get.sampling.time()
+
+  list(
     # store label w/ corresponding tip height in new ape::phylo object (not casted into `phylo` yet)
-    tips.n.heights$tip.label[x] <- label
-    tips.n.heights$edge.length[x] <- tip.height
-    tips.n.heights
-  }
-  tips.n.heights
+    tip.label = sapply(lineages, function(x) x$get.name()),
+
+    # only used for calculating edge length
+    tip.height = sapply(lineages, function(x) x$get.sampling.time())
+  )
 }
 
 
-# @param inputs = NestedCoalescent object
-# @params eventlog = EventLogger object
 init.fixed.transmissions <- function(inputs, eventlog) {
+  # @param inputs = NestedCoalescent object
+  # @params eventlog = EventLogger object
+
   # if the user input includes a tree (host tree) then add transmission events
   comps <- inputs$get.compartments()
   lineages <- inputs$get.lineages()
@@ -53,33 +53,31 @@ generate.transmission.events <- function(inputs, eventlog) {
   comps.types <- sapply(unlist(inputs$get.compartments()), function(a){a$get.type()$get.name()})
   
   init.data <- lapply(types, function(x) {
-  # enumerate active compartments, including unsampled hosts (U) at time t=0
+    # enumerate active compartments, including unsampled hosts (U) at time t=0
     list.N_U <- unlist(x$get.unsampled.popns())
     list.N_A <- sapply(names(list.N_U), function(y) {
       compY <- length(which(comps.types == y))
       y <- compY
     })
     
-  # enumerate active lineages of infected (I), pairs of active lineages within hosts at time t=0
+    # enumerate active lineages of infected (I), pairs of active lineages within hosts at time t=0
     lineage.times <- sapply(inputs$get.lineages(), function(b){b$get.sampling.time()})
     list.N_I <- length(which(lineage.times == 0)) 
     
-  # enumerate number of susceptibles (S) at time t=0
+    # enumerate number of susceptibles (S) at time t=0
     list.N_S <- unlist(x$get.susceptible.popns())
     
-    enumerate <- data.frame(U=list.N_U, A=list.N_A, I=list.N_I, S=list.N_S)
-    enumerate
+    data.frame(U=list.N_U, A=list.N_A, I=list.N_I, S=list.N_S)
   })
   
   
   # total event rate (lambda) = intrinsic base rate (ie. rate of TypeA --> TypeB transmission) x N_TypeA x N_TypeB
   # include N_U and N_S for each type 
   # retrieves intrinsic base transmission rate of X --> Y transmission
-  .get.lambda <- function(X, Y) {
-    base.rate <- types[[X]]$get.transmission.rate(Y)
-    popN <- init.data[[X]][Y,]
-    total.event.rate <- base.rate * (popN['U'] + popN['I']) * popN['S']
-    total.event.rate
+  .get.lambda <- function(source, recipient) {
+    base.rate <- types[[recipient]]$get.transmission.rate(source)
+    popN <- init.data[[recipient]][source,]
+    base.rate * (popN['U'] + popN['I']) * popN['S']  # total event rate
   }
   
   
