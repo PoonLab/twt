@@ -30,12 +30,14 @@ NestedCoalescent <- R6Class("NestedCoalescent",
       private$set.sources()
       private$load.lineages(settings)
       # TODO: populate extant with extant lineages
+      private$init.extant()
     },
     
     get.types = function() {self$types},
     get.unsampled.hosts = function() {self$unsampled.hosts},
     get.compartments = function() {self$compartments},
-    get.lineages = function() {self$lineages}
+    get.lineages = function() {self$lineages},
+    get.extant = function() {self$extant}
     
   ),
   
@@ -43,7 +45,9 @@ NestedCoalescent <- R6Class("NestedCoalescent",
   private = list(
     
     ## function creates CompartmentType objects
-    ## within each CompartmentType, there are distinct compartments with individual transmission & migration rates, and unsampled host & susceptible populations 
+    ## within each CompartmentType, there are distinct compartments with: 
+        # individual transmission & migration rates
+        # unsampled host & susceptible populations 
     load.types = function(settings) {
       types <- sapply(names(settings$CompartmentType), function(x) {
         params <- settings$CompartmentType[[x]]
@@ -64,7 +68,7 @@ NestedCoalescent <- R6Class("NestedCoalescent",
     ## stored in lists for each section within a CompartmentType object
     load.unsampled.hosts = function() {
       us.hosts <- sapply(self$types, function(x) {
-        types.unsampled <- names(x$no.unsampled)           # accessing a private variable here; maybe add another public method in CompartmentType instead
+        types.unsampled <- names(x$no.unsampled)           # FIXME: accessing a private variable here; maybe add another public method in CompartmentType instead
         indiv <- lapply(types.unsampled, function(y) {
           compartY <- list()
           nBlanks <- x$get.no.unsampled(y)
@@ -87,13 +91,14 @@ NestedCoalescent <- R6Class("NestedCoalescent",
         compartX <- list()
         params <- settings$Compartments[[comp]]
         if (params$type %in% names(settings$CompartmentType)) {
-          typeObj <- self$types[[ which(names(settings$CompartmentType) == params$type) ]]    # pointer to CompartmentType object
+          searchTypes <- which(names(settings$CompartmentType) == params$type)
+          typeObj <- self$types[[ searchTypes ]]                        # pointer to CompartmentType object
         } else {
           stop(params$type, ' of Compartment ', comp, ' is not a specified Compartment Type object')
         }
         nIndiv <- params$pop.size
         for(obj in 1:nIndiv) {
-          x <- Compartment$new(name = paste0(comp,'_', obj),                     # unique identifier
+          x <- Compartment$new(name = paste0(comp,'_', obj),            # unique identifier
                                type = typeObj,
                                source = params$source,        
                                inf.time = params$inf.time,
@@ -107,7 +112,7 @@ NestedCoalescent <- R6Class("NestedCoalescent",
     },
     
     ## re-iterates over generated Compartment objects and populates `source` attr with R6 objects
-    ## sets 'pointers' to other Compartment objects after all have been generated with function call private$load.compartments()
+    ## sets 'pointers' to other Compartment objects after generated w/ private$load.compartments()
     set.sources = function() {
       compNames <- sapply(self$compartments, function(n){n$get.name()})
       compartments <- sapply(self$compartments, function(x) {
@@ -175,6 +180,22 @@ NestedCoalescent <- R6Class("NestedCoalescent",
         lineageX
       })
       self$lineages <- unlist(lineages)
+    },
+    
+    
+    # intializes list of Lineages with sampling.time t=0
+    init.extant = function() {
+      lineages <- self$get.lineages()
+      list.extant <- list()
+      lineage.times <- sapply(lineages, function(b){
+        line.time <- b$get.sampling.time()
+        if (time == 0) list.extant <- c(list.extant, b)
+      })
+      if (is.null(list.extant)) {
+        # means there's no lineages at time 0 (maybe they're all undefined)
+        list.extant <- lineages
+      }
+      self$extant <- list.extant
     }
     
   )

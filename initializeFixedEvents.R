@@ -47,7 +47,7 @@ init.fixed.transmissions <- function(inputs, eventlog) {
 
 # treeswithintrees/Wiki/Simulation Pseudocode step 3 & 4
 # simulate transmission events and fix them to the timeline of lineage sampled events
-generate.transmission.events <- function(inputs) {
+generate.transmission.events <- function(inputs, eventlog) {
 # for each CompartmentType
   types <- inputs$get.types()
   comps.types <- sapply(unlist(inputs$get.compartments()), function(a){a$get.type()$get.name()})
@@ -61,7 +61,7 @@ generate.transmission.events <- function(inputs) {
     })
     
   # enumerate active lineages of infected (I), pairs of active lineages within hosts at time t=0
-    lineage.times <- sapply(unlist(inputs$get.lineages()), function(b){b$get.sampling.time()})
+    lineage.times <- sapply(inputs$get.lineages(), function(b){b$get.sampling.time()})
     list.N_I <- length(which(lineage.times == 0)) 
     
   # enumerate number of susceptibles (S) at time t=0
@@ -83,9 +83,12 @@ generate.transmission.events <- function(inputs) {
   }
   
   
-
-  
-  # all counts need to be updated with each transmission event
+  while (N_A > 1) {
+    # calculate total event rate
+    # sample waiting time
+    # sample event type
+    # all counts need to be updated with each transmission event
+  }
   
   
 }
