@@ -21,7 +21,7 @@ init.fixed.samplings <- function(inputs) {
 
 init.fixed.transmissions <- function(inputs, eventlog) {
   # @param inputs = NestedCoalescent object
-  # @params eventlog = EventLogger object
+  # @param eventlog = EventLogger object
 
   # if the user input includes a tree (host tree) then add transmission events
   comps <- inputs$get.compartments()
@@ -48,23 +48,26 @@ init.fixed.transmissions <- function(inputs, eventlog) {
 # treeswithintrees/Wiki/Simulation Pseudocode step 3 & 4
 # simulate transmission events and fix them to the timeline of lineage sampled events
 generate.transmission.events <- function(inputs, eventlog) {
-# for each CompartmentType
+  # @param inpiuts = NestedCoalescent object
+  # @param eventlog = EventLogger object
+  
+  # for each CompartmentType: 
   types <- inputs$get.types()
   comps.types <- sapply(unlist(inputs$get.compartments()), function(a){a$get.type()$get.name()})
   
   init.data <- lapply(types, function(x) {
-    # enumerate active compartments, including unsampled hosts (U) at time t=0
+    # 1. enumerate active compartments, including unsampled hosts (U) at time t=0
     list.N_U <- unlist(x$get.unsampled.popns())
     list.N_A <- sapply(names(list.N_U), function(y) {
       compY <- length(which(comps.types == y))
       y <- compY
     })
     
-    # enumerate active lineages of infected (I), pairs of active lineages within hosts at time t=0
+    # 2. enumerate active lineages of infected (I), pairs of active lineages within hosts at time t=0
     lineage.times <- sapply(inputs$get.lineages(), function(b){b$get.sampling.time()})
     list.N_I <- length(which(lineage.times == 0)) 
     
-    # enumerate number of susceptibles (S) at time t=0
+    # 3. enumerate number of susceptibles (S) at time t=0
     list.N_S <- unlist(x$get.susceptible.popns())
     
     data.frame(U=list.N_U, A=list.N_A, I=list.N_I, S=list.N_S)

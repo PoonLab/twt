@@ -29,7 +29,7 @@ NestedCoalescent <- R6Class("NestedCoalescent",
       private$load.compartments(settings)
       private$set.sources()
       private$load.lineages(settings)
-      # TODO: populate extant with extant lineages
+      
       private$init.extant()
     },
     
@@ -69,16 +69,14 @@ NestedCoalescent <- R6Class("NestedCoalescent",
     load.unsampled.hosts = function() {
       us.hosts <- sapply(self$types, function(x) {
         types.unsampled <- names(x$no.unsampled)           # FIXME: accessing a private variable here; maybe add another public method in CompartmentType instead
-        indiv <- lapply(types.unsampled, function(y) {
-          compartY <- list()
+        
+        lapply(types.unsampled, function(y) {
           nBlanks <- x$get.no.unsampled(y)
-          for(blank in 1:nBlanks) {
-            x <- Compartment$new()
-            compartY[[blank]] <- x
-          }
-          compartY
+          sapply(1:nBlanks, function(blank) {
+            Compartment$new(type=x)
+          })
         })
-        indiv
+        
       })
       self$unsampled.hosts <- unlist(us.hosts)
     },
@@ -88,25 +86,26 @@ NestedCoalescent <- R6Class("NestedCoalescent",
     ## `type` attr points directly back to a CompartmentType object, and `name` attr is a unique identifier
     load.compartments = function(settings) {
       compartments <- sapply(names(settings$Compartments), function(comp) {
-        compartX <- list()
         params <- settings$Compartments[[comp]]
+        
         if (params$type %in% names(settings$CompartmentType)) {
           searchTypes <- which(names(settings$CompartmentType) == params$type)
           typeObj <- self$types[[ searchTypes ]]                        # pointer to CompartmentType object
         } else {
           stop(params$type, ' of Compartment ', comp, ' is not a specified Compartment Type object')
         }
+        
         nIndiv <- params$pop.size
-        for(obj in 1:nIndiv) {
-          x <- Compartment$new(name = paste0(comp,'_', obj),            # unique identifier
-                               type = typeObj,
-                               source = params$source,        
-                               inf.time = params$inf.time,
-                               sampling.time = params$sampling.time
+        
+        sapply(1:nIndiv, function(obj) {
+          Compartment$new(name = paste0(comp,'_', obj),            # unique identifier
+                          type = typeObj,
+                          source = params$source,        
+                          inf.time = params$inf.time,
+                          sampling.time = params$sampling.time
           )
-          compartX[[obj]] <- x
-        }
-        compartX
+        })
+        
       })
       self$compartments <- unlist(compartments)
     },
@@ -133,7 +132,6 @@ NestedCoalescent <- R6Class("NestedCoalescent",
     ## but Compartment A_1 could have Lineage cell_1 and Compartment B_1 also have a separate Lineage cell_1
     load.lineages = function(settings) {
       lineages <- sapply(names(settings$Lineages), function(label) {
-        lineageX <- list()
         params <- settings$Lineages[[label]]
         
         if (params$location %in% names(settings$Compartments)) {
@@ -145,39 +143,33 @@ NestedCoalescent <- R6Class("NestedCoalescent",
         
         nIndiv <- params$pop.size
         
-        if (is.character(params$sampling.time)) {
-          vec <- unlist(strsplit(params$sampling.time, split='[`(`|,|`)`]'))
-          
-          if (length(vec) == 1) { # FIXME: for 'undefined' sampling.time case, assumes that after regexp '[`(`|,|`)`]', 'undefined' or otherwise would remain as 1 element in the strsplit list
-            sampleTimes <- params$sampling.time
-          } else {
-            sampleTimes <- as.double(vec[nzchar(x=vec)])
-            if (length(sampleTimes) != nIndiv) { 
-              stop(paste('Lineage', label, ' attr `sampling.time` does not match pop.size specified for respective Lineage.'))
-              }
-          }
-        
+        if (is.numeric(params$sampling.time)) {
+          sampleTimes <- rep.int(params$sampling.time, times=nIndiv)
         } else {
-          sampleTimes <- params$sampling.time
+          vec <- unlist(strsplit(params$sampling.time, split='[`(`|,|`)`]'))
+          sampleTimes <- as.double(vec[nzchar(x=vec)])
+          if (any(is.na(sampleTimes))) {
+              stop('\nSampling times must all be specified as type `numeric` or type `double`. ', 
+                   'Sampling time "', vec, '" is of type `', typeof(vec), '`.\n')
+          }
+          if (length(sampleTimes) != nIndiv) {
+            stop('attribute `sampling.time` of Lineage ', label, ' does not match pop.size specified for respective Lineage.')
+          }
         }
         
-        for (compNum in 1:nlocationObj) {
-          group <- list()
-          for (obj in 1:nIndiv) {
+        sapply(1:nlocationObj, function(compNum) {
+          sapply(1:nIndiv, function(obj) {
             # set 'pointer' to Compartment object for location
-            serachComps <- sapply(self$compartments, function(y){which(y$get.name() == paste0(params$location, '_', compNum))})
+            searchComps <- sapply(self$compartments, function(y){which(y$get.name() == paste0(params$location, '_', compNum))})
             locationObj <- self$compartments[[ which( searchComps == 1) ]]
-            x <- Lineage$new(name = paste0(label,'_',obj),                          # unique identifier
-                             type = params$type,
-                             sampling.time = sampleTimes[obj],
-                             location = locationObj
+            Lineage$new(name = paste0(label,'_',obj),                          # unique identifier
+                        type = params$type,
+                        sampling.time = sampleTimes[obj],
+                        location = locationObj
             )
-            group[[obj]] <- x
-            group
-          }
-          lineageX[[compNum]] <- group
-        }
-        lineageX
+          })
+        })
+      
       })
       self$lineages <- unlist(lineages)
     },
@@ -185,17 +177,10 @@ NestedCoalescent <- R6Class("NestedCoalescent",
     
     # intializes list of Lineages with sampling.time t=0
     init.extant = function() {
-      lineages <- self$get.lineages()
-      list.extant <- list()
-      lineage.times <- sapply(lineages, function(b){
-        line.time <- b$get.sampling.time()
-        if (time == 0) list.extant <- c(list.extant, b)
+      res <- sapply(self$lineages, function(b){
+        if (b$get.sampling.time() == 0) {b}
       })
-      if (is.null(list.extant)) {
-        # means there's no lineages at time 0 (maybe they're all undefined)
-        list.extant <- lineages
-      }
-      self$extant <- list.extant
+      self$extant <- unlist(res)
     }
     
   )

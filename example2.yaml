@@ -13,4 +13,4 @@ Lineages:
   'I':
     location: I
     pop.size: 1              # implied to be per-host
-    sampling.time: undefined  # or can provide a vector
+    sampling.time: 0  # or can provide a vector

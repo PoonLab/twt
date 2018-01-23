@@ -25,8 +25,8 @@ Lineages:
   'blood':
     location: blood
     pop.size: 100
-    sampling.time: undefined
+    sampling.time: 0
   'cell':
     location: cell
     pop.size: 1                                   # if location has pop.size, then this is applied to each
-    sampling.time: undefined
+    sampling.time: 0
