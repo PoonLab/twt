@@ -1,7 +1,9 @@
 # how would we encode an SI model?
 CompartmentType:
   'host':
-    transmission.rates: (host:0.1)     # named vector of transmission rates to different CompartmentTypes
+    no.unsampled: (host=20)
+    no.susceptible: (host=1000)
+    transmission.rates: (host=0.1)     # named vector of transmission rates to different CompartmentTypes
     migration.rates: ()                # no migration (assume no superinfection)
     coalescent.rate: 0.1               # single rate to be applied to all objects of this CompartmentType
     bottleneck.size: 1                 # bottleneck size when transmission event occurs

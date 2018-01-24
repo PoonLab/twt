@@ -83,11 +83,21 @@ generate.transmission.events <- function(inputs, eventlog) {
     base.rate * (popN['U'] + popN['I']) * popN['S']  # total event rate
   }
   
+  extant_comps <- inputs$get.compartments()
   
   while (N_A > 1) {
+    pair <- sample(extant_comps, 2)
+    
     # calculate total event rate
+    total.rate <- .get.lambda(pair[[1]]$get.type()$get.name(), pair[[2]]$get.type()$get.name())
+    
     # sample waiting time
+    wait <- rexp(n = 1, rate = as.numeric(total.rate))
+    
+    inf.time <- recipient$get.inf.time() + wait
     # sample event type
+    # add transmission event to EventLogger object
+    eventlog$add.event('transmission', inf.time, lineage, recipient, source)
     # all counts need to be updated with each transmission event
   }
   
