@@ -153,7 +153,11 @@ Compartment <- R6Class("Compartment",
     
     set.source = function(new.source) {
       self$source <- new.source
-    }
+    },
+    
+    set.inf.time = function(new.inf.time) {
+      self$inf.time <- new.inf.time
+    } 
   
   ),
   private = list()

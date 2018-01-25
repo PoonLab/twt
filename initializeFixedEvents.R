@@ -83,24 +83,49 @@ generate.transmission.events <- function(inputs, eventlog) {
     base.rate * (popN['U'] + popN['I']) * popN['S']  # total event rate
   }
   
-  extant_comps <- inputs$get.compartments()
+  extant_comps <- inputs$get.extant_comps()    # what about US?
+ 
+  # are we only doing 1 transmission to a recipient per host, or are we allowing for multiple branching?
   
-  while (N_A > 1) {
-    pair <- sample(extant_comps, 2)
+  while (length(extant_comps) > 1) {
+    # first round, need to specify the final recipient where we can trace backwards from
+    if (length(extant_comps) == length(inputs$get.extant_comps())) {
+      recipient_ind <- sample(1:length(extant_comps), 1)
+      recipient <- extant_comps[[recipient_ind]]
+      recipient$set.inf.time(0)                 # FIXME: arbitrarily assigning final recipient attr `inf.time` of 0
+      extant_comps[[recipient_ind]] <- NULL
+    }
+    
+    source_ind <- sample(1:length(extant_comps), 1)
+    source <- extant_comps[[source_ind]]
     
     # calculate total event rate
-    total.rate <- .get.lambda(pair[[1]]$get.type()$get.name(), pair[[2]]$get.type()$get.name())
+    total.rate <- .get.lambda(source$get.type()$get.name(), recipient$get.type()$get.name())
     
-    # sample waiting time
+    # sample waiting time & calculate source `inf.time` relative to recipient
     wait <- rexp(n = 1, rate = as.numeric(total.rate))
-    
     inf.time <- recipient$get.inf.time() + wait
-    # sample event type
+    
+    # sample event type (isn't this always going to be a transmission for now?)
+    
+    
+    recipient$set.source(source)                # update recipient object `source` attr
+    source$set.inf.time(inf.time)               # update source object `inf.time` attr
+    
     # add transmission event to EventLogger object
-    eventlog$add.event('transmission', inf.time, lineage, recipient, source)
-    # all counts need to be updated with each transmission event
+    # eventlog$add.event('transmission', inf.time, lineage, recipient, source)  # what is arg `lineage` here?
+    
+    # update all counts
+    popN <- init.data[[recipient$get.type()$get.name()]][source$get.type()$get.name(),]
+    popN['S'] <- popN['S'] + 1
+    popN['I'] <- popN['I'] - 1       # what if the source is an Unsampled host??
+    
+    # change source to be the new recipient
+    recipient <- source
+    extant_comps[[source_ind]] <- NULL
+    
+    extant_comps
   }
-  
   
 }
 

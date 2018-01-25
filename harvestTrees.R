@@ -2,7 +2,7 @@
 require(R6)
 require(yaml)
 setwd('~/git/treeswithintrees')
-settings <- yaml.load_file('example1.yaml')
+settings <- yaml.load_file('example2.yaml')
 test <- NestedCoalescent$new(settings)
 e <- EventLogger$new()
 tips.n.heights <- init.fixed.samplings(test)
@@ -20,8 +20,8 @@ NestedCoalescent <- R6Class("NestedCoalescent",
     compartments = NULL,
     lineages = NULL,
 
-    extant = NULL,
-    choices = NULL,
+    extant_lineages = NULL,
+    extant_comps = NULL,
     
     initialize = function(settings=NA) {
       private$load.types(settings)
@@ -30,14 +30,16 @@ NestedCoalescent <- R6Class("NestedCoalescent",
       private$set.sources()
       private$load.lineages(settings)
       
-      private$init.extant()
+      private$init.extant.lineages()
+      self$extant_comps <- self$compartments
     },
     
     get.types = function() {self$types},
     get.unsampled.hosts = function() {self$unsampled.hosts},
     get.compartments = function() {self$compartments},
     get.lineages = function() {self$lineages},
-    get.extant = function() {self$extant}
+    get.extant_lineages = function() {self$extant_lineages},
+    get.extant_comps = function() {self$extant_comps}
     
   ),
   
@@ -73,7 +75,8 @@ NestedCoalescent <- R6Class("NestedCoalescent",
         lapply(types.unsampled, function(y) {
           nBlanks <- x$get.no.unsampled(y)
           sapply(1:nBlanks, function(blank) {
-            Compartment$new(type=x)
+            Compartment$new(name = paste0('US_', x$get.name(), '_', blank),
+                            type = x)
           })
         })
         
@@ -176,12 +179,13 @@ NestedCoalescent <- R6Class("NestedCoalescent",
     
     
     # intializes list of Lineages with sampling.time t=0
-    init.extant = function() {
+    init.extant.lineages = function() {
       res <- sapply(self$lineages, function(b){
         if (b$get.sampling.time() == 0) {b}
       })
-      self$extant <- unlist(res)
+      self$extant_lineages <- unlist(res)
     }
     
   )
 )
+
