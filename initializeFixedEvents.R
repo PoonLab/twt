@@ -73,20 +73,11 @@ generate.transmission.events <- function(inputs, eventlog) {
     data.frame(U=list.N_U, A=list.N_A, I=list.N_I, S=list.N_S)
   })
   
-  
-  # total event rate (lambda) = intrinsic base rate (ie. rate of TypeA --> TypeB transmission) x N_TypeA x N_TypeB
-  # include N_U and N_S for each type 
-  # retrieves intrinsic base transmission rate of X --> Y transmission
-  .get.lambda <- function(source, recipient) {
-    base.rate <- types[[recipient]]$get.transmission.rate(source)
-    popN <- init.data[[recipient]][source,]
-    base.rate * (popN['U'] + popN['I']) * popN['S']  # total event rate
-  }
-  
   extant_comps <- inputs$get.extant_comps()    # what about US?
  
   # are we only doing 1 transmission to a recipient per host, or are we allowing for multiple branching?
   
+  # main loop
   while (length(extant_comps) > 1) {
     # first round, need to specify the final recipient where we can trace backwards from
     if (length(extant_comps) == length(inputs$get.extant_comps())) {
@@ -99,11 +90,18 @@ generate.transmission.events <- function(inputs, eventlog) {
     source_ind <- sample(1:length(extant_comps), 1)
     source <- extant_comps[[source_ind]]
     
-    # calculate total event rate
-    total.rate <- .get.lambda(source$get.type()$get.name(), recipient$get.type()$get.name())
+    # calculate total event rate (lambda) = intrinsic base rate (ie. rate of TypeA --> TypeB transmission) x N_TypeA x N_TypeB
+    # includes N_U and N_S for each type, and retrieves intrinsic base transmission rate of X --> Y transmission
+    r_type <- recipient$get.type()$get.name()
+    s_type <- source$get.type()$get.name()
+    base.rate <- types[[r_type]]$get.transmission.rate(s_type)
+    popN <- init.data[[r_type]][s_type,]
+    total.rate <- base.rate * (popN['U'] + popN['I']) * popN['S']  # total event rate
+    
+    #if (total.rate == 0) {}  #can't accept this rate
     
     # sample waiting time & calculate source `inf.time` relative to recipient
-    wait <- rexp(n = 1, rate = as.numeric(total.rate))
+    wait <- rexp(n = 1, rate = 1/as.numeric(total.rate))
     inf.time <- recipient$get.inf.time() + wait
     
     # sample event type (isn't this always going to be a transmission for now?)
@@ -113,10 +111,9 @@ generate.transmission.events <- function(inputs, eventlog) {
     source$set.inf.time(inf.time)               # update source object `inf.time` attr
     
     # add transmission event to EventLogger object
-    # eventlog$add.event('transmission', inf.time, lineage, recipient, source)  # what is arg `lineage` here?
+    eventlog$add.event('transmission', inf.time, obj1=NA, recipient$get.name(), source$get.name())  # argument `lineage` is determined later at coalescence/
     
     # update all counts
-    popN <- init.data[[recipient$get.type()$get.name()]][source$get.type()$get.name(),]
     popN['S'] <- popN['S'] + 1
     popN['I'] <- popN['I'] - 1       # what if the source is an Unsampled host??
     
@@ -127,6 +124,7 @@ generate.transmission.events <- function(inputs, eventlog) {
     extant_comps
   }
   
+  eventlog
 }
 
 
