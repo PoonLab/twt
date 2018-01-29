@@ -196,6 +196,10 @@ Lineage <- R6Class("Lineage",
       self$location
     },
     
+    set.sampling.time = function(new.sampling.time) {
+      self$sampling.time <- new.sampling.time
+    },
+    
     set.location = function(new.location) {
       self$location <- new.location
     }

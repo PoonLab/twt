@@ -101,7 +101,7 @@ generate.transmission.events <- function(inputs, eventlog) {
     #if (total.rate == 0) {}  #can't accept this rate
     
     # sample waiting time & calculate source `inf.time` relative to recipient
-    wait <- rexp(n = 1, rate = 1/as.numeric(total.rate))
+    wait <- rexp(n = 1, rate = as.numeric(total.rate))
     inf.time <- recipient$get.inf.time() + wait
     
     # sample event type (isn't this always going to be a transmission for now?)
