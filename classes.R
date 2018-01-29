@@ -147,6 +147,10 @@ Compartment <- R6Class("Compartment",
       self$sampling.time
     },
     
+    get.transmission.history = function() {
+      private$transmission.history
+    },
+    
     set.type = function(new.type) {
       self$type <- new.type
     },
@@ -157,10 +161,16 @@ Compartment <- R6Class("Compartment",
     
     set.inf.time = function(new.inf.time) {
       self$inf.time <- new.inf.time
-    } 
+    },
+    
+    update.transmission.history = function(updated.history) {
+      private$transmission.history <- updated.history
+    }
   
   ),
-  private = list()
+  private = list(                                 # used for generating transmission events
+    transmission.history = NULL
+  )
 )
 
 

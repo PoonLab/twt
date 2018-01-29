@@ -73,22 +73,23 @@ generate.transmission.events <- function(inputs, eventlog) {
     data.frame(U=list.N_U, A=list.N_A, I=list.N_I, S=list.N_S)
   })
   
-  extant_comps <- inputs$get.extant_comps()    # what about US?
- 
-  # are we only doing 1 transmission to a recipient per host, or are we allowing for multiple branching?
+  extant_comps <- inputs$get.extant_comps()
+  us_comps <- inputs$get.unsampled.hosts()
+  us_compnames <- sapply(us_comps, function(x){x$get.name()})
+  # a source can transmit to multiple recipients, but cannot receive a transmission from one of its descendants
+  # `private$transmission.history` attr for each Compartment ensures this does not happen  <- could be useless.. pending judgement
   
   # main loop
   while (length(extant_comps) > 1) {
-    # first round, need to specify the final recipient where we can trace backwards from
-    if (length(extant_comps) == length(inputs$get.extant_comps())) {
-      recipient_ind <- sample(1:length(extant_comps), 1)
-      recipient <- extant_comps[[recipient_ind]]
-      recipient$set.inf.time(0)                 # FIXME: arbitrarily assigning final recipient attr `inf.time` of 0
-      extant_comps[[recipient_ind]] <- NULL
-    }
+    # grab a recipient from list of extant
+    r_ind <- sample(1:length(extant_comps), 1)
+    recipient <- extant_comps[[r_ind]]
+    extant_comps[[r_ind]] <- NULL            # remove chosen recipient from list of extant, as well as host_popn
     
-    source_ind <- sample(1:length(extant_comps), 1)
-    source <- extant_comps[[source_ind]]
+    host_popn <- c(extant_comps, us_comps)
+    s_ind <- sample(1:length(host_popn), 1)  # sample source from combined list of extant and unsampled-infected hosts
+    source <- host_popn[[s_ind]]
+    
     
     # calculate total event rate (lambda) = intrinsic base rate (ie. rate of TypeA --> TypeB transmission) x N_TypeA x N_TypeB
     # includes N_U and N_S for each type, and retrieves intrinsic base transmission rate of X --> Y transmission
@@ -100,28 +101,27 @@ generate.transmission.events <- function(inputs, eventlog) {
     
     #if (total.rate == 0) {}  #can't accept this rate
     
-    # sample waiting time & calculate source `inf.time` relative to recipient
-    wait <- rexp(n = 1, rate = as.numeric(total.rate))
-    inf.time <- recipient$get.inf.time() + wait
-    
-    # sample event type (isn't this always going to be a transmission for now?)
+    # claculate change in time between source transmitting to recipient
+    delta_t <- rexp(n = 1, rate = as.numeric(total.rate))
     
     
-    recipient$set.source(source)                # update recipient object `source` attr
-    source$set.inf.time(inf.time)               # update source object `inf.time` attr
-    
+    # update recipient object `source` attr
+    recipient$set.source(source)                
+
     # add transmission event to EventLogger object
-    eventlog$add.event('transmission', inf.time, obj1=NA, recipient$get.name(), source$get.name())  # argument `lineage` is determined later at coalescence/
+    eventlog$add.event('transmission', delta_t, obj1=NA, recipient$get.name(), source$get.name())  # argument `lineage` is determined later at coalescence
     
     # update all counts
     popN['S'] <- popN['S'] + 1
-    popN['I'] <- popN['I'] - 1       # what if the source is an Unsampled host??
+    popN['I'] <- popN['I'] - 1       # if source is US_host, US-- and I++ as it moves from host_popn into extant list (cancels out)
     
-    # change source to be the new recipient
-    recipient <- source
-    extant_comps[[source_ind]] <- NULL
+    if (source$get.name() %in% us_compnames) {
+      extant_comps[[length(extant_comps)+1]] <- source
+      us_ind <- which(us_compnames == source$get.name())
+      us_compnames <- us_compnames[-us_ind]
+      us_comps[[us_ind]] <- NULL          # if a US host enters the extant_comps, then it must be removed from the us_comps list to avoid duplication
+    }
     
-    extant_comps
   }
   
   eventlog
