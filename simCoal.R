@@ -43,3 +43,26 @@ simulate.coalescent.events <- function(inputs) {
   }
   
 }
+
+
+
+
+
+##########################################################################################################################################
+
+simulate <- function(inputs, eventlog) {
+  # Function that performs a coalescent simulation of lineages w/in the host tree, w/ transmission events provided as an EventLogger object
+  # udpates event log with coalescent events tracking the lineages tree(s)
+  
+  # all Lineage sampling times must be stated, either with a vector, or a `numeric`, assumed to be applied to all w/in that Lineage pop'n
+  # there must be at least 1 Lineage that starts with a sampling time of 0
+  # is it possible that a Lineage's initial `location` is not one of the available transmission tips, and is an internal node of the host tree?
+      # if so, then this is a problem. B/c having a tip compartment further down the line implies that there is an associated Lineage
+      # earlier than sampling time of 0, which isn't possible
+  
+  # potential solution: when generating transmission events, can look at all Lineage sampling times and group earliest sampling times
+  # but then we would have to check the source compartment's lineages' sampling times every time before assigning a recipient's source compartment
+  
+  # would this happen in a practical sense anyways?
+  # ...actually I don't think so 
+}
