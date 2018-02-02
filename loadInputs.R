@@ -23,6 +23,9 @@ NestedCoalescent <- R6Class("NestedCoalescent",
     extant_lineages = NULL,
     extant_comps = NULL,
     
+    locations = NULL,         
+    choices = NULL,
+    
     initialize = function(settings=NA) {
       private$load.types(settings)
       private$load.unsampled.hosts()
@@ -39,7 +42,31 @@ NestedCoalescent <- R6Class("NestedCoalescent",
     get.compartments = function() {self$compartments},
     get.lineages = function() {self$lineages},
     get.extant_lineages = function() {self$extant_lineages},
-    get.extant_comps = function() {self$extant_comps}
+    get.extant_comps = function() {self$extant_comps},
+    
+    get.pairs = function() {
+      # extract all pairs of pathogen lineages that may coalesce
+      self$get.locations()
+      self$choices <- list()
+      for (host in self$locations) {
+        if (length(host) > 1) {
+          for (pair in combn(host,2)) {
+            self$choices[[paste(pair[1], pair[2], sep=',')]] <- host
+          }
+        }
+      }
+    },
+    
+    get.locations = function() {
+      # collect host locations of all extant pathogen lineages into dict of host1: [path1, path2, path3, ...]
+      self$locations <- list()      # reset list
+      for (node in self$extant_lineages) {
+        if (node$get.location()$get.name() %in% names(self$locations)) {
+          self$locations[[node$get.location()$get.name()]] <- list()
+        }
+        self$locations[[node$get.location()$get.name()]] <- c(self$locations[[node$get.location()$get.name()]], node)
+      }
+    }
     
   ),
   

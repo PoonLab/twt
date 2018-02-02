@@ -54,15 +54,38 @@ simulate <- function(inputs, eventlog) {
   # Function that performs a coalescent simulation of lineages w/in the host tree, w/ transmission events provided as an EventLogger object
   # udpates event log with coalescent events tracking the lineages tree(s)
   
-  # all Lineage sampling times must be stated, either with a vector, or a `numeric`, assumed to be applied to all w/in that Lineage pop'n
-  # there must be at least 1 Lineage that starts with a sampling time of 0
-  # is it possible that a Lineage's initial `location` is not one of the available transmission tips, and is an internal node of the host tree?
-      # if so, then this is a problem. B/c having a tip compartment further down the line implies that there is an associated Lineage
-      # earlier than sampling time of 0, which isn't possible
+  # for example2.yaml
+  extant_l <- inputs$get.extant_lineages()         # pathogen lineages that have not coalesced
+  not_extant_l <- list()                           
+  not_yet_sampled_l <- list()                      # pathogen lineages higher in the tree
   
-  # potential solution: when generating transmission events, can look at all Lineage sampling times and group earliest sampling times
-  # but then we would have to check the source compartment's lineages' sampling times every time before assigning a recipient's source compartment
+  extant_c <- inputs$get.extant_comps()
+  not_extant_c <- list()
+  not_yet_sampled_c <- list()
   
-  # would this happen in a practical sense anyways?
-  # ...actually I don't think so 
+  
+  this.height = 0
+  while (TRUE) {
+    
+    # update pathogen locations (hosts) and record pairs
+    
+    # total rate of pathogen coalescence or migration events within this interval
+    type_name <- lineages$get.source()$get.type()$get.name()
+    m_rate <- lineages$get.source()$get.type()$get.migraion.rate(type_name)
+    c_rate <- lineages$get.source()$get.type()$get.coalescent.rate()
+    if (length(extant_c) > 1) {
+      lambd_mig <- length(extant_l) * m_rate
+    } else {0}
+    lamb_tot <- length(inputs$get.choices()) * c_rate * lamb_mig
+    
+    
+    # draw waiting time
+    
+    # ELSE there is either a migration or pathogen coalescence event
+    
+  
+  }
+  
+  # coalesce remaining pathogen lineages in the last host
+  
 }
