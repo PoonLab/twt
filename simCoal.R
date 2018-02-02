@@ -63,11 +63,12 @@ simulate <- function(inputs, eventlog) {
   not_extant_c <- list()
   not_yet_sampled_c <- list()
   
-  
-  this.height = 0
+  next.height <- NA
+  this.height <- 0
   while (TRUE) {
     
     # update pathogen locations (hosts) and record pairs
+    inputs$get.pairs()
     
     # total rate of pathogen coalescence or migration events within this interval
     type_name <- lineages$get.source()$get.type()$get.name()
@@ -75,11 +76,18 @@ simulate <- function(inputs, eventlog) {
     c_rate <- lineages$get.source()$get.type()$get.coalescent.rate()
     if (length(extant_c) > 1) {
       lambd_mig <- length(extant_l) * m_rate
-    } else {0}
-    lamb_tot <- length(inputs$get.choices()) * c_rate * lamb_mig
+    } else {lambd_mig <- 0}
     
-    
+    lambd_tot <- length(inputs$get.choices()) * c_rate * lambd_mig
     # draw waiting time
+    if (lambd_tot > 0) {
+      wait <- rexp(1, lambd_tot)
+    } else{wait <- NULL}
+    
+    if (is.null(wait) || wait > (next.height - this.height)) {
+      # waiting time exceeds next host node height
+      
+    }
     
     # ELSE there is either a migration or pathogen coalescence event
     

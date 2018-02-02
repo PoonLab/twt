@@ -237,9 +237,14 @@ EventLogger <- R6Class("EventLogger",
       self$events <- events
     },
     
-    get.events = function() {
+    get.all.events = function() {
       if (nrow(self$events) == 0) {cat('No events to display.')}
       else {self$events}
+    },
+    
+    get.events = function(event.type) {
+      indices <- which(self$events$event.type == event.type)
+      as.data.frame(t(sapply(indices, function(x) {self$events[x,]})))
     },
     
     add.event = function(name, time, obj1, obj2, obj3) {

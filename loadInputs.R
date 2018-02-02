@@ -44,6 +44,25 @@ NestedCoalescent <- R6Class("NestedCoalescent",
     get.extant_lineages = function() {self$extant_lineages},
     get.extant_comps = function() {self$extant_comps},
     
+    get.leaves.names = function(e) {
+      # return a vector of Compartment object names that are terminal nodes (only a recipient)
+      # @param e = EventLogger object
+      t_events <- e$get.events('transmission')
+      setdiff(unlist(t_events$compartment1), unlist(t_events$compartment2))
+    },
+    
+    get.nonterminals = function(e) {
+      # return an iterator over all names of internal nodes of the transmission tree
+      # @param e = EventLogger object
+      t_events <- e$get.events('transmission')
+      intersect(unlist(t_events$compartment1), unlist(t_events$compartment2))
+    },
+    
+    get.node.heights = function() {
+      # calculate node heights for all nodes of the tree
+      # annotate nodes with heights in place
+    },
+    
     get.pairs = function() {
       # extract all pairs of pathogen lineages that may coalesce
       self$get.locations()
@@ -73,11 +92,12 @@ NestedCoalescent <- R6Class("NestedCoalescent",
   
   private = list(
     
-    ## function creates CompartmentType objects
-    ## within each CompartmentType, there are distinct compartments with: 
-        # individual transmission & migration rates
-        # unsampled host & susceptible populations 
+
     load.types = function(settings) {
+      ## function creates CompartmentType objects
+      ## within each CompartmentType, there are distinct compartments with: 
+      # individual transmission & migration rates
+      # unsampled host & susceptible populations 
       types <- sapply(names(settings$CompartmentType), function(x) {
         params <- settings$CompartmentType[[x]]
         x <- CompartmentType$new(name = x,
@@ -93,9 +113,10 @@ NestedCoalescent <- R6Class("NestedCoalescent",
     },
     
     
-    ## function creates "blank" Compartment objects for Unsampled Hosts (US) 
-    ## stored in lists for each section within a CompartmentType object
+    
     load.unsampled.hosts = function() {
+      ## function creates "blank" Compartment objects for Unsampled Hosts (US) 
+      ## stored in lists for each section within a CompartmentType object
       us.hosts <- sapply(self$types, function(x) {
         types.unsampled <- names(x$no.unsampled)           # FIXME: accessing a private variable here; maybe add another public method in CompartmentType instead
         
@@ -112,9 +133,10 @@ NestedCoalescent <- R6Class("NestedCoalescent",
     },
     
     
-    ## function creates Compartment objects
-    ## `type` attr points directly back to a CompartmentType object, and `name` attr is a unique identifier
+   
     load.compartments = function(settings) {
+      ## function creates Compartment objects
+      ## `type` attr points directly back to a CompartmentType object, and `name` attr is a unique identifier
       compartments <- sapply(names(settings$Compartments), function(comp) {
         params <- settings$Compartments[[comp]]
         
@@ -140,9 +162,10 @@ NestedCoalescent <- R6Class("NestedCoalescent",
       self$compartments <- unlist(compartments)
     },
     
-    ## re-iterates over generated Compartment objects and populates `source` attr with R6 objects
-    ## sets 'pointers' to other Compartment objects after generated w/ private$load.compartments()
+    
     set.sources = function() {
+      ## re-iterates over generated Compartment objects and populates `source` attr with R6 objects
+      ## sets 'pointers' to other Compartment objects after generated w/ private$load.compartments()
       compNames <- sapply(self$compartments, function(n){n$get.name()})
       compartments <- sapply(self$compartments, function(x) {
         if (paste0(x$get.source(),'_1') %in% compNames) {                         # FIXME: arbitrary assignment of source
@@ -156,11 +179,12 @@ NestedCoalescent <- R6Class("NestedCoalescent",
     },
     
     
-    ## function creates Lineage objects
-    ## `location` attr points directly to a Compartment object, and `name` attr is unique identifier
-    ## identifiers create unique Lineages for each Compartment, 
-    ## but Compartment A_1 could have Lineage cell_1 and Compartment B_1 also have a separate Lineage cell_1
+
     load.lineages = function(settings) {
+      ## function creates Lineage objects
+      ## `location` attr points directly to a Compartment object, and `name` attr is unique identifier
+      ## identifiers create unique Lineages for each Compartment, 
+      ## but Compartment A_1 could have Lineage cell_1 and Compartment B_1 also have a separate Lineage cell_1
       lineages <- sapply(names(settings$Lineages), function(label) {
         params <- settings$Lineages[[label]]
         
@@ -205,8 +229,9 @@ NestedCoalescent <- R6Class("NestedCoalescent",
     },
     
     
-    # intializes list of Lineages with sampling.time t=0
+   
     init.extant.lineages = function() {
+      # intializes list of Lineages with sampling.time t=0
       res <- sapply(self$lineages, function(b){
         if (b$get.sampling.time() == 0) {b}
       })
