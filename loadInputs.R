@@ -6,8 +6,11 @@ settings <- yaml.load_file('example2.yaml')
 test <- NestedCoalescent$new(settings)
 e <- EventLogger$new()
 tips.n.heights <- init.fixed.samplings(test)
-init.fixed.transmissions(test, e)    # applies only to example1.yaml for now
+init.fixed.transmissions(test, e)    # applies only to example1.yaml for now, since they provide a "host tree" w/ transmission events
 e <- generate.transmission.events(test, e)
+
+
+
 
 
 # Load all of the different objects into one larger class
@@ -22,6 +25,7 @@ NestedCoalescent <- R6Class("NestedCoalescent",
 
     extant_lineages = NULL,
     extant_comps = NULL,
+    non_extant_comps = NULL, 
     
     locations = NULL,         
     choices = NULL,
@@ -34,7 +38,8 @@ NestedCoalescent <- R6Class("NestedCoalescent",
       private$load.lineages(settings)
       
       private$init.extant.lineages()
-      self$extant_comps <- self$compartments
+      private$init.extant.comps()
+      private$init.non.extant.comps()
     },
     
     get.types = function() {self$types},
@@ -43,6 +48,7 @@ NestedCoalescent <- R6Class("NestedCoalescent",
     get.lineages = function() {self$lineages},
     get.extant_lineages = function() {self$extant_lineages},
     get.extant_comps = function() {self$extant_comps},
+    get.non_extant_comps = function() {self$non_extant_comps},
     
     get.leaves.names = function(e) {
       # return a vector of Compartment object names that are terminal nodes (only a recipient)
@@ -63,6 +69,12 @@ NestedCoalescent <- R6Class("NestedCoalescent",
       # annotate nodes with heights in place
     },
     
+    ## note that in Issue #8, would like to implement Lineage pairs vector as a dynamic object
+    # this would mean a function to initialize the pairs vector, which can then later be udpated
+      # add when a Lineage moved from one compartment to another (transmission or migration)
+      # add when a Lineage is sampled
+      # remove when a coalescence occurs
+      # remove when Lineages reach a transmission bottleneck, forcing coalescence
     get.pairs = function() {
       # extract all pairs of pathogen lineages that may coalesce
       self$get.locations()
@@ -236,6 +248,27 @@ NestedCoalescent <- R6Class("NestedCoalescent",
         if (b$get.sampling.time() == 0) {b}
       })
       self$extant_lineages <- unlist(res)
+    },
+    
+    
+    
+    init.extant.comps = function() {
+      # initializes list of Compartments containing Lineages with sampling.time t=0
+      res <- sapply(self$extant_lineages, function(b){
+        b$get.location()
+      })
+      self$extant_comps <- unique(res)
+    },
+    
+    
+    
+    init.non.extant.comps = function() {
+      # initializes list of Compartments containing Lineages with sampling.time t!=0
+      extant.names <- sapply(self$extant_comps, function(a){a$get.name()})
+      res <- sapply(self$compartments, function(b) {
+        if (b$get.name() %in% extant.names == F) {b}
+      })
+      self$non_extant_comps <- unlist(res)
     }
     
   )

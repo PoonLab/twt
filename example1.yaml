@@ -19,19 +19,16 @@ Compartments:
     type: host                      # reference to CompartmentType object
     source: undefined               # A is the root
     inf.time: undefined
-    sampling.time: 0.0
     pop.size: 1                     # would be used for replication of generic object (80 hosts of type 1)
   'B':
     type: host
     source: A
     inf.time: 3.0                   # note this is reverse time
-    sampling.time: 0.0
     pop.size: 1
   'C': 
     type: host
     source: B
     inf.time: 1.0
-    sampling.time: 0.0
     pop.size: 1
 Lineages:
   '1': 

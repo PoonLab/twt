@@ -48,24 +48,20 @@ init.fixed.transmissions <- function(inputs, eventlog) {
 # treeswithintrees/Wiki/Simulation Pseudocode step 3 & 4
 # simulate transmission events and fix them to the timeline of lineage sampled events
 generate.transmission.events <- function(inputs, eventlog) {
-  # @param inpiuts = NestedCoalescent object
+  # @param inputs = NestedCoalescent object
   # @param eventlog = EventLogger object
   
   # for each CompartmentType: 
-  types <- inputs$get.types()
-  comps.types <- sapply(unlist(inputs$get.compartments()), function(a){a$get.type()$get.name()})
-  
-  init.data <- lapply(types, function(x) {
+  comps.types <- sapply(unlist(inputs$get.extant_comps()), function(a){a$get.type()$get.name()})  
+  active.lineages <- sapply(inputs$get.extant_lineages(), function(b){b$get.location()$get.type()$get.name()})
+  init.data <- lapply(inputs$get.types(), function(x) {
+    
     # 1. enumerate active compartments, including unsampled hosts (U) at time t=0
     list.N_U <- unlist(x$get.unsampled.popns())
-    list.N_A <- sapply(names(list.N_U), function(y) {
-      compY <- length(which(comps.types == y))
-      y <- compY
-    })
+    list.N_A <- sapply(names(list.N_U), function(y) { length(which(comps.types == y)) })
     
     # 2. enumerate active lineages of infected (I), pairs of active lineages within hosts at time t=0
-    lineage.times <- sapply(inputs$get.lineages(), function(b){b$get.sampling.time()})
-    list.N_I <- length(which(lineage.times == 0)) 
+    list.N_I <- length(which(active.lineages == x$get.name()))
     
     # 3. enumerate number of susceptibles (S) at time t=0
     list.N_S <- unlist(x$get.susceptible.popns())
@@ -74,19 +70,20 @@ generate.transmission.events <- function(inputs, eventlog) {
   })
   
   extant_comps <- inputs$get.extant_comps()
+  non_extant_comps <- inputs$get.non_extant_comps()
   us_comps <- inputs$get.unsampled.hosts()
   us_compnames <- sapply(us_comps, function(x){x$get.name()})
   # a source can transmit to multiple recipients, but cannot receive a transmission from one of its descendants
   # `private$transmission.history` attr for each Compartment ensures this does not happen  <- could be useless.. pending judgement
   
   # main loop
-  while (length(extant_comps) > 1) {
+  while (length(c(extant_comps, non_extant_comps)) > 1) {
     # grab a recipient from list of extant
     r_ind <- sample(1:length(extant_comps), 1)
     recipient <- extant_comps[[r_ind]]
     extant_comps[[r_ind]] <- NULL            # remove chosen recipient from list of extant, as well as host_popn
     
-    host_popn <- c(extant_comps, us_comps)
+    host_popn <- c(extant_comps, non_extant_comps, us_comps)
     s_ind <- sample(1:length(host_popn), 1)  # sample source from combined list of extant and unsampled-infected hosts
     source <- host_popn[[s_ind]]
     
@@ -95,7 +92,7 @@ generate.transmission.events <- function(inputs, eventlog) {
     # includes N_U and N_S for each type, and retrieves intrinsic base transmission rate of X --> Y transmission
     r_type <- recipient$get.type()$get.name()
     s_type <- source$get.type()$get.name()
-    base.rate <- types[[r_type]]$get.transmission.rate(s_type)
+    base.rate <- inputs$get.types()[[r_type]]$get.transmission.rate(s_type)
     popN <- init.data[[r_type]][s_type,]
     total.rate <- base.rate * (popN['U'] + popN['I']) * popN['S']  # total event rate
     
