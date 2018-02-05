@@ -125,3 +125,38 @@ generate.transmission.events <- function(inputs, eventlog) {
 }
 
 
+# function converts the transmission events stored in an EventLogger object into a transmission tree
+.to.transmission.tree <- function(eventlog) {
+  require(igraph)
+  
+  t_events <- eventlog$get.events('transmission')
+  edges <- c()
+  for (node in 1:length(t_events$compartment1)) {
+    edges <- c(edges, t_events$compartment2[[node]], t_events$compartment1[[node]])
+  }
+
+  
+  tips <- setdiff(t_events$compartment1, t_events$compartment2)
+  internals <- intersect(t_events$compartment1, t_events$compartment2)
+  root <- setdiff(t_events$compartment2, t_events$compartment1)
+  
+  tip.label <- vector()
+  edge.length <- vector()
+  edge <- matrix(nrow=nrow(t_events), ncol=2)
+  
+  tip.no <- 1
+  root.no <- length(tips) + 1
+  node.no <- root.no + 1
+  
+  sapply(t_events, function(x) {
+    if (x$compartment1 %in% tips) {
+      tip.label[tip.no] <- x
+    }
+  })
+}
+
+
+# function converts an ape::phylo tree object into transmission events stored in a NEW EventLogger object
+.to.eventlog <- function() {
+  
+}
