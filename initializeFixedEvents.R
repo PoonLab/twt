@@ -55,7 +55,7 @@ init.fixed.transmissions <- function(inputs, eventlog) {
 
 
 
-# Case 3: 
+# Case 3: no host transmission tree provided, needs to be generated
 generate.transmission.events <- function(inputs, eventlog) {
   # treeswithintrees/Wiki/Simulation Pseudocode step 3 & 4
   # simulate transmission events and fix them to the timeline of lineage sampled events
@@ -109,7 +109,7 @@ generate.transmission.events <- function(inputs, eventlog) {
     
     #if (total.rate == 0) {}  #can't accept this rate
     
-    # claculate change in time between source transmitting to recipient
+    # calculate change in time between source transmitting to recipient
     delta_t <- rexp(n = 1, rate = as.numeric(total.rate))
     
     
@@ -139,10 +139,50 @@ generate.transmission.events <- function(inputs, eventlog) {
 
 .to.transmission.tree <- function(eventlog) {
   # function converts the transmission events stored in an EventLogger object into a transmission tree
-  require(igraph, quietly=TRUE)
+  
+  #require(igraph, quietly=TRUE)
+  #t_events <- eventlog$get.events('transmission')
+  #edges <- paste(t(cbind(t_events$compartment2, t_events$compartment1)))
+  #graph(edges=edges)
   
   t_events <- eventlog$get.events('transmission')
-  edges <- paste(t(cbind(t_events$compartment2, t_events$compartment1)))
-  graph(edges=edges)
+  tips <- setdiff(t_events$compartment1, t_events$compartment2)
+  internals <- intersect(t_events$compartment1, t_events$compartment2)
+  root <- setdiff(t_events$compartment2, t_events$compartment1)
+  
+  tip.label <- vector()
+  edge.length <- vector()
+  Nnode <- nrow(t_events)
+  edge <- matrix(nrow=Nnode*2, ncol=2)
+  node.label <- vector()
+  
+  tip.no <- 1
+  root.no <- length(tips) + 1
+  node.no <- root.no + 1
+  
+  sapply(1:t_events, function(x) {
+    source <- t_events[x,]$compartment2
+    recipient <- t_events[x,]$compartment1
+    
+    if (recipient %in% tips) {
+      tip.ind <- tip.no
+      tip.label[tip.ind] <- x
+      tip.no <- tip.no + 1
+    }
+    
+    if (source %in% root) {
+      source.ind <- root.no
+    } else {
+      source.ind <- node.no
+      node.no <- node.no + 1
+    }
+    
+    edge[2*x-1,] <- c(source.ind, source.ind)       # source --> source
+    edge[2*x,] <- c(source.ind, recipient.ind)      # source --> recipient
+    
+    edge.length[source.ind] <- t_events[x]$time
+    node.label[source.ind] <- source
+  })
+  
 }
 
