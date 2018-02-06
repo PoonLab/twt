@@ -146,43 +146,56 @@ generate.transmission.events <- function(inputs, eventlog) {
   #graph(edges=edges)
   
   t_events <- eventlog$get.events('transmission')
-  tips <- setdiff(t_events$compartment1, t_events$compartment2)
-  internals <- intersect(t_events$compartment1, t_events$compartment2)
-  root <- setdiff(t_events$compartment2, t_events$compartment1)
+  tips <- unlist(setdiff(t_events$compartment1, t_events$compartment2))
+  internals <- unlist(intersect(t_events$compartment1, t_events$compartment2))
+  root <- unlist(setdiff(t_events$compartment2, t_events$compartment1))
   
   tip.label <- vector()
   edge.length <- vector()
-  Nnode <- nrow(t_events)
-  edge <- matrix(nrow=Nnode*2, ncol=2)
+  Nnode <- length(unique(t_events$compartment2))
+  edge <- matrix(nrow=nrow(t_events)*2, ncol=2)
   node.label <- vector()
   
   tip.no <- 1
   root.no <- length(tips) + 1
   node.no <- root.no + 1
   
-  sapply(1:t_events, function(x) {
+  for (x in 1:nrow(t_events)) {
     source <- t_events[x,]$compartment2
     recipient <- t_events[x,]$compartment1
     
     if (recipient %in% tips) {
-      tip.ind <- tip.no
-      tip.label[tip.ind] <- x
+      recipient.ind <- tip.no
+      tip.label[recipient.ind] <- recipient
       tip.no <- tip.no + 1
+    } else if (recipient %in% node.label) {
+      recipient.ind <- which(sapply(node.label, function(y) {y == recipient}) == T)
+    } else {
+      recipient.ind <- node.no
+      node.label[recipient.ind] <- recipient
+      node.no <- node.no + 1
     }
     
     if (source %in% root) {
       source.ind <- root.no
+      node.label[source.ind] <- source
+    } else if (source %in% node.label) {
+      source.ind <- which(sapply(node.label, function(y) {y == source}) == T)
     } else {
       source.ind <- node.no
+      node.label[source.ind] <- source
       node.no <- node.no + 1
     }
     
-    edge[2*x-1,] <- c(source.ind, source.ind)       # source --> source
-    edge[2*x,] <- c(source.ind, recipient.ind)      # source --> recipient
+    edge[2*x-1,] <- as.numeric(c(source.ind, source.ind))      # source --> source
+    edge[2*x,] <- as.numeric(c(source.ind, recipient.ind))     # source --> recipient
     
-    edge.length[source.ind] <- t_events[x]$time
-    node.label[source.ind] <- source
-  })
+    edge.length[2*x-1] = edge.length[2*x] <- t_events[x,]$time
+  }
+  
+  phy <- list(tip.label=unlist(tip.label), Nnode=Nnode, edge.length=as.numeric(unlist(edge.length)), edge=edge, node.label=unlist(node.label))
+  attr(phy, 'class') <- 'phylo'
+  attr(phy, 'order') <- 'cladewise'
   
 }
 
