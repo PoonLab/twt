@@ -19,6 +19,14 @@ init.fixed.samplings <- function(inputs) {
 }
 
 
+# Case 1 : User provides a host transmission tree
+.to.eventlog <- function() {
+  # function converts an ape::phylo tree object into transmission events stored in a NEW EventLogger object
+  
+}
+
+
+# Case 2 : User manually input a host transmission tree into YAML format under Compartment header
 init.fixed.transmissions <- function(inputs, eventlog) {
   # @param inputs = NestedCoalescent object
   # @param eventlog = EventLogger object
@@ -45,9 +53,12 @@ init.fixed.transmissions <- function(inputs, eventlog) {
 }
 
 
-# treeswithintrees/Wiki/Simulation Pseudocode step 3 & 4
-# simulate transmission events and fix them to the timeline of lineage sampled events
+
+
+# Case 3: 
 generate.transmission.events <- function(inputs, eventlog) {
+  # treeswithintrees/Wiki/Simulation Pseudocode step 3 & 4
+  # simulate transmission events and fix them to the timeline of lineage sampled events
   # @param inputs = NestedCoalescent object
   # @param eventlog = EventLogger object
   
@@ -125,38 +136,13 @@ generate.transmission.events <- function(inputs, eventlog) {
 }
 
 
-# function converts the transmission events stored in an EventLogger object into a transmission tree
+
 .to.transmission.tree <- function(eventlog) {
-  require(igraph)
+  # function converts the transmission events stored in an EventLogger object into a transmission tree
+  require(igraph, quietly=TRUE)
   
   t_events <- eventlog$get.events('transmission')
-  edges <- c()
-  for (node in 1:length(t_events$compartment1)) {
-    edges <- c(edges, t_events$compartment2[[node]], t_events$compartment1[[node]])
-  }
-
-  
-  tips <- setdiff(t_events$compartment1, t_events$compartment2)
-  internals <- intersect(t_events$compartment1, t_events$compartment2)
-  root <- setdiff(t_events$compartment2, t_events$compartment1)
-  
-  tip.label <- vector()
-  edge.length <- vector()
-  edge <- matrix(nrow=nrow(t_events), ncol=2)
-  
-  tip.no <- 1
-  root.no <- length(tips) + 1
-  node.no <- root.no + 1
-  
-  sapply(t_events, function(x) {
-    if (x$compartment1 %in% tips) {
-      tip.label[tip.no] <- x
-    }
-  })
+  edges <- paste(t(cbind(t_events$compartment2, t_events$compartment1)))
+  graph(edges=edges)
 }
 
-
-# function converts an ape::phylo tree object into transmission events stored in a NEW EventLogger object
-.to.eventlog <- function() {
-  
-}

@@ -8,7 +8,17 @@ e <- EventLogger$new()
 tips.n.heights <- init.fixed.samplings(test)
 init.fixed.transmissions(test, e)    # applies only to example1.yaml for now, since they provide a "host tree" w/ transmission events
 e <- generate.transmission.events(test, e)
-
+graph <- .to.transmission.tree(e)
+plot(graph, 
+     edge.arrow.size=0.2, 
+     vertex.color='gold', 
+     vertex.size=2, 
+     vertex.frame.color='gray', 
+     vertex.label.color='black', 
+     vertex.label.cex=0.5, 
+     vertex.label.dist=2, 
+     edge.curved=0.2
+     )
 
 
 
