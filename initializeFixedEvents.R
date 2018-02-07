@@ -140,11 +140,6 @@ generate.transmission.events <- function(inputs, eventlog) {
 .to.transmission.tree <- function(eventlog) {
   # function converts the transmission events stored in an EventLogger object into a transmission tree
   
-  #require(igraph, quietly=TRUE)
-  #t_events <- eventlog$get.events('transmission')
-  #edges <- paste(t(cbind(t_events$compartment2, t_events$compartment1)))
-  #graph(edges=edges)
-  
   t_events <- eventlog$get.events('transmission')
   tips <- unlist(setdiff(t_events$compartment1, t_events$compartment2))
   internals <- unlist(intersect(t_events$compartment1, t_events$compartment2))
@@ -153,7 +148,7 @@ generate.transmission.events <- function(inputs, eventlog) {
   tip.label <- vector()
   edge.length <- vector()
   Nnode <- length(unique(t_events$compartment2))
-  edge <- matrix(nrow=nrow(t_events)*2, ncol=2)
+  edge <- matrix(nrow=nrow(t_events), ncol=2)
   node.label <- vector()
   
   tip.no <- 1
@@ -187,10 +182,11 @@ generate.transmission.events <- function(inputs, eventlog) {
       node.no <- node.no + 1
     }
     
-    edge[2*x-1,] <- as.numeric(c(source.ind, source.ind))      # source --> source
-    edge[2*x,] <- as.numeric(c(source.ind, recipient.ind))     # source --> recipient
+    #edge[2*x-1,] <- as.numeric(c(source.ind, source.ind))      # source --> source
+    edge[x,] <- as.numeric(c(source.ind, recipient.ind))     # source --> recipient
     
-    edge.length[2*x-1] = edge.length[2*x] <- t_events[x,]$time
+    #edge.length[2*x-1] = 
+    edge.length[x] <- t_events[x,]$time
   }
   
   phy <- list(tip.label=unlist(tip.label), Nnode=Nnode, edge.length=as.numeric(unlist(edge.length)), edge=edge, node.label=unlist(node.label))
