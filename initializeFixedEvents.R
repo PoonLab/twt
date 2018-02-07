@@ -20,13 +20,39 @@ init.fixed.samplings <- function(inputs) {
 
 
 # Case 1 : User provides a host transmission tree
-.to.eventlog <- function() {
+.to.eventlog <- function(newick) {
   # function converts an ape::phylo tree object into transmission events stored in a NEW EventLogger object
+  e <- EventLogger$new()
+  phy <- read.tree(text=newick)
   
+  sapply(1:nrow(phy$edge), function(x) {
+    s_ind <- phy$edge[x,1]
+    r_ind <- phy$edge[x,2]
+    
+    if (is.null(phy$node.label)) {
+      # generate unique name for internal node
+      sourceLabel <- paste0('US_', s_ind-length(phy$tip.label))
+    } else {
+      sourceLabel <- phy$node.label[s_ind]
+    }
+    
+    if (r_ind <= length(phy$tip.label)) {
+      recipientLabel <- phy$tip.label[r_ind]
+    } else if (is.null(phy$node.label)) {
+      recipientLabel <- paste0('US_', r_ind-length(phy$tip.label))
+    } else {
+      recipientLabel <- phy$node.label[r_ind]
+    }
+    
+    inf.time <- phy$edge.length[x]
+    e$add.event('transmission', inf.time, obj1=NA, recipientLabel, sourceLabel)
+  })
+  
+  e
 }
 
 
-# Case 2 : User manually input a host transmission tree into YAML format under Compartment header
+# Case 2 : User manually input a host transmission tree into YAML format under Compartments header
 init.fixed.transmissions <- function(inputs, eventlog) {
   # @param inputs = NestedCoalescent object
   # @param eventlog = EventLogger object
@@ -55,7 +81,7 @@ init.fixed.transmissions <- function(inputs, eventlog) {
 
 
 
-# Case 3: no host transmission tree provided, needs to be generated
+# Case 3: no host tree provided, transmission events need to be generated
 generate.transmission.events <- function(inputs, eventlog) {
   # treeswithintrees/Wiki/Simulation Pseudocode step 3 & 4
   # simulate transmission events and fix them to the timeline of lineage sampled events
@@ -192,6 +218,6 @@ generate.transmission.events <- function(inputs, eventlog) {
   phy <- list(tip.label=unlist(tip.label), Nnode=Nnode, edge.length=as.numeric(unlist(edge.length)), edge=edge, node.label=unlist(node.label))
   attr(phy, 'class') <- 'phylo'
   attr(phy, 'order') <- 'cladewise'
-  
+  phy
 }
 
