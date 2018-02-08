@@ -41,6 +41,8 @@ NestedCoalescent <- R6Class("NestedCoalescent",
       private$init.extant.lineages()
       private$init.extant.comps()
       private$init.non.extant.comps()
+      
+      private$init.pairs()
     },
     
     get.types = function() {self$types},
@@ -70,34 +72,21 @@ NestedCoalescent <- R6Class("NestedCoalescent",
       # annotate nodes with heights in place
     },
     
-    ## note that in Issue #8, would like to implement Lineage pairs vector as a dynamic object
-    # this would mean a function to initialize the pairs vector, which can then later be udpated
-      # add when a Lineage moved from one compartment to another (transmission or migration)
-      # add when a Lineage is sampled
-      # remove when a coalescence occurs
-      # remove when Lineages reach a transmission bottleneck, forcing coalescence
     get.pairs = function() {
-      # extract all pairs of pathogen lineages that may coalesce
-      self$get.locations()
-      self$choices <- list()
-      for (host in self$locations) {
-        if (length(host) > 1) {
-          for (pair in combn(host,2)) {
-            self$choices[[paste(pair[1], pair[2], sep=',')]] <- host
-          }
-        }
-      }
+      # function extracts and returns all the current pairs of pathogen lineages that may coalesce
+      self$choices
     },
     
-    get.locations = function() {
-      # collect host locations of all extant pathogen lineages into dict of host1: [path1, path2, path3, ...]
-      self$locations <- list()      # reset list
-      for (node in self$extant_lineages) {
-        if (node$get.location()$get.name() %in% names(self$locations)) {
-          self$locations[[node$get.location()$get.name()]] <- list()
-        }
-        self$locations[[node$get.location()$get.name()]] <- c(self$locations[[node$get.location()$get.name()]], node)
-      }
+    add.pair = function(L1, L2, host) {
+      # when a Lineage is moved from one compartment to another (transmission or migration)
+      # when a Lineage is sampled
+      self$choices[[paste(L1, L2, sep=',')]] <- host
+    },
+    
+    remove.pair = function(L1, L2) {
+      # when a coalescence occurs
+      # when Lineages reach a tranmission bottleneck, forcing coalescence
+      self$choices[[paste(L2, L2, sep=',')]] <- NULL
     }
     
   ),
@@ -155,7 +144,7 @@ NestedCoalescent <- R6Class("NestedCoalescent",
         
         if (params$type %in% names(settings$CompartmentType)) {
           searchTypes <- which(names(settings$CompartmentType) == params$type)
-          typeObj <- self$types[[ searchTypes ]]                        # pointer to CompartmentType object
+          typeObj <- self$types[[ searchTypes ]]                  # pointer to CompartmentType object
         } else {
           stop(params$type, ' of Compartment ', comp, ' is not a specified Compartment Type object')
         }
@@ -270,7 +259,37 @@ NestedCoalescent <- R6Class("NestedCoalescent",
         if (b$get.name() %in% extant.names == F) {b}
       })
       self$non_extant_comps <- unlist(res)
+    },
+    
+    
+    
+    init.locations = function() {
+      # helper function for private$init.pairs()
+      # collect host locations of all extant pathogen lineages into dict of host1: [path1, path2, path3, ...]
+      self$locations <- list()      # reset list
+      for (node in self$extant_lineages) {
+        if (node$get.location()$get.name() %in% names(self$locations)) {
+          self$locations[[node$get.location()$get.name()]] <- list()
+        }
+        self$locations[[node$get.location()$get.name()]] <- c(self$locations[[node$get.location()$get.name()]], node)
+      }
+    },
+    
+    
+    
+    init.pairs = function() {
+      # extract all pairs of pathogen lineages that may coalesce
+      self$get.locations()
+      self$choices <- list()
+      for (host in self$locations) {
+        if (length(host) > 1) {
+          for (pair in combn(host,2)) {
+            self$choices[[paste(pair[1], pair[2], sep=',')]] <- host
+          }
+        }
+      }
     }
+    
     
   )
 )
