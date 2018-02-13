@@ -31,7 +31,7 @@ init.fixed.samplings <- function(inputs) {
     
     if (is.null(phy$node.label)) {
       # generate unique name for internal node
-      sourceLabel <- paste0('US_', s_ind-length(phy$tip.label))
+      sourceLabel <- paste0('US_', s_ind-length(phy$tip.label))    ## FIXME: remove this
     } else {
       sourceLabel <- phy$node.label[s_ind]
     }
@@ -39,7 +39,7 @@ init.fixed.samplings <- function(inputs) {
     if (r_ind <= length(phy$tip.label)) {
       recipientLabel <- phy$tip.label[r_ind]
     } else if (is.null(phy$node.label)) {
-      recipientLabel <- paste0('US_', r_ind-length(phy$tip.label))
+      recipientLabel <- paste0('US_', r_ind-length(phy$tip.label))   ## FIXME: remove this
     } else {
       recipientLabel <- phy$node.label[r_ind]
     }
