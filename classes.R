@@ -237,14 +237,25 @@ EventLogger <- R6Class("EventLogger",
       self$events <- events
     },
     
-    get.all.events = function() {
+    get.all.events = function(cumulative=TRUE) {
       if (nrow(self$events) == 0) {cat('No events to display.')}
-      else {self$events}
+      else {
+        if (cumulative) {
+          private$reset.event.times(self$events)
+        } else {
+          self$events
+        }
+      }
     },
     
-    get.events = function(event.type) {
-      indices <- which(self$events$event.type == event.type)
-      as.data.frame(t(sapply(indices, function(x) {self$events[x,]})))
+    get.events = function(event.type, cumulative=TRUE) {
+      if (cumulative) {
+        eventList <- private$reset.event.times(self$events)
+      } else {
+        eventList <- self$events
+      }
+      indices <- which(eventList$event.type == event.type)
+      as.data.frame(t(sapply(indices, function(x) {eventList[x,]})))
     },
     
     add.event = function(name, time, obj1, obj2, obj3) {
@@ -269,6 +280,33 @@ EventLogger <- R6Class("EventLogger",
     }
     
   ),
-  private = list()
+  private = list(
+    
+    reset.event.times = function(e) {
+      event.types <- unique(e$get.all.events()$event.type)
+      sapply(event.types, function(x) {
+        xEvents <- e$get.events(x)
+        if (x == 'transmission' || x == 'migration') {
+          times <- unlist(xEvents$time)
+          recipients <- unlist(xEvents$compartment1)
+          sources <- unlist(xEvents$compartment2)
+          
+          sapply(seq_along(xEvents), function(y) {
+            descendant.inds <- private$get.all.recipients(y)
+          })
+        } else {   # must be migration or coalescent set of events
+          sapply(xEvents, function(y) {
+            
+          })
+        }
+      })
+    }
+    
+    
+    get.all.recipients = function(node) {
+      children <- node
+    }
+    
+  )
 )
 
