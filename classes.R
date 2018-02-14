@@ -225,7 +225,15 @@ Lineage <- R6Class("Lineage",
 EventLogger <- R6Class("EventLogger",
   public = list(
     events = NULL,
+    events.noncumul = NULL,
     initialize = function(events=data.frame(event.type=character(),
+                                            time=numeric(),
+                                            lineage1=character(),
+                                            lineage2=character(),
+                                            compartment1=character(),
+                                            compartment2=character()
+                                            ),
+                          event.noncumul=data.frame(event.type=character(),
                                             time=numeric(),
                                             lineage1=character(),
                                             lineage2=character(),
@@ -235,38 +243,59 @@ EventLogger <- R6Class("EventLogger",
                           ) 
     {
       self$events <- events
+      self$events.noncumul <- events.noncumul
     },
     
     get.all.events = function(cumulative=TRUE) {
       if (nrow(self$events) == 0) {cat('No events to display.')}
       else {
-        if (cumulative) {
-          private$reset.event.times(self$events)
+        if (cumulative) { 
+          self$events                       # default eventlog shows cumulative time b/c user can input cumulative inf.times manually, and those must be cumulative
         } else {
-          self$events
+          self$events.noncumul
         }
       }
     },
     
     get.events = function(event.type, cumulative=TRUE) {
       if (cumulative) {
-        eventList <- private$reset.event.times(self$events)
-      } else {
         eventList <- self$events
+      } else {
+        eventList <- self$events.noncumul
       }
       indices <- which(eventList$event.type == event.type)
       as.data.frame(t(sapply(indices, function(x) {eventList[x,]})))
     },
     
-    add.event = function(name, time, obj1, obj2, obj3) {
-      if (tolower(name) == 'transmission' || tolower(name) == 'migration') {
-        new.event <- list(event.type=name, time=time, lineage1=obj1, lineage2=NA, compartment1=obj2, compartment2=obj3)
-      } else if (tolower(name) == 'coalescent' || tolower(name) == 'bottleneck') {
-        new.event <- list(event.type=name, time=time, lineage1=obj1, lineage2=obj2, compartment1=obj3, compartment2=NA)
+    add.event = function(name, time, obj1, obj2, obj3, cumulative=TRUE) {
+      if (cumulative) {
+        # adding an event with cumulative time
+        if (tolower(name) == 'transmission' || tolower(name) == 'migration') {
+          new.event <- list(event.type=name, time=time, lineage1=obj1, lineage2=NA, compartment1=obj2, compartment2=obj3)
+        } else if (tolower(name) == 'coalescent' || tolower(name) == 'bottleneck') {
+          new.event <- list(event.type=name, time=time, lineage1=obj1, lineage2=obj2, compartment1=obj3, compartment2=NA)
+        } else {
+          stop(name, 'is not an event name.')
+        }
+        self$events <- rbind(self$events, new.event, stringsAsFactors=F)
+        
+        # need to break down into individual delta t and store in self$events.noncumul
+        
       } else {
-        stop(name, 'is not an event name.')
+        # adding an event with only an individual delta t
+        if (tolower(name) == 'transmission' || tolower(name) == 'migration') {
+          new.event <- list(event.type=name, time=time, lineage1=obj1, lineage2=NA, compartment1=obj2, compartment2=obj3)
+        } else if (tolower(name) == 'coalescent' || tolower(name) == 'bottleneck') {
+          new.event <- list(event.type=name, time=time, lineage1=obj1, lineage2=obj2, compartment1=obj3, compartment2=NA)
+        } else {
+          stop(name, 'is not an event name.')
+        }
+        self$events.noncumul <- rbind(self$events, new.event, stringsAsFactors=F)
+        
+        # need to add up individual delta t and convert into cumulative time and store into self$events
+        
       }
-      self$events <- rbind(self$events, new.event, stringsAsFactors=F)
+      
     },
     
     clear.events = function() {
@@ -280,33 +309,6 @@ EventLogger <- R6Class("EventLogger",
     }
     
   ),
-  private = list(
-    
-    reset.event.times = function(e) {
-      event.types <- unique(e$get.all.events()$event.type)
-      sapply(event.types, function(x) {
-        xEvents <- e$get.events(x)
-        if (x == 'transmission' || x == 'migration') {
-          times <- unlist(xEvents$time)
-          recipients <- unlist(xEvents$compartment1)
-          sources <- unlist(xEvents$compartment2)
-          
-          sapply(seq_along(xEvents), function(y) {
-            descendant.inds <- private$get.all.recipients(y)
-          })
-        } else {   # must be migration or coalescent set of events
-          sapply(xEvents, function(y) {
-            
-          })
-        }
-      })
-    }
-    
-    
-    get.all.recipients = function(node) {
-      children <- node
-    }
-    
-  )
+  private = list()
 )
 

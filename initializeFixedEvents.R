@@ -131,7 +131,7 @@ generate.transmission.events <- function(inputs, eventlog) {
     s_type <- source$get.type()$get.name()
     base.rate <- inputs$get.types()[[r_type]]$get.transmission.rate(s_type)
     popN <- init.data[[r_type]][s_type,]
-    total.rate <- base.rate * (popN['U'] + popN['I']) * popN['S']  # total event rate
+    total.rate <- base.rate * (popN['U'] + popN['I']) * popN['S']  # total event rate   ... is popN['S'] for the recipient?
     
     #if (total.rate == 0) {}  #can't accept this rate
     
@@ -143,7 +143,7 @@ generate.transmission.events <- function(inputs, eventlog) {
     recipient$set.source(source)                
 
     # add transmission event to EventLogger object
-    eventlog$add.event('transmission', delta_t, obj1=NA, recipient$get.name(), source$get.name())  # argument `lineage` is determined later at coalescence
+    eventlog$add.event('transmission', delta_t, obj1=NA, recipient$get.name(), source$get.name(), cumulative=FALSE)  # argument `lineage` is determined later at coalescence
     
     # update all counts
     popN['S'] <- popN['S'] + 1
@@ -166,7 +166,7 @@ generate.transmission.events <- function(inputs, eventlog) {
 .to.transmission.tree <- function(eventlog) {
   # function converts the transmission events stored in an EventLogger object into a transmission tree
   
-  t_events <- eventlog$get.events('transmission')
+  t_events <- eventlog$get.events('transmission', cumulative=FALSE)
   tips <- unlist(setdiff(t_events$compartment1, t_events$compartment2))
   internals <- unlist(intersect(t_events$compartment1, t_events$compartment2))
   root <- unlist(setdiff(t_events$compartment2, t_events$compartment1))
