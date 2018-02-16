@@ -2,13 +2,13 @@
 # Example Newick Tree:
 # ((C:1,B:1)B:2,A:3)A:1;
 # Internal node labels specify who infected whom, and branch lengths indicate the timing of transmission events and host sampling
-CompartmentType:
+CompartmentTypes:
   'host':
-    no.unsampled: (host=20)
-    no.susceptible: (host=1000)
-    transmission.rates: (host=0.2)  # only one CompartmentType
+    unsampled: 20
+    susceptible: 1000
+    branching.rates: (host=0.2)     # only one CompartmentType, in this case represents transmission rates
     migration.rates: ()             # assume no migration
-    coalescent.rate: 0.1            # single rate to be applied to all objects of this CompartmentType
+    effective.size: 25              # single Ne to be applied to all objects of this CompartmentType
     bottleneck.size: 1              # bottleneck size when transmission event occurs
   # option to have more than one host type with different parameters
 LineageType:
@@ -18,32 +18,32 @@ Compartments:
   'A':                              # label is linked to Newick tree tip label
     type: host                      # reference to CompartmentType object
     source: undefined               # A is the root
-    inf.time: undefined
-    pop.size: 1                     # would be used for replication of generic object (80 hosts of type 1)
+    branching.time: undefined
+    replicates: 1                   # would be used for replication of generic object (80 hosts of type 1)
   'B':
     type: host
     source: A
-    inf.time: 3.0                   # note this is reverse time
-    pop.size: 1
+    branching.time: 3.0             # note this is reverse time, cumulative
+    replicates: 1
   'C': 
     type: host
     source: B
-    inf.time: 1.0
-    pop.size: 1
+    branching.time: 1.0
+    replicates: 1
 Lineages:
   '1': 
     type: virus
     sampling.time: (0.0, 2.0, 3.0)  # could either be a single sampling time, or a vector of multiple, where we will then create distinct Lineages
     location: A                     # at sampling, will change as we go back in time
-    pop.size: 3
+    replicates: 3
   '2': 
     type: virus
     sampling.time: 0.0
     location: B
-    pop.size: 1
+    replicates: 1
   '3': 
     type: virus
     sampling.time: 0.0
     location: C
-    pop.size: 1
+    replicates: 1
 

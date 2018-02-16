@@ -4,7 +4,7 @@
 
 init.fixed.samplings <- function(inputs) {
   # retrieve sampling time and populate tip labels / times in ape::phylo object (building it tips up)
-  # @param inputs = NestedCoalescent object
+  # @param inputs = MODEL object
 
   # add lineage sampling events from Lineage objects
   lineages <- unlist(inputs$get.lineages())
@@ -25,36 +25,34 @@ init.fixed.samplings <- function(inputs) {
   e <- EventLogger$new()
   phy <- read.tree(text=newick)
   
+  if (is.null(phy$node.label)) {
+    # in the future, may be able to generate unique name for internal node
+    stop('Node labels must be present in host transmission tree.')
+  } 
+  
   sapply(1:nrow(phy$edge), function(x) {
     s_ind <- phy$edge[x,1]
     r_ind <- phy$edge[x,2]
     
-    if (is.null(phy$node.label)) {
-      # generate unique name for internal node
-      sourceLabel <- paste0('US_', s_ind-length(phy$tip.label))    ## FIXME: remove this
-    } else {
-      sourceLabel <- phy$node.label[s_ind]
-    }
+    sourceLabel <- phy$node.label[s_ind]
     
     if (r_ind <= length(phy$tip.label)) {
       recipientLabel <- phy$tip.label[r_ind]
-    } else if (is.null(phy$node.label)) {
-      recipientLabel <- paste0('US_', r_ind-length(phy$tip.label))   ## FIXME: remove this
     } else {
       recipientLabel <- phy$node.label[r_ind]
     }
     
-    inf.time <- phy$edge.length[x]
-    e$add.event('transmission', inf.time, obj1=NA, recipientLabel, sourceLabel)
+    branching.time <- phy$edge.length[x]
+    e$add.event('transmission', branching.time, obj1=NA, recipientLabel, sourceLabel)
   })
   
   e
 }
 
 
-# Case 2 : User manually input a host transmission tree into YAML format under Compartments header
-init.fixed.transmissions <- function(inputs, eventlog) {
-  # @param inputs = NestedCoalescent object
+# Case 2 : User manually inputs a host transmission tree into YAML format under Compartments header
+init.branching.events <- function(inputs, eventlog) {
+  # @param inputs = MODEL object
   # @param eventlog = EventLogger object
 
   # if the user input includes a tree (host tree) then add transmission events
@@ -62,7 +60,7 @@ init.fixed.transmissions <- function(inputs, eventlog) {
   lineages <- inputs$get.lineages()
 
   transmissions <- sapply(comps, function(x) {
-    inf.time <- x$get.inf.time()
+    branching.time <- x$get.branching.time()
       
     if (is.R6(x$get.source())) {
       source <- x$get.source()$get.name()
@@ -74,7 +72,7 @@ init.fixed.transmissions <- function(inputs, eventlog) {
     }
 
     # add transmission event to EventLogger object
-    eventlog$add.event('transmission',  inf.time, lineage, x$get.name(), source)
+    eventlog$add.event('transmission',  branching.time, lineage, x$get.name(), source)
   })
 }
 
@@ -85,25 +83,25 @@ init.fixed.transmissions <- function(inputs, eventlog) {
 generate.transmission.events <- function(inputs, eventlog) {
   # treeswithintrees/Wiki/Simulation Pseudocode step 3 & 4
   # simulate transmission events and fix them to the timeline of lineage sampled events
-  # @param inputs = NestedCoalescent object
+  # @param inputs = MODEL object
   # @param eventlog = EventLogger object
   
   # for each CompartmentType: 
-  comps.types <- sapply(unlist(inputs$get.extant_comps()), function(a){a$get.type()$get.name()})  
+  indiv.types.comps <- sapply(unlist(inputs$get.extant_comps()), function(a){a$get.type()$get.name()})  
   active.lineages <- sapply(inputs$get.extant_lineages(), function(b){b$get.location()$get.type()$get.name()})
   init.data <- lapply(inputs$get.types(), function(x) {
     
     # 1. enumerate active compartments, including unsampled hosts (U) at time t=0
-    list.N_U <- unlist(x$get.unsampled.popns())
-    list.N_A <- sapply(names(list.N_U), function(y) { length(which(comps.types == y)) })
+    U <- x$get.unsampled()
+    A <- length(which(indiv.types.comps == x$get.name()))
     
     # 2. enumerate active lineages of infected (I), pairs of active lineages within hosts at time t=0
-    list.N_I <- length(which(active.lineages == x$get.name()))
+    I <- length(which(active.lineages == x$get.name()))
     
     # 3. enumerate number of susceptibles (S) at time t=0
-    list.N_S <- unlist(x$get.susceptible.popns())
+    S <- x$get.susceptible()
     
-    data.frame(U=list.N_U, A=list.N_A, I=list.N_I, S=list.N_S)
+    data.frame(U=U, A=A, I=I, S=S)
   })
   
   extant_comps <- inputs$get.extant_comps()
@@ -111,7 +109,6 @@ generate.transmission.events <- function(inputs, eventlog) {
   us_comps <- inputs$get.unsampled.hosts()
   us_compnames <- sapply(us_comps, function(x){x$get.name()})
   # a source can transmit to multiple recipients, but cannot receive a transmission from one of its descendants
-  # `private$transmission.history` attr for each Compartment ensures this does not happen  <- could be useless.. pending judgement
   
   # main loop
   while (length(c(extant_comps, non_extant_comps)) > 1) {
@@ -129,7 +126,7 @@ generate.transmission.events <- function(inputs, eventlog) {
     # includes N_U and N_S for each type, and retrieves intrinsic base transmission rate of X --> Y transmission
     r_type <- recipient$get.type()$get.name()
     s_type <- source$get.type()$get.name()
-    base.rate <- inputs$get.types()[[r_type]]$get.transmission.rate(s_type)
+    base.rate <- inputs$get.types()[[r_type]]$get.branching.rate(s_type)
     popN <- init.data[[r_type]][s_type,]
     total.rate <- base.rate * (popN['U'] + popN['I']) * popN['S']  # total event rate   ... is popN['S'] for the recipient?
     

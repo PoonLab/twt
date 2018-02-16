@@ -3,10 +3,10 @@ require(R6)
 require(yaml)
 setwd('~/git/treeswithintrees')
 settings <- yaml.load_file('example2.yaml')
-test <- NestedCoalescent$new(settings)
+test <- MODEL$new(settings)
 e <- EventLogger$new()
 tips.n.heights <- init.fixed.samplings(test)
-init.fixed.transmissions(test, e)    # applies only to example1.yaml for now, since they provide a "host tree" w/ transmission events
+init.branching.events(test, e)    # applies only to example1.yaml for now, since they provide a "host tree" w/ transmission events
 e <- generate.transmission.events(test, e)
 transm.tree <- .to.transmission.tree(e)
 
@@ -15,7 +15,7 @@ transm.tree <- .to.transmission.tree(e)
 
 
 # Load all of the different objects into one larger class
-NestedCoalescent <- R6Class("NestedCoalescent",
+MODEL <- R6Class("NestedCoalescent",
   public = list(
     
     settings = NULL,
@@ -100,14 +100,14 @@ NestedCoalescent <- R6Class("NestedCoalescent",
       ## within each CompartmentType, there are distinct compartments with: 
       # individual transmission & migration rates
       # unsampled host & susceptible populations 
-      types <- sapply(names(settings$CompartmentType), function(x) {
-        params <- settings$CompartmentType[[x]]
+      types <- sapply(names(settings$CompartmentTypes), function(x) {
+        params <- settings$CompartmentTypes[[x]]
         x <- CompartmentType$new(name = x,
-                                 no.unsampled = eval(parse(text=paste('list', params$no.unsampled))),
-                                 no.susceptible = eval(parse(text=paste('list', params$no.susceptible))),
-                                 transmission.rates = eval(parse(text=paste('list', params$transmission.rates))),
+                                 unsampled = params$unsampled,
+                                 susceptible = params$susceptible,
+                                 branching.rates = eval(parse(text=paste('list', params$transmission.rates))),
                                  migration.rates = eval(parse(text=paste('list', params$migration.rates))),
-                                 coalescent.rate = params$coalescent.rate,
+                                 effective.size = params$effective.size,
                                  bottleneck.size = params$bottleneck.size
         )
       })
@@ -120,16 +120,11 @@ NestedCoalescent <- R6Class("NestedCoalescent",
       ## function creates "blank" Compartment objects for Unsampled Hosts (US) 
       ## stored in lists for each section within a CompartmentType object
       us.hosts <- sapply(self$types, function(x) {
-        types.unsampled <- names(x$no.unsampled)           # FIXME: accessing a private variable here; maybe add another public method in CompartmentType instead
-        
-        lapply(types.unsampled, function(y) {
-          nBlanks <- x$get.no.unsampled(y)
+          nBlanks <- x$get.unsampled()
           sapply(1:nBlanks, function(blank) {
             Compartment$new(name = paste0('US_', x$get.name(), '_', blank),
                             type = x)
           })
-        })
-        
       })
       self$unsampled.hosts <- unlist(us.hosts)
     },
@@ -149,13 +144,13 @@ NestedCoalescent <- R6Class("NestedCoalescent",
           stop(params$type, ' of Compartment ', comp, ' is not a specified Compartment Type object')
         }
         
-        nIndiv <- params$pop.size
+        nIndiv <- params$replicates
         
         sapply(1:nIndiv, function(obj) {
           Compartment$new(name = paste0(comp,'_', obj),            # unique identifier
                           type = typeObj,
                           source = params$source,        
-                          inf.time = params$inf.time,
+                          branching.time = params$branching.time,
                           sampling.time = params$sampling.time
           )
         })
@@ -197,7 +192,7 @@ NestedCoalescent <- R6Class("NestedCoalescent",
           stop(params$location, ' of Lineage ', label, ' is not a specified Compartment object')
         }
         
-        nIndiv <- params$pop.size
+        nIndiv <- params$replicates
         
         if (is.numeric(params$sampling.time)) {
           sampleTimes <- rep.int(params$sampling.time, times=nIndiv)
@@ -209,7 +204,7 @@ NestedCoalescent <- R6Class("NestedCoalescent",
                    'Sampling time "', vec, '" is of type `', typeof(vec), '`.\n')
           }
           if (length(sampleTimes) != nIndiv) {
-            stop('attribute `sampling.time` of Lineage ', label, ' does not match pop.size specified for respective Lineage.')
+            stop('attribute `sampling.time` of Lineage ', label, ' does not match number of replicates specified for respective Lineage.')
           }
         }
         

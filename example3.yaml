@@ -1,32 +1,33 @@
 # draft proposal for specification of within-host coalescent process
-CompartmentType:
-  'blood':                                        # assume only one blood compartment
-    no.unsampled: (blood=20, cell=20)
-    no.susceptible: (blood=20, cell=20)
-    transmission.rates: (blood=0.0, cell=0.05)    # no transmission to blood - transmission is to uninfected cell
+CompartmentTypes:
+  'blood':                                        # assume only one blood (plasma) compartment 
+    unsampled: 20
+    susceptible: 50                               # branching rate from cell -> blood is release of virus particles into blood
+    branching.rates: (blood=0.0, cell=0.05)       # blood no transmission to blood - transmission is to uninfected cell
     migration.rates: (blood=0.0, cell=0)          # assume no migration to infected cells
-    coalescent.rate: 0.0                          # no replication in blood
+    effective.size: 0.0                           # no replication in blood
     bottleneck.size: 1                            # assume a single virus enters an uninfected cell
   'cell':
-    no.unsampled: (blood=20, cell=20)
-    no.susceptible: (blood=20,cell=20)
-    transmission.rates: (blood=0.0, cell=0.0)     # assume no direct cell-to-cell transmission
-    migration.rates: (blood=0.01, cell=0)         # release of virus particles into blood
-    coalescent.rate: 0.01                         # extinction of lineages cannot be sampled, is expressed by coalescent rate
+    unsampled: 5
+    susceptible: 30
+    branching.rates: (blood=0.0, cell=0.0)        # assume no direct cell-to-cell transmission
+    migration.rates: (blood=0.01, cell=0)         # infection of a cell (migration rate from blood -> cell)
+    effective.size: 100                           # extinction of lineages cannot be sampled, is expressed by coalescent rate
     bottleneck.size: undefined
 Compartments:
   'blood':
-    type: blood                                  # reference to CompartmentType object
-    pop.size: 1
+    type: blood                                   # reference to CompartmentType object
+    replicates: 1
   'cell':
     type: cell
-    pop.size: 100                                # sampled, not total!
+    replicates: 100                               # sampled, not total!
 Lineages:
   'blood':
+    sampling.time: 0
     location: blood
-    pop.size: 100
-    sampling.time: 0
+    replicates: 100
   'cell':
-    location: cell
-    pop.size: 1                                   # if location has pop.size, then this is applied to each
     sampling.time: 0
+    location: cell
+    replicates: 1                                 # if location has replicates, then this is applied to each Compartment replicate
+    
