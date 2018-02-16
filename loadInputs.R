@@ -15,7 +15,7 @@ transm.tree <- .to.transmission.tree(e)
 
 
 # Load all of the different objects into one larger class
-MODEL <- R6Class("NestedCoalescent",
+MODEL <- R6Class("MODEL",
   public = list(
     
     settings = NULL,
@@ -105,7 +105,7 @@ MODEL <- R6Class("NestedCoalescent",
         x <- CompartmentType$new(name = x,
                                  unsampled = params$unsampled,
                                  susceptible = params$susceptible,
-                                 branching.rates = eval(parse(text=paste('list', params$transmission.rates))),
+                                 branching.rates = eval(parse(text=paste('list', params$branching.rates))),
                                  migration.rates = eval(parse(text=paste('list', params$migration.rates))),
                                  effective.size = params$effective.size,
                                  bottleneck.size = params$bottleneck.size
@@ -187,7 +187,7 @@ MODEL <- R6Class("NestedCoalescent",
         
         if (params$location %in% names(settings$Compartments)) {
           searchComps <- which(names(settings$Compartments) == params$location)
-          nlocationObj <- settings$Compartments[[ searchComps ]]$pop.size
+          nlocationObj <- settings$Compartments[[ searchComps ]]$replicates
         } else {
           stop(params$location, ' of Lineage ', label, ' is not a specified Compartment object')
         }
@@ -274,7 +274,6 @@ MODEL <- R6Class("NestedCoalescent",
     
     init.pairs = function() {
       # extract all pairs of pathogen lineages that may coalesce
-      self$get.locations()
       self$choices <- list()
       for (host in self$locations) {
         if (length(host) > 1) {

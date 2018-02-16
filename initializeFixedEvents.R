@@ -89,7 +89,7 @@ generate.transmission.events <- function(inputs, eventlog) {
   # for each CompartmentType: 
   indiv.types.comps <- sapply(unlist(inputs$get.extant_comps()), function(a){a$get.type()$get.name()})  
   active.lineages <- sapply(inputs$get.extant_lineages(), function(b){b$get.location()$get.type()$get.name()})
-  init.data <- lapply(inputs$get.types(), function(x) {
+  enumerate <- lapply(inputs$get.types(), function(x) {
     
     # 1. enumerate active compartments, including unsampled hosts (U) at time t=0
     U <- x$get.unsampled()
@@ -127,8 +127,9 @@ generate.transmission.events <- function(inputs, eventlog) {
     r_type <- recipient$get.type()$get.name()
     s_type <- source$get.type()$get.name()
     base.rate <- inputs$get.types()[[r_type]]$get.branching.rate(s_type)
-    popN <- init.data[[r_type]][s_type,]
-    total.rate <- base.rate * (popN['U'] + popN['I']) * popN['S']  # total event rate   ... is popN['S'] for the recipient?
+    s_popN <- enumerate[[s_type]]
+    r_popN <- enumerate[[r_type]]
+    total.rate <- base.rate * (s_popN['U'] + s_popN['I']) * r_popN['S']
     
     #if (total.rate == 0) {}  #can't accept this rate
     
@@ -143,8 +144,8 @@ generate.transmission.events <- function(inputs, eventlog) {
     eventlog$add.event('transmission', delta_t, obj1=NA, recipient$get.name(), source$get.name(), cumulative=FALSE)  # argument `lineage` is determined later at coalescence
     
     # update all counts
-    popN['S'] <- popN['S'] + 1
-    popN['I'] <- popN['I'] - 1       # if source is US_host, US-- and I++ as it moves from host_popn into extant list (cancels out)
+    r_popN['S'] <- r_popN['S'] + 1
+    r_popN['I'] <- r_popN['I'] - 1       # if source is US_host, US-- and I++ as it moves from host_popn into extant list (cancels out)
     
     if (source$get.name() %in% us_compnames) {
       extant_comps[[length(extant_comps)+1]] <- source
