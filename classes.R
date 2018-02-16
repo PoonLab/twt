@@ -16,11 +16,11 @@ CompartmentType  <- R6Class("CompartmentType",
     
     initialize = function(name=NA, unsampled = NA,
                           susceptible=NA, branching.rates=NA,
-                          coalescent.rate=NA, bottleneck.size=NA,
+                          effective.size=NA, bottleneck.size=NA,
                           migration.rates=NA) {
       self$name <- name
-      self$unsampled = no.unsampled
-      self$susceptible = no.susceptible
+      self$unsampled <- unsampled
+      self$susceptible <- susceptible
       self$branching.rates <- branching.rates               # named vector of transmission rates corresponding to different Compartment objects
       self$effective.size <- effective.size
       self$bottleneck.size <- bottleneck.size
