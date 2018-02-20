@@ -178,7 +178,7 @@ Lineage <- R6Class("Lineage",
       self$type
     },
     
-    get.sampling.time = function() {
+    get.sampling.time = function() {``
       self$sampling.time
     },
     
@@ -213,7 +213,7 @@ EventLogger <- R6Class("EventLogger",
                                             compartment1=character(),
                                             compartment2=character()
                                             ),
-                          event.noncumul=data.frame(event.type=character(),
+                          events.noncumul=data.frame(event.type=character(),
                                             time=numeric(),
                                             lineage1=character(),
                                             lineage2=character(),
@@ -244,24 +244,53 @@ EventLogger <- R6Class("EventLogger",
         eventList <- self$events.noncumul
       }
       indices <- which(eventList$event.type == event.type)
-      as.data.frame(t(sapply(indices, function(x) {eventList[x,]})))
+      if (length(indices) != 0) {
+        as.data.frame(t(sapply(indices, function(x) {eventList[x,]})))
+      } else {NULL}
+      
     },
     
     add.event = function(name, time, obj1, obj2, obj3, cumulative=TRUE) {
-      if (cumulative) {
-        # adding an event with cumulative time
+      
+      # grab all events with that particular name
+      current.events <- self$get.events(name)
+
+      if (cumulative) {  # if the event is given with a cumulative time
+        
         if (tolower(name) == 'transmission' || tolower(name) == 'migration') {
-          new.event <- list(event.type=name, time=time, lineage1=obj1, lineage2=NA, compartment1=obj2, compartment2=obj3)
-        } else if (tolower(name) == 'coalescent' || tolower(name) == 'bottleneck') {
-          new.event <- list(event.type=name, time=time, lineage1=obj1, lineage2=obj2, compartment1=obj3, compartment2=NA)
+          CumulEvent <- list(event.type=name, time=time, lineage1=obj1, lineage2=NA, compartment1=obj2, compartment2=obj3)
+          
+          # need to break down into individual delta t and store in self$events.noncumul
+          if (is.null(current.events) || obj2 %in% sapply(1:nrow(current.events), function(x){current.events[x,]$compartment2}) == F) {
+            nonCumulTime <- time
+          } else {
+            eventsAsSource <- which(sapply(1:nrow(current.events), function(x){current.events[x,]$compartment2}) == obj2)    # look for the recipient name in current sources
+            nonCumulTime <- time - max(unlist(current.events[eventsAsSource, 'time']))                                       # retrieve the event with the max "individual time"
+          }
+          nonCumulEvent <- list(event.type=name, time=nonCumulTime, lineage1=obj1, lineage2=NA, compartment1=obj2, compartment2=obj3)   # individual time for this event would be the cumulative time - max "cumulative" time 
+          
+        } else if (tolower(name) == 'coalescent') {
+          CumulEvent <- list(event.type=name, time=time, lineage1=obj1, lineage2=obj2, compartment1=obj3, compartment2=NA)
+          
+          # retrieve lineage1 cumulative event time
+          # store events with individual time as the cumulative time - cumulative lineage time
+          eventAsLineageCumulTime <- current.events[ which(current.events$time == obj1), 'time']
+          nonCumulTime <- time - eventAsLineageCumulTime
+          nonCumulEvent <- list(event.type=name, time=nonCumulTime, lineage1=obj1, lineage2=obj2, compartment1=obj3, compartment2=NA)
         } else {
           stop(name, 'is not an event name.')
         }
-        self$events <- rbind(self$events, new.event, stringsAsFactors=F)
-        
-        # need to break down into individual delta t and store in self$events.noncumul
+        self$events <- rbind(self$events, CumulEvent, stringsAsFactors=F)
+        self$events.noncumul <- rbind(self$events.noncumul, nonCumulEvent, stringsAsFactors=F)
         
       } else {
+        # need to add up individual delta t and convert into cumulative time and store into self$events
+        # grab all events with that particular name
+        # look for the recipient name in current sources
+        # get all of them, and retrieve the event with the max "cumulative" time
+        # cumulative time for this event would be the max event time + delta t
+        
+        
         # adding an event with only an individual delta t
         if (tolower(name) == 'transmission' || tolower(name) == 'migration') {
           new.event <- list(event.type=name, time=time, lineage1=obj1, lineage2=NA, compartment1=obj2, compartment2=obj3)
@@ -271,8 +300,7 @@ EventLogger <- R6Class("EventLogger",
           stop(name, 'is not an event name.')
         }
         self$events.noncumul <- rbind(self$events, new.event, stringsAsFactors=F)
-        
-        # need to add up individual delta t and convert into cumulative time and store into self$events
+        # don't forget to store in self$events
         
       }
       
