@@ -126,7 +126,7 @@ generate.transmission.events <- function(inputs, eventlog) {
     # includes N_U and N_S for each type, and retrieves intrinsic base transmission rate of X --> Y transmission
     r_type <- recipient$get.type()$get.name()
     s_type <- source$get.type()$get.name()
-    base.rate <- inputs$get.types()[[r_type]]$get.branching.rate(s_type)
+    base.rate <- inputs$get.types()[[s_type]]$get.branching.rate(r_type)
     s_popN <- enumerate[[s_type]]
     r_popN <- enumerate[[r_type]]
     total.rate <- base.rate * (s_popN['U'] + s_popN['I']) * r_popN['S']

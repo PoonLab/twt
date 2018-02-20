@@ -2,16 +2,16 @@
 CompartmentTypes:
   'blood':                                        # assume only one blood (plasma) compartment 
     unsampled: 20
-    susceptible: 50                               # branching rate from cell -> blood is release of virus particles into blood
-    branching.rates: (blood=0.0, cell=0.05)       # blood no transmission to blood - transmission is to uninfected cell
-    migration.rates: (blood=0.0, cell=0)          # assume no migration to infected cells
+    susceptible: 50                               
+    branching.rates: (blood=0.0, cell=0.0)        # blood no transmission to blood - transmission is to uninfected cell
+    migration.rates: (blood=0.0, cell=0.01)       # infection of a cell (migration rate from blood -> cell)
     effective.size: 0.0                           # no replication in blood
     bottleneck.size: 1                            # assume a single virus enters an uninfected cell
   'cell':
     unsampled: 5
-    susceptible: 30
-    branching.rates: (blood=0.0, cell=0.0)        # assume no direct cell-to-cell transmission
-    migration.rates: (blood=0.01, cell=0)         # infection of a cell (migration rate from blood -> cell)
+    susceptible: 30                               # branching rate from cell -> blood is release of virus particles into blood
+    branching.rates: (blood=0.05, cell=0.0)       # assume no direct cell-to-cell transmission
+    migration.rates: (blood=0.0, cell=0.0)        # assume no migration to infected cells
     effective.size: 100                           # extinction of lineages cannot be sampled, is expressed by coalescent rate
     bottleneck.size: undefined
 Compartments:
