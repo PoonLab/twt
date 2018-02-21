@@ -1,0 +1,18 @@
+# how would we encode an SI model?
+CompartmentTypes:
+  'host':
+    unsampled: 20
+    susceptible: 1000
+    branching.rates: (host=0.1)        # named vector of transmission rates to different CompartmentTypes
+    migration.rates: ()                # no migration (assume no superinfection)
+    effective.size: '5 + 0.1*t'        # R expression resolving Ne over time at a univariate function of time t
+    bottleneck.size: 1                 # bottleneck size when transmission event occurs
+Compartments:
+  'I':
+    type: host                         # CompartmentType 
+    replicates: 100  
+Lineages:
+  'I':
+    sampling.time: 0             
+    location: I
+    replicates: 6                      # implied to be per-host
