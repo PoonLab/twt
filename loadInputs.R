@@ -267,7 +267,7 @@ MODEL <- R6Class("MODEL",
         if (node$get.location()$get.name() %in% names(self$locations) == F) {
           self$locations[[node$get.location()$get.name()]] <- list()
         }
-        self$locations[[node$get.location()$get.name()]] <- c(self$locations[[node$get.location()$get.name()]], node)
+        self$locations[[node$get.location()$get.name()]] <- c(self$locations[[node$get.location()$get.name()]], node$get.name())
       }
     },
     
@@ -276,10 +276,13 @@ MODEL <- R6Class("MODEL",
     init.pairs = function() {
       # extract all pairs of pathogen lineages that may coalesce
       self$choices <- list()
-      for (host in self$locations) {
+      for (hostNum in seq_along(self$locations)) {
+        host <- self$locations[[hostNum]]
         if (length(host) > 1) {
-          for (pair in combn(host,2)) {
-            self$choices[[paste(pair[1], pair[2], sep=',')]] <- host
+          combns <- combn(host,2)
+          for (column in 1:ncol(combns)) {
+            pair <- combns[,column]
+            self$choices[[paste(pair[1], pair[2], sep=',')]] <- names(self$locations)[[hostNum]]
           }
         }
       }
