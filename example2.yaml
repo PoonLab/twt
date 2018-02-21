@@ -15,4 +15,4 @@ Lineages:
   'I':
     sampling.time: 0             
     location: I
-    replicates: 1                      # implied to be per-host
+    replicates: 6                      # implied to be per-host

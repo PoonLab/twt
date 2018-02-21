@@ -42,6 +42,7 @@ MODEL <- R6Class("MODEL",
       private$init.extant.comps()
       private$init.non.extant.comps()
       
+      private$init.locations()
       private$init.pairs()
     },
     
@@ -263,7 +264,7 @@ MODEL <- R6Class("MODEL",
       # collect host locations of all extant pathogen lineages into dict of host1: [path1, path2, path3, ...]
       self$locations <- list()      # reset list
       for (node in self$extant_lineages) {
-        if (node$get.location()$get.name() %in% names(self$locations)) {
+        if (node$get.location()$get.name() %in% names(self$locations) == F) {
           self$locations[[node$get.location()$get.name()]] <- list()
         }
         self$locations[[node$get.location()$get.name()]] <- c(self$locations[[node$get.location()$get.name()]], node)
