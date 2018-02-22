@@ -10,9 +10,9 @@ CompartmentTypes:
 Compartments:
   'I':
     type: host                         # CompartmentType 
-    replicates: 100  
+    replicates: 3  
 Lineages:
   'I':
     sampling.time: 0             
     location: I
-    replicates: 6                      # implied to be per-host
+    replicates: 4                      # implied to be per-host
