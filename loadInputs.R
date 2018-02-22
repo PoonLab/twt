@@ -109,7 +109,8 @@ MODEL <- R6Class("MODEL",
                                  branching.rates = eval(parse(text=paste('list', params$branching.rates))),
                                  migration.rates = eval(parse(text=paste('list', params$migration.rates))),
                                  effective.size = params$effective.size,
-                                 bottleneck.size = params$bottleneck.size
+                                 bottleneck.size = params$bottleneck.size,
+                                 popn.growth.dynamics = private$init.popn.growth.dynamics(params$popn.growth.dynamics)
         )
       })
       self$types <- unlist(types)
@@ -255,6 +256,49 @@ MODEL <- R6Class("MODEL",
         if (b$get.name() %in% extant.names == F) {b}
       })
       self$non_extant_comps <- unlist(res)
+    },
+    
+    
+    
+    init.popn.growth.dynamics = function(pieces) {
+      # @param pieces, list of linear pieces of a given CompartmentType
+      # @return matrix, where each row represents a linear piece and comprises the following columns
+        # start time
+        # end time
+        # intercept
+        # slope
+      mat <- matrix(nrow=length(pieces), ncol=4)
+      res <- t(sapply(seq_along(pieces), function(x) {
+        sapply(seq_along(pieces[[x]]), function(y){
+          if (names(pieces[[x]][[y]]) == 'end') {
+            if (is.character(pieces[[x]][[y]])) {         # deals with single case where end time infinity is of mode character
+              entry <- NA
+            } else {
+              entry <- pieces[[x]][[y]]
+            }
+          } else {
+            entry <- pieces[[x]][[y]]
+          }
+          mat[x,y] <- entry
+        })
+      }))
+      
+      # checks for the following:
+      
+      # only one piece must have a start time of zero
+      if ( length(which(res[,'start'] == 0)) != 1 ) {
+        stop ('One and only one linear piece in the population growth dynamics functions is allowed to have a start time of zero (foward in time).')
+      }
+      # only one piece must have an end time of infinity (undefined)
+      if ( length( which(sapply(res[,'end'], function(x){is.character(x)})) ) != 1 ) {
+        stop ('One and only one linear piece in the population growth dynamics functions is allowed to have an undefined end time (forward in time).')
+      }
+      # every other start time must have an equal end time and vice versa ( no gaps in time for piecewise growth function)
+      if ( length(intersect(res[,'start'], res[,'end'])) != (nrow(res)-1) ) {
+        stop ('There are time gaps and/or overlaps within the population growth dynamics functions.')
+      }
+      
+      res
     },
     
     

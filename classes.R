@@ -13,11 +13,12 @@ CompartmentType  <- R6Class("CompartmentType",
     effective.size = NULL,
     bottleneck.size = NULL,
     migration.rates = NULL,
+    popn.growth.dynamics = NULL,
     
     initialize = function(name=NA, unsampled = NA,
                           susceptible=NA, branching.rates=NA,
                           effective.size=NA, bottleneck.size=NA,
-                          migration.rates=NA) {
+                          migration.rates=NA, popn.growth.dynamics=NA) {
       self$name <- name
       self$unsampled <- unsampled
       self$susceptible <- susceptible
@@ -25,6 +26,7 @@ CompartmentType  <- R6Class("CompartmentType",
       self$effective.size <- effective.size
       self$bottleneck.size <- bottleneck.size
       self$migration.rates <- migration.rates               # named vector of migration rates of different Compartments
+      self$popn.growth.dynamics <- popn.growth.dynamics
     },
     
     get.bottleneck.size = function() {
@@ -63,6 +65,10 @@ CompartmentType  <- R6Class("CompartmentType",
     get.migration.rate = function(name.type) {
       rate <- self$migration.rates[[name.type]]
       rate
+    },
+    
+    get.popn.growth.dynamics = function() {
+      self$popn.growth.dynamics
     },
     
     set.bottleneck.size = function(new.size) {
