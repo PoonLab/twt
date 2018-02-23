@@ -129,7 +129,7 @@ generate.transmission.events <- function(inputs, eventlog) {
     base.rate <- inputs$get.types()[[s_type]]$get.branching.rate(r_type)
     s_popN <- enumerate[[s_type]]
     r_popN <- enumerate[[r_type]]
-    total.rate <- base.rate * (s_popN['U'] + s_popN['I']) * r_popN['S']
+    total.rate <- base.rate * (as.numeric(s_popN['U']) + as.numeric(s_popN['I'])) * as.numeric(r_popN['S'])
     
     #if (total.rate == 0) {}  #can't accept this rate
     
