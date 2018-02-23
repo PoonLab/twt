@@ -2,7 +2,7 @@
 require(R6)
 require(yaml)
 setwd('~/git/treeswithintrees')
-settings <- yaml.load_file('example2.yaml')
+settings <- yaml.load_file('example1.yaml')
 test <- MODEL$new(settings)
 e <- EventLogger$new()
 tips.n.heights <- init.fixed.samplings(test)

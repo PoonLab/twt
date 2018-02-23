@@ -266,12 +266,22 @@ EventLogger <- R6Class("EventLogger",
       }
       
       if (tolower(name) == 'transmission' || tolower(name) == 'migration') {
-        if (is.null(current.events) || obj2 %in% sapply(1:nrow(current.events), function(x){current.events[x,]$compartment2}) == F) {
+        if (is.null(current.events)) {
           if (cumulative) {
             nonCumulTime <- time
           } else {
             CumulTime <- time
           }
+        } else if (obj2 %in% sapply(1:nrow(current.events), function(x){current.events[x,]$compartment2}) == F) {
+          if (cumulative) {
+            nonCumulTime <- time
+          } else {
+            CumulTime <- time
+          }
+          # if (obj3 %in% sapply(1:nrow(current.events), function(x){current.events[x,]$compartment1})) {
+          #   private$modify.times(name, time, CumulTime, obj3, cumulative)
+          # }
+          
         } else {
           eventsAsSource <- which(sapply(1:nrow(current.events), function(x){current.events[x,]$compartment2}) == obj2)
           maxTime <- max(unlist(current.events[eventsAsSource, 'time']))
@@ -280,6 +290,9 @@ EventLogger <- R6Class("EventLogger",
           } else {
             CumulTime <- time + maxTime
           }
+          # if (obj3 %in% sapply(1:nrow(current.events), function(x){current.events[x,]$compartment1})) {
+          #   private$modify.times(name, time, CumulTime, obj3, cumulative)
+          # }
         }
         
         CumulEvent <- list(event.type=name, time=CumulTime, lineage1=obj1, lineage2=NA, compartment1=obj2, compartment2=obj3)
@@ -316,6 +329,41 @@ EventLogger <- R6Class("EventLogger",
     }
     
   ),
-  private = list()
+  private = list(
+    # 
+    # modify.times = function(name, time, CumulTime, sourceName, cumulative) {
+    #   event.type.indices <- which(self$events$event.type == name)
+    #   # now check if the source is present in the recipient list, and re-modify CumulTime or nonCumulTime of those entries
+    #   
+    #   entry <- which(sapply(1:nrow(self$get.events(name)), function(x){current.events[x,]$compartment1 == sourceName}))
+    #   current.cumulTime <- as.numeric(self$get.events(name)[entry, 'time'])
+    #   current.nonCumulTime <- as.numeric(self$get.events(name, cumulative=F)[entry, 'time'])
+    #   
+    #   if (cumulative) {
+    #     if (current.cumulTime > time) {
+    #       modifiedTime <- current.cumulTime - time
+    #       if (current.nonCumulTime > modifiedTime) {
+    #         self$events.noncumul[event.type.indices[entry],'time'] <- modifiedTime
+    #       }
+    #     }
+    #   } else {
+    #     if (self$get.events(name)[entry, 'compartment2'] %in% sapply(1:nrow(current.events), function(x){self$get.events(name)[x,]$compartment1}) ) {
+    #       name <- self$get.events(name)[entry, 'compartment2']
+    #       time <- self$get.events(name, cumulative=F)[entry, 'time']
+    #       CumulTime <- self$get.events(name)[entry, 'time']
+    #       sourceName <- self$get.events(name)[which(sapply(1:nrow(current.events), function(x){self$get.events(name)[x,]$compartment1})), 'compartment2']
+    #       CumulTime <- modify.times(name, time, CumulTime, sourceName, cumulative)      ## will need to be RECURSIVE
+    #     }
+    #     modifiedTime <- CumulTime + current.nonCumulTime
+    #     if (modifiedTime > current.cumulTime ) {
+    #       self$events[event.type.indices[entry], 'time'] <- modifiedTime
+    #     }
+    #     
+    #   }
+    #   
+    #  
+    # }
+    
+  )
 )
 
