@@ -7,12 +7,36 @@ CompartmentTypes:
     migration.rates: ()                # no migration (assume no superinfection)
     effective.size: '5 + 0.1*t'        # R expression resolving Ne over time at a univariate function of time t
     bottleneck.size: 1                 # bottleneck size when transmission event occurs
+    popn.growth.dynamics:
+      piece1:
+        - start: 0
+        - end: 0.75
+        - intercept: 1              # at t=0, popn starts at the bottleneck size
+        - slope: 15
+      piece2:
+        - start: 0.75
+        - end: 1.5
+        - intercept: -15
+        - slope: 41
+      piece3:
+        - start: 1.5
+        - end: 2.25
+        - intercept: 90
+        - slope: -30
+      piece4:
+        - start: 2.25
+        - end: inf
+        - intercept: 30
+        - slope: -2
+LineageType:
+  'virus':
+    # no parameters for now -- this class would allow for heterogeneity in transmission dynamics among pathogens
 Compartments:
   'I':
     type: host                         # CompartmentType 
-    replicates: 3  
+    replicates: 2  
 Lineages:
   'I':
     sampling.time: 0             
     location: I
-    replicates: 4                      # implied to be per-host
+    replicates: 3                      # implied to be per-host

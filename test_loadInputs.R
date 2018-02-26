@@ -25,36 +25,50 @@ test.get.nonterminals <- function() {
 
 test.get.pairs <- function() {
   result <- test$get.pairs() # extract all pairs of pathogen lineages that may coalesce
-  expected <- list(`I_1,I_2`="I_3", # need to change the function to include all possible pairs instead of only pairs in the last host
-                   `I_1,I_3`="I_3",
-                   `I_1,I_4`="I_3",
-                   `I_2,I_3`="I_3",
-                   `I_2,I_4`="I_3",
-                   `I_3,I_4`="I_3")
+  expected <- list(`I_1:I_1,I_1:I_2`="I_1", 
+                   `I_1:I_1,I_1:I_3`="I_1",
+                   `I_1:I_2,I_1:I_3`="I_1",
+                   `I_2:I_1,I_2:I_2`="I_2",
+                   `I_2:I_1,I_2:I_3`="I_2",
+                   `I_2:I_2,I_2:I_3`="I_2")
   checkEquals(expected, result)
 }
 
-test.add.pair <- function() {
-  test$add.pair("I_1","I_2","I_1") 
+test.add.pair1 <- function() {
+  test$add.pair('I_1:I_2','I_1:I_1',"I_2") 
   result <- test$get.pairs() # when a Lineage is moved from one compartment to another (transmission or migration) or when a Lineage is sampled
-  expected <- list(`I_1,I_2`="I_1", # need to change the function so that the order of L1 and L2 does not matter
-                   `I_1,I_3`="I_3",
-                   `I_1,I_4`="I_3",
-                   `I_2,I_3`="I_3",
-                   `I_2,I_4`="I_3",
-                   `I_3,I_4`="I_3")
+  expected <- list(`I_1:I_1,I_1:I_2`="I_2", 
+                   `I_1:I_1,I_1:I_3`="I_1",
+                   `I_1:I_2,I_1:I_3`="I_1",
+                   `I_2:I_1,I_2:I_2`="I_2",
+                   `I_2:I_1,I_2:I_3`="I_2",
+                   `I_2:I_2,I_2:I_3`="I_2")
+  checkEquals(expected, result)
+}
+
+test.add.pair2 <- function() {
+  test <- MODEL$new(settings)
+  test$add.pair('I_1:I_2','I_2:I_1',"I_2") 
+  result <- test$get.pairs() # when a Lineage is moved from one compartment to another (transmission or migration) or when a Lineage is sampled
+  expected <- list(`I_1:I_1,I_1:I_2`="I_1", 
+                   `I_1:I_1,I_1:I_3`="I_1",
+                   `I_1:I_2,I_1:I_3`="I_1",
+                   `I_2:I_1,I_2:I_2`="I_2",
+                   `I_2:I_1,I_2:I_3`="I_2",
+                   `I_2:I_2,I_2:I_3`="I_2",
+                   `I_1:I_2,I_2:I_1`="I_2")
   checkEquals(expected, result)
 }
 
 test.remove.pair <- function() {
-  test$remove.pair("I_3","I_4") 
+  test$remove.pair('I_1:I_3','I_1:I_1') 
   result <- test$get.pairs() # when a Lineage is moved from one compartment to another (transmission or migration) or when a Lineage is sampled
-  expected <- list(`I_1,I_2`="I_3", # function not working
-                   `I_1,I_3`="I_3",
-                   `I_1,I_4`="I_3",
-                   `I_2,I_3`="I_3",
-                   `I_2,I_4`="I_3",
-                   `I_3,I_4`=NULL)
+  expected <- list(`I_1:I_1,I_1:I_2`="I_1", 
+                   `I_1:I_2,I_1:I_3`="I_1",
+                   `I_2:I_1,I_2:I_2`="I_2",
+                   `I_2:I_1,I_2:I_3`="I_2",
+                   `I_2:I_2,I_2:I_3`="I_2",
+                   `I_1:I_2,I_2:I_1`="I_2")
   checkEquals(expected, result)
 }
 
