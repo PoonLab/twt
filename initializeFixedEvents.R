@@ -104,22 +104,26 @@ generate.transmission.events <- function(inputs, eventlog) {
     data.frame(U=U, A=A, I=I, S=S)
   })
   
-  extant_comps <- inputs$get.extant_comps()
-  non_extant_comps <- inputs$get.non_extant_comps()
+  sampled_comps <- inputs$get.extant_comps()                # initialize sampled Compartments as those currently existing with Lineages at sampling.time = 0
+  not_yet_sampled_comps <- inputs$get.non_extant_comps()    # initialize not yet sampled Compartmentss as the remaining Compartments with Lineages not yet sampled
+  nys_compnames <- sapply(not_yet_sampled_comps, function(x){x$get.name()})
   us_comps <- inputs$get.unsampled.hosts()
   us_compnames <- sapply(us_comps, function(x){x$get.name()})
   # a source can transmit to multiple recipients, but cannot receive a transmission from one of its descendants
   
   # main loop
-  while (length(c(extant_comps, non_extant_comps)) > 1) {
+  while (length(sampled_comps) > 1) {
     # grab a recipient from list of extant
-    r_ind <- sample(1:length(extant_comps), 1)
-    recipient <- extant_comps[[r_ind]]
-    extant_comps[[r_ind]] <- NULL            # remove chosen recipient from list of extant, as well as host_popn
+    r_ind <- sample(1:length(sampled_comps), 1)
+    recipient <- sampled_comps[[r_ind]]
+    sampled_comps[[r_ind]] <- NULL            # remove chosen recipient from list of extant, as well as host_popn
     
-    host_popn <- c(extant_comps, non_extant_comps, us_comps)
-    s_ind <- sample(1:length(host_popn), 1)  # sample source from combined list of extant and unsampled-infected hosts
-    source <- host_popn[[s_ind]]
+    # filter sampled, not-yet-sampled, and unsampled-infected hosts to excluded those with intrinsic transmission rate = 0
+    filtered_popn <- sapply(c(sampled_comps, not_yet_sampled_comps, us_comps), function(x) {
+      intrins.rate <- inputs$get.types()[[ x$get.type()$get.name() ]]$get.branching.rate( recipient$get.type()$get.name() )
+      if (intrins.rate == 0) {NULL} else {x}
+    })
+    source <- sample(filtered_popn, 1)[[1]]  # sample source from filtered population
     
     
     # calculate total event rate (lambda) = intrinsic base rate (ie. rate of TypeA --> TypeB transmission) x N_TypeA x N_TypeB
@@ -130,8 +134,6 @@ generate.transmission.events <- function(inputs, eventlog) {
     s_popN <- enumerate[[s_type]]
     r_popN <- enumerate[[r_type]]
     total.rate <- base.rate * (as.numeric(s_popN['U']) + as.numeric(s_popN['I'])) * as.numeric(r_popN['S'])
-    
-    #if (total.rate == 0) {}  #can't accept this rate
     
     # calculate change in time between source transmitting to recipient
     delta_t <- rexp(n = 1, rate = as.numeric(total.rate))
@@ -147,11 +149,19 @@ generate.transmission.events <- function(inputs, eventlog) {
     r_popN['S'] <- r_popN['S'] + 1
     r_popN['I'] <- r_popN['I'] - 1       # if source is US_host, US-- and I++ as it moves from host_popn into extant list (cancels out)
     
+    # if a US host enters the sampled_comps, then it must be removed from the us_comps list to avoid duplication
     if (source$get.name() %in% us_compnames) {
-      extant_comps[[length(extant_comps)+1]] <- source
-      us_ind <- which(us_compnames == source$get.name())
-      us_compnames <- us_compnames[-us_ind]
-      us_comps[[us_ind]] <- NULL          # if a US host enters the extant_comps, then it must be removed from the us_comps list to avoid duplication
+      sampled_comps[[length(sampled_comps)+1]] <- source
+      source_ind <- which(us_compnames == source$get.name())
+      us_compnames <- us_compnames[-source_ind]
+      us_comps[[source_ind]] <- NULL          
+    }
+    # if a not-yet-sampled Compartment enters the sampled_comps, then it must be removed from the NYS comps lists to avoid duplication
+    if (source$get.name() %in% nys_compnames) {
+      sampled_comps[[length(sampled_comps)+1]] <- source
+      source_ind <- which(nys_compnames == source$get.name())
+      nys_compnames <- nys_compnames[-source.ind]
+      not_yet_sampled_comps[[source_ind]] <- NULL
     }
     
   }
@@ -162,8 +172,9 @@ generate.transmission.events <- function(inputs, eventlog) {
 
 
 .to.transmission.tree <- function(eventlog) {
+  require(ape, quietly=TRUE)
   # function converts the transmission events stored in an EventLogger object into a transmission tree
-  
+
   t_events <- eventlog$get.events('transmission', cumulative=FALSE)
   tips <- unlist(setdiff(t_events$compartment1, t_events$compartment2))
   internals <- unlist(intersect(t_events$compartment1, t_events$compartment2))
