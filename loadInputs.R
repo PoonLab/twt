@@ -290,7 +290,7 @@ MODEL <- R6Class("MODEL",
       
       # only one piece must have a start time of zero
       if ( length(which(res[,'start'] == 0)) != 1 ) {
-        stop ('One and only one linear piece in the population growth dynamics functions is allowed to have a start time of zero (foward in time).')
+        stop ('One and only one linear piece in the population growth dynamics functions is allowed to have a start time of zero (forward in time).')
       }
       # only one piece must have an end time of infinity (undefined)
       if ( length( which(sapply(res[,'end'], function(x){is.character(x)})) ) != 1 ) {

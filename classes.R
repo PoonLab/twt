@@ -184,7 +184,7 @@ Lineage <- R6Class("Lineage",
       self$type
     },
     
-    get.sampling.time = function() {``
+    get.sampling.time = function() {
       self$sampling.time
     },
     
