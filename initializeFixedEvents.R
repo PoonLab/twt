@@ -123,6 +123,9 @@ generate.transmission.events <- function(inputs, eventlog) {
       intrins.rate <- inputs$get.types()[[ x$get.type()$get.name() ]]$get.branching.rate( recipient$get.type()$get.name() )
       if (intrins.rate == 0) {NULL} else {x}
     })
+    if (length(filtered_popn) == 0) {
+      stop ('The intrinsic transmission rates for all possible sources are set to zero, or all sources are extinct.')
+    }
     source <- sample(filtered_popn, 1)[[1]]  # sample source from filtered population
     
     

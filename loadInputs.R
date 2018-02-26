@@ -81,13 +81,16 @@ MODEL <- R6Class("MODEL",
     add.pair = function(L1, L2, host) {
       # when a Lineage is moved from one compartment to another (transmission or migration)
       # when a Lineage is sampled
-      self$choices[[paste(L1, L2, sep=',')]] <- host
+      # can also be used to update the location of a pair
+      pair <- sort(c(L1, L2))
+      self$choices[[paste(pair[1], pair[2], sep=',')]] <- host
     },
     
     remove.pair = function(L1, L2) {
       # when a coalescence occurs
       # when Lineages reach a tranmission bottleneck, forcing coalescence
-      self$choices[[paste(L2, L2, sep=',')]] <- NULL
+      pair <- sort(c(L1, L2))
+      self$choices[[paste(pair[1], pair[2], sep=',')]] <- NULL
     }
     
   ),
@@ -215,7 +218,7 @@ MODEL <- R6Class("MODEL",
             # set 'pointer' to Compartment object for location
             searchComps <- sapply(self$compartments, function(y){which(y$get.name() == paste0(params$location, '_', compNum))})
             locationObj <- self$compartments[[ which( searchComps == 1) ]]
-            Lineage$new(name = paste0(label,'_',obj),                          # unique identifier
+            Lineage$new(name = paste0(locationObj$get.name(),':',label,'_',obj),                          # unique identifier
                         type = params$type,
                         sampling.time = sampleTimes[obj],
                         location = locationObj
@@ -325,7 +328,7 @@ MODEL <- R6Class("MODEL",
         if (length(host) > 1) {
           combns <- combn(host,2)
           for (column in 1:ncol(combns)) {
-            pair <- combns[,column]
+            pair <- sort(unlist(combns[,column]))
             self$choices[[paste(pair[1], pair[2], sep=',')]] <- names(self$locations)[[hostNum]]
           }
         }
