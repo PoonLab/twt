@@ -8,7 +8,6 @@ CompartmentTypes:
     susceptible: 1000
     branching.rates: (host=0.2)     # only one CompartmentType, in this case represents transmission rates
     migration.rates: ()             # assume no migration
-    effective.size: 25              # single Ne to be applied to all objects of this CompartmentType
     bottleneck.size: 1              # bottleneck size when transmission event occurs
     popn.growth.dynamics:
       piece1:

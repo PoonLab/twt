@@ -111,7 +111,6 @@ MODEL <- R6Class("MODEL",
                                  susceptible = params$susceptible,
                                  branching.rates = eval(parse(text=paste('list', params$branching.rates))),
                                  migration.rates = eval(parse(text=paste('list', params$migration.rates))),
-                                 effective.size = params$effective.size,
                                  bottleneck.size = params$bottleneck.size,
                                  popn.growth.dynamics = private$init.popn.growth.dynamics(params$popn.growth.dynamics)
         )

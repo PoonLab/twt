@@ -33,10 +33,6 @@ CompartmentType  <- R6Class("CompartmentType",
       self$bottleneck.size
     },
     
-    get.effective.size = function() {
-      self$effective.size
-    },
-    
     get.name = function() {
       self$name
     },
@@ -54,8 +50,7 @@ CompartmentType  <- R6Class("CompartmentType",
     },
     
     get.branching.rate = function(name.type) {
-      rate <- self$branching.rates[[name.type]]
-      rate
+      self$branching.rates[[name.type]]
     },
     
     get.migration.rates = function() {
@@ -63,8 +58,7 @@ CompartmentType  <- R6Class("CompartmentType",
     },
     
     get.migration.rate = function(name.type) {
-      rate <- self$migration.rates[[name.type]]
-      rate
+      self$migration.rates[[name.type]]
     },
     
     get.popn.growth.dynamics = function() {
@@ -74,10 +68,6 @@ CompartmentType  <- R6Class("CompartmentType",
     set.bottleneck.size = function(new.size) {
       self$bottleneck.size <- new.size
     }, 
-    
-    set.effective.size = function(new.size) {            # could also set Ne as a univariate function in mode character()
-      self$effective.size <- new.size
-    },
     
     set.name = function(new.name) {
       self$name <- new.name
