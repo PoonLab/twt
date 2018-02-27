@@ -86,7 +86,7 @@ CompartmentType  <- R6Class("CompartmentType",
     },
     
     set.migration.rate = function(name.type, new.rate) {
-      self$migrations.rates[[name.type]] <- new.rate
+      self$migration.rates[[name.type]] <- new.rate
     }
     
   ),

@@ -5,7 +5,6 @@ CompartmentTypes:
     susceptible: 1000
     branching.rates: (host=0.1)        # named vector of transmission rates to different CompartmentTypes
     migration.rates: ()                # no migration (assume no superinfection)
-    effective.size: '5 + 0.1*t'        # R expression resolving Ne over time at a univariate function of time t
     bottleneck.size: 1                 # bottleneck size when transmission event occurs
     popn.growth.dynamics:
       piece1:
