@@ -1,7 +1,7 @@
 # how would we encode an SI model?
 CompartmentTypes:
   'host':
-    unsampled: 20
+    unsampled: 5
     susceptible: 1000
     branching.rates: (host=0.1)        # named vector of transmission rates to different CompartmentTypes
     migration.rates: ()                # no migration (assume no superinfection)
@@ -15,9 +15,9 @@ CompartmentTypes:
 Compartments:
   'I':
     type: host                         # CompartmentType 
-    replicates: 100  
+    replicates: 10
 Lineages:
   'I':
     sampling.time: 0             
     location: I
-    replicates: 6                      # implied to be per-host
+    replicates: 1                      # implied to be per-host

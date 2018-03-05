@@ -2,7 +2,7 @@
 require(R6)
 require(yaml)
 setwd('~/git/treeswithintrees')
-settings <- yaml.load_file('example1.yaml')
+settings <- yaml.load_file('example2.yaml')
 test <- MODEL$new(settings)
 e <- EventLogger$new()
 tips.n.heights <- init.fixed.samplings(test)
@@ -10,7 +10,24 @@ init.branching.events(test, e)    # applies only to example1.yaml for now, since
 e <- generate.transmission.events(test, e)
 transm.tree <- .to.transmission.tree(e)
 
-
+e <- EventLogger$new()
+sapply(1:nrow(file), function(x) {
+  e$add.event(name=file[x,'event.type'], 
+                    time=file[x,'time'], 
+                    obj1=file[x,'lineage1'], 
+                    obj2=file[x,'compartment1'], 
+                    obj3=file[x,'compartment2'], 
+                    cumulative=F)
+})
+e.mixed <- EventLogger$new()
+sapply(1:nrow(mixed.file), function(x) {
+  e.mixed$add.event(name=mixed.file[x,'event.type'], 
+                    time=mixed.file[x,'time'], 
+                    obj1=mixed.file[x,'lineage1'], 
+                    obj2=mixed.file[x,'compartment1'], 
+                    obj3=mixed.file[x,'compartment2'], 
+                    cumulative=F)
+})
 
 
 
