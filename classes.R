@@ -224,10 +224,10 @@ EventLogger <- R6Class("EventLogger",
     },
     
     get.all.events = function(cumulative=TRUE) {
-      if (nrow(self$events) == 0) {cat('No events to display.')}
+      if (nrow(self$events.noncumul) == 0) {cat('No events to display.')}
       else {
         if (cumulative) { 
-          self$events                       # default eventlog shows cumulative time b/c user can input cumulative inf.times manually, and those must be cumulative
+          private$generate.cumul.eventlog(self$events.noncumul)                        # default eventlog shows cumulative time b/c more user friendly
         } else {
           self$events.noncumul
         }
@@ -247,66 +247,13 @@ EventLogger <- R6Class("EventLogger",
       
     },
     
-    add.event = function(name, time, obj1, obj2, obj3, cumulative=TRUE) {
-      #current.events <- self$get.events(name)                  # retrieve all events with that particular name
-      
-      if (cumulative) {
-        CumulTime <- time
-      } else {
-        nonCumulTime <- time
-      }
-      
+    add.event = function(name, time, obj1, obj2, obj3) {
       if (tolower(name) == 'transmission' || tolower(name) == 'migration') {
-        if (is.null(self$get.events(name))) {
-          if (cumulative) {
-            nonCumulTime <- time
-          } else {
-            CumulTime <- time
-          }
-          
-        } else if (obj2 %in% sapply(1:nrow(self$get.events(name)), function(x){self$get.events(name)[x,]$compartment2}) == F) {
-          if (cumulative) {
-            nonCumulTime <- time
-          } else {
-            CumulTime <- time
-          }
-        
-        } else {
-          eventsAsSource <- which(sapply(1:nrow(self$get.events(name)), function(x){self$get.events(name)[x,]$compartment2}) == obj2)
-          maxTime <- max(unlist(self$get.events(name)[eventsAsSource, 'time']))
-          if (cumulative) {
-            nonCumulTime <- time - maxTime
-          } else {
-            CumulTime <- time + maxTime
-          }
-        }
-        
-        CumulEvent <- list(event.type=name, time=CumulTime, lineage1=obj1, lineage2=NA, compartment1=obj2, compartment2=obj3)
-        nonCumulEvent <- list(event.type=name, time=nonCumulTime, lineage1=obj1, lineage2=NA, compartment1=obj2, compartment2=obj3)
-
+        nonCumulEvent <- list(event.type=name, time=time, lineage1=obj1, lineage2=NA, compartment1=obj2, compartment2=obj3)
       } else if (tolower(name) == 'coalescent') {
-        
-        tCumul.lin1 <- self$get.events(name)[ which(self$get.events(name)$time == obj1), 'time']
-        if (cumulative) {
-          nonCumulTime <- time - tCumul.lin1
-        } else {
-          CumulTime <- time + tCumul.lin1
-        }
-        
-        CumulEvent <- list(event.type=name, time=CumulTime, lineage1=obj1, lineage2=obj2, compartment1=obj3, compartment2=NA)
-        nonCumulEvent <- list(event.type=name, time=nonCumulTime, lineage1=obj1, lineage2=obj2, compartment1=obj3, compartment2=NA)
-        
-      } else {
-        stop(name, 'is not an event name.')
+        nonCumulEvent <- list(event.type=name, time=time, lineage1=obj1, lineage2=obj2, compartment1=obj3, compartment2=NA)
       }
-      
-      self$events <- rbind(self$events, CumulEvent, stringsAsFactors=F)
       self$events.noncumul <- rbind(self$events.noncumul, nonCumulEvent, stringsAsFactors=F)
-      
-      # now check if the source is present in the recipient list, and re-modify CumulTime or nonCumulTime of those entries
-      if (obj3 %in% sapply(1:nrow(self$get.events(name)), function(x){self$get.events(name)[x,]$compartment1})) {
-        private$modify.times(name, nonCumulEvent$time, CumulEvent$time, obj3)
-      }
     },
     
     clear.events = function() {
@@ -322,6 +269,10 @@ EventLogger <- R6Class("EventLogger",
   ),
   private = list(
 
+    generate.cumul.eventlog = function(noncumul.eventlog) {
+      
+    },
+    
     modify.times = function(name, nonCumulTime, CumulTime, sourceName) {
       event.type.indices <- which(self$events$event.type == name)
       

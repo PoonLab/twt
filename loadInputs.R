@@ -16,8 +16,7 @@ sapply(1:nrow(file), function(x) {
                     time=file[x,'time'], 
                     obj1=file[x,'lineage1'], 
                     obj2=file[x,'compartment1'], 
-                    obj3=file[x,'compartment2'], 
-                    cumulative=F)
+                    obj3=file[x,'compartment2'])
 })
 e.mixed <- EventLogger$new()
 sapply(1:nrow(mixed.file), function(x) {
