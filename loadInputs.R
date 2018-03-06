@@ -30,6 +30,10 @@ sapply(1:nrow(mixed.file), function(x) {
 })
 
 
+x <- EventLogger$new()
+x$add.event('transmission',  2.597914e-04, NA, 'US_host_8', 'US_host_2')
+x$add.event('transmission',  8.423922e-04, NA, 'US_host_10', 'US_host_8')
+
 
 # Load all of the different objects into one larger class
 MODEL <- R6Class("MODEL",

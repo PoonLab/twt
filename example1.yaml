@@ -53,7 +53,7 @@ Compartments:
 Lineages:
   '1': 
     type: virus
-    sampling.time: 0.0  # could either be a single sampling time, or a vector of multiple, where we will then create distinct Lineages
+    sampling.time: (0.0, 2.0, 3.0)  # could either be a single sampling time, or a vector of multiple, where we will then create distinct Lineages
     location: A                     # at sampling, will change as we go back in time
     replicates: 3
   '2': 
