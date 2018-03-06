@@ -2,7 +2,7 @@ require(R6)
 require(RUnit)
 require(yaml)
 source('loadInputs.R')
-settings <- yaml.load_file('test.yaml')
+settings <- yaml.load_file('tests/fixtures/test.yaml')
 test <- MODEL$new(settings)
 
 # create an EventLogger object for testing
@@ -167,21 +167,17 @@ test.get.lineages <- function(){
 
 test.get.extant_lineages <- function(){
   result <- test$get.extant_lineages()
-  checkEquals(6, length(result))
+  checkEquals(4, length(result))
   result.hosts <- sapply(result,function(x){
     x$get.location()$get.name()
   })
-  checkEquals(3, length(which(result.hosts=='I_1')))
-  checkEquals(3, length(which(result.hosts=='I_2')))
+  checkEquals(2, length(which(result.hosts=='I_1')))
+  checkEquals(2, length(which(result.hosts=='I_2')))
   result.times <- sapply(result,function(x){
     x$get.sampling.time()
   })
-  expected.times <- rep(0, 6)
+  expected.times <- rep(0, 4)
   checkEquals(expected.times, result.times)
-  
-  result[[1]]$set.sampling.time(2)
-  result.after <- test$get.extant_lineages() # problem with init.extant.lineages
-  checkEquals(5, length(result.after))
 }
 
 test.get.extant_comps <- function(){
