@@ -109,7 +109,7 @@ test.get.types <- function(){
 }
 
 test.get.unsampled.hosts <- function(){
-  result <- test$get.unsampled.hosts()
+  result <- test$get.unsampled.hosts() # function creates "blank" Compartment objects for Unsampled Hosts (US), stored in lists for each section within a CompartmentType object
   checkEquals(20, length(result))
   
   result.names <-sapply(result, function(x){
@@ -147,23 +147,52 @@ test.get.compartments <- function(){
 test.get.lineages <- function(){
   result <- test$get.lineages()
   checkEquals(6, length(result))
-
+  
+  result.hosts <- sapply(result,function(x){
+    x$get.location()$get.name()
+  })
+  checkEquals(3, length(which(result.hosts=='I_1')))
+  checkEquals(3, length(which(result.hosts=='I_2')))
+  
+  result.times <- sapply(result,function(x){
+    x$get.sampling.time()
+  })
+  expected.times <- rep(0, 6)
+  checkEquals(expected.times, result.times)
+  
+  result[[1]]$set.location(test$get.compartments(),'I_2')
+  new.location <- result[[1]]$get.location()$get.name()
+  checkEquals('I_2', new.location)
 }
 
 test.get.extant_lineages <- function(){
   result <- test$get.extant_lineages()
+  checkEquals(6, length(result))
+  result.hosts <- sapply(result,function(x){
+    x$get.location()$get.name()
+  })
+  checkEquals(3, length(which(result.hosts=='I_1')))
+  checkEquals(3, length(which(result.hosts=='I_2')))
+  result.times <- sapply(result,function(x){
+    x$get.sampling.time()
+  })
+  expected.times <- rep(0, 6)
+  checkEquals(expected.times, result.times)
   
+  result[[1]]$set.sampling.time(2)
+  result.after <- test$get.extant_lineages() # problem with init.extant.lineages
+  checkEquals(5, length(result.after))
 }
 
 test.get.extant_comps <- function(){
   result <- test$get.extant_comps()
-  
-  checkEquals(expected, result)
+  checkEquals(2, length(result))
+  checkEquals('I_1', result[[1]]$get.name())
+  checkEquals('I_2', result[[2]]$get.name())
 }
 
 test.get.non_extant_comps <- function(){
   result <- test$get.non_extant_comps()
-  
-  checkEquals(expected, result)
+  checkEquals(NULL, result)
 }
 
