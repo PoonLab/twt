@@ -234,12 +234,8 @@ EventLogger <- R6Class("EventLogger",
       }
     },
     
-    get.events = function(event.type, cumulative=TRUE) {
-      if (cumulative) {
-        eventList <- self$events
-      } else {
-        eventList <- self$events.noncumul
-      }
+    get.events = function(event.type) {
+      eventList <- self$events.noncumul
       indices <- which(eventList$event.type == event.type)
       if (length(indices) != 0) {
         as.data.frame(t(sapply(indices, function(x) {eventList[x,]})))
@@ -270,30 +266,50 @@ EventLogger <- R6Class("EventLogger",
   private = list(
 
     generate.cumul.eventlog = function(noncumul.eventlog) {
-      
+      event.types <- unique(noncumul.eventlog$event.type)        # up to 3 different event types
+      # for each type of event (transmission, migration, and/or coalescent)
+      sapply(event.types, function(event.name) {
+        # retrieve set of events of the event.name type
+        events <- noncumul.eventlog$get.events(event.name)
+        
+        # find the longest path from root to tip
+        maxTime <- find.max.time(events)
+        
+        # trace from root to tips and calculate all subsequent cumulative times based on maxTime (end time of transmission tree simulation)
+        
+      })
     },
     
-    modify.times = function(name, nonCumulTime, CumulTime, sourceName) {
-      event.type.indices <- which(self$events$event.type == name)
+    find.max.time = function(events) {
+      # @return maxTime = maximum cumulative time of longest path from root to tip; the 'time span' of the transmission tree simulation
+      root <- setdiff(events$compartment2, events$compartment1)
+      tips <- setdiff(events$compartment1, events$compartment2)
+      maxTime <- 0
       
-      r_entry <- which(sapply(1:nrow(self$get.events(name)), function(x){self$get.events(name)[x,]$compartment1 == sourceName}))
-      r_cumulTime <- as.numeric(self$get.events(name)[r_entry, 'time'])          
-      r_nonCumulTime <- as.numeric(self$get.events(name, cumulative=F)[r_entry, 'time'])
+      # recursive function to calculate cumulative time
+      calc.cumul.time <- function(node, node_time) {
+        if (node == root) {
+          time <- node_time
+        } else {
+          parent <- events[ which(events$compartment1 == node), 'compartment2']
+          parent_time <- events[ which(events$compartment1 == parent), 'time']
+          time <- node_time + calc.cumul.time(parent, parent_time)
+        }
+        time
+      } 
       
-      if (r_cumulTime > CumulTime) {
-        mod_nonCumulTime <- r_cumulTime - CumulTime        # modifying event as source's individual time
-        if (mod_nonCumulTime < self$events.noncumul[event.type.indices[r_entry], 'time']) {
-          self$events.noncumul[event.type.indices[r_entry], 'time'] <- mod_nonCumulTime
+      # for each tip, trace back and calculate resulting cumulative time at the root
+      for (tip in tips) {
+        tip_time <- events[ which(events$compartment1 == tip), 'time']
+        cumul.time <- calc.cumul.time(tip, tip_time)
+        if (cumul.time > maxTime) {
+          maxTime <- cumul.time
         }
-      } else {
-        mod_CumulTime <- r_nonCumulTime + nonCumulTime     # modifying event as source's cumulative time
-        if (mod_CumulTime > self$events[event.type.indices[r_entry], 'time']) {
-          self$events[event.type.indices[r_entry], 'time'] <- mod_CumulTime
-        }
-        # stop ('There is a discrepancy in the branching times between Compartments. Currently a source transmits to a recipient before that source is infected.')
       }
-
+      
+      maxTime
     }
+    
     
   )
 )
