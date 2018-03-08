@@ -26,11 +26,7 @@ test.get.nonterminals <- function() {
 
 test.get.pairs <- function() {
   result <- test$get.pairs() # extract all pairs of pathogen lineages that may coalesce
-  expected <- list(`I_1:I_1,I_1:I_2`="I_1", 
-                   `I_1:I_1,I_1:I_3`="I_1",
-                   `I_1:I_2,I_1:I_3`="I_1",
-                   `I_2:I_1,I_2:I_2`="I_2",
-                   `I_2:I_1,I_2:I_3`="I_2",
+  expected <- list(`I_1:I_2,I_1:I_3`="I_1",
                    `I_2:I_2,I_2:I_3`="I_2")
   checkEquals(expected, result)
 }
@@ -38,43 +34,30 @@ test.get.pairs <- function() {
 test.add.pair1 <- function() {
   test$add.pair('I_1:I_2','I_1:I_1',"I_2") 
   result <- test$get.pairs() # when a Lineage is moved from one compartment to another (transmission or migration) or when a Lineage is sampled
-  expected <- list(`I_1:I_1,I_1:I_2`="I_2", 
-                   `I_1:I_1,I_1:I_3`="I_1",
-                   `I_1:I_2,I_1:I_3`="I_1",
-                   `I_2:I_1,I_2:I_2`="I_2",
-                   `I_2:I_1,I_2:I_3`="I_2",
-                   `I_2:I_2,I_2:I_3`="I_2")
+  expected <- list(`I_1:I_2,I_1:I_3`="I_1",
+                   `I_2:I_2,I_2:I_3`="I_2",
+                   `I_1:I_1,I_1:I_2`="I_2")
   checkEquals(expected, result)
 }
 
 test.add.pair2 <- function() {
   test <- MODEL$new(settings)
-  test$add.pair('I_1:I_2','I_2:I_1',"I_2") 
+  test$add.pair('I_1:I_3','I_1:I_2',"I_2") 
   result <- test$get.pairs() # when a Lineage is moved from one compartment to another (transmission or migration) or when a Lineage is sampled
-  expected <- list(`I_1:I_1,I_1:I_2`="I_1", 
-                   `I_1:I_1,I_1:I_3`="I_1",
-                   `I_1:I_2,I_1:I_3`="I_1",
-                   `I_2:I_1,I_2:I_2`="I_2",
-                   `I_2:I_1,I_2:I_3`="I_2",
-                   `I_2:I_2,I_2:I_3`="I_2",
-                   `I_1:I_2,I_2:I_1`="I_2")
+  expected <- list(`I_1:I_2,I_1:I_3`="I_2",
+                   `I_2:I_2,I_2:I_3`="I_2")
   checkEquals(expected, result)
 }
 
 test.remove.pair <- function() {
-  test$remove.pair('I_1:I_3','I_1:I_1') 
+  test$remove.pair('I_2:I_3','I_2:I_2') 
   result <- test$get.pairs() # when a Lineage is moved from one compartment to another (transmission or migration) or when a Lineage is sampled
-  expected <- list(`I_1:I_1,I_1:I_2`="I_1", 
-                   `I_1:I_2,I_1:I_3`="I_1",
-                   `I_2:I_1,I_2:I_2`="I_2",
-                   `I_2:I_1,I_2:I_3`="I_2",
-                   `I_2:I_2,I_2:I_3`="I_2",
-                   `I_1:I_2,I_2:I_1`="I_2")
+  expected <- list(`I_1:I_2,I_1:I_3`="I_2")
   checkEquals(expected, result)
 }
 
 test.get.types <- function(){
-  result <- copy(test$get.types()) # retrieves CompartmentType objects in a list
+  result <- test$get.types() # retrieves CompartmentType objects in a list
   expected.popn.growth.dynamics <- cbind("start"=list(0,0.75,1.5,2.25), "end"=list(0.75,1.5,2.25,"inf"), "intercept"=list(1,-15,90,30), "slope"=list(15,41,-30,-2))
   
   checkEquals('host', result[[1]]$get.name())
@@ -109,6 +92,7 @@ test.get.types <- function(){
 }
 
 test.get.unsampled.hosts <- function(){
+  test <- MODEL$new(settings)
   result <- test$get.unsampled.hosts() # function creates "blank" Compartment objects for Unsampled Hosts (US), stored in lists for each section within a CompartmentType object
   checkEquals(20, length(result))
   
@@ -157,7 +141,7 @@ test.get.lineages <- function(){
   result.times <- sapply(result,function(x){
     x$get.sampling.time()
   })
-  expected.times <- rep(0, 6)
+  expected.times <- c(0.2,0,0,0.2,0,0)
   checkEquals(expected.times, result.times)
   
   result[[1]]$set.location(test$get.compartments(),'I_2')
