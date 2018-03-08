@@ -294,10 +294,7 @@ EventLogger <- R6Class("EventLogger",
         # retrieve set of events of that event.name type
         events <- noncumul.eventlog$get.events(event.name)
         
-        if (event.name == 'coalescent') {
-          # set of events and their times remain the same, since they are inputted as cumulative time already
-          
-        } else {
+        if (event.name == 'transmission') {
           # find the longest path from root to tip
           root <- setdiff(events$compartment2, events$compartment1)
           tips <- setdiff(events$compartment1, events$compartment2)
@@ -305,6 +302,10 @@ EventLogger <- R6Class("EventLogger",
           
           # trace from root to tips and calculate all subsequent cumulative times based on maxTime (end time of transmission tree simulation)
           private$generate.events(events, maxTime, root)
+          
+        } else {
+          # set of events and their times remain the same, since they are inputted as cumulative time already
+          
         }
       })
       # return newly populated eventlog containing cumulative times
@@ -344,37 +345,41 @@ EventLogger <- R6Class("EventLogger",
     
     generate.events = function(events, maxTime, root, tips) {
       
-      # recursive function to generate cumulative times for each individual event
       generate.indiv.event <- function(node, parent_time) {
+        # recursive function to generate cumulative times for each individual event
+        # returns a childEvent or NULL to be added to the eventlog data frame
         if (node %in% tips) {
           return (NULL)
         } else {
           nodeEvents <- events[ which(events$compartment2 == node), ]
-          if (length(nodeEvents) == 0) {
+          if (length(row.names(nodeEvents)) == 0) {
             return(NULL)
           } else {
             for (x in seq_along(nodeEvents)) {
               childEvent <- nodeEvents[x,]
-              #delta_time <- events[ which(events$compartment1 == node), 'time' ]
               childEvent['time'] <- parent_time - childEvent['time']
               self$events <- rbind(self$events, childEvent, stringsAsFactors=F)
               # same for the descendants
               generate.indiv.event(as.character(childEvent['compartment1']), childEvent['time'])
             }
+            return(self$events)
           }
           
         }
       }
-      
       
       rootEvents <- events[ which(events$compartment2 == root), ] 
       for (x in seq_along(rootEvents)) {
         parentEvent <- rootEvents[x,]
         parentEvent['time'] <- maxTime - parentEvent['time']
         self$events <- rbind(self$events, parentEvent, stringsAsFactors=F)
-        # do the same for the descendants
+        # do the same for all of the descendants
         generate.indiv.event(as.character(parentEvent['compartment1']), parentEvent['time'])
       }
+      
+      indices <- grep('NA', row.names(self$events), ignore.case=T, invert=T)
+      #match.noncumul.ordering <- order(row.names(self$events[indices,]))
+      self$events <- self$events[indices,]
     
     }
     
