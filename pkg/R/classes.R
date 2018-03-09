@@ -259,6 +259,7 @@ EventLogger <- R6Class("EventLogger",
         if (event.name == 'transmission') {
           # find the longest path from root to tip
           root <- setdiff(events$compartment2, events$compartment1)
+          tips <- setdiff(events$compartment1, events$compartment2)
           res <- private$find.max.time(events, root, tips)
           maxTime <- as.numeric(res[['maxTime']])
           ancestors <- as.character(res[['ancestors']])
