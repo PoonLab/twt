@@ -260,11 +260,11 @@ EventLogger <- R6Class("EventLogger",
           # find the longest path from root to tip
           root <- setdiff(events$compartment2, events$compartment1)
           res <- private$find.max.time(events, root, tips)
-          maxTime <- as.numeric(res[1])
-          rootChildName <- as.character(res[2])
+          maxTime <- as.numeric(res[['maxTime']])
+          ancestors <- as.character(res[['ancestors']])
           
           # trace from root to tips and calculate all subsequent cumulative times based on maxTime (end time of transmission tree simulation)
-          self$events <- rbind(self$events, private$generate.events(events, maxTime, rootChildName, root, tips), stringsAsFactors=F)
+          self$events <- rbind(self$events, private$generate.events(events, maxTime, ancestors, root, tips), stringsAsFactors=F)
           
         } else {
           # set of events and their times remain the same, since they are inputted as cumulative time already
@@ -350,16 +350,14 @@ EventLogger <- R6Class("EventLogger",
         if (cumul.time > maxTime) {
           maxTime <- cumul.time
           ancestors <- c(tip, get.ancestors(tip))
-          rootChildIndex <- which( events[ which(events$compartment2 == root), 'compartment1'] %in% ancestors)
-          rootChildName <- events[ which(events$compartment2 == root), 'compartment1'][rootChildIndex]
         }
       }
-      c(maxTime, rootChildName)
+      list(maxTime=maxTime, ancestors=ancestors)
     },
     
     
     
-    generate.events = function(events, maxTime, rootChildName, root, tips) {
+    generate.events = function(events, maxTime, ancestors, root, tips) {
       
       generate.indiv.event <- function(node, parent_time) {
         # recursive function to generate cumulative times for each individual event
@@ -373,7 +371,13 @@ EventLogger <- R6Class("EventLogger",
           } else {
             for (x in 1:nrow(nodeEvents)) {
               childEvent <- nodeEvents[x,]
-              childEvent['time'] <- parent_time - as.numeric(childEvent['time'])
+              if (node %in% ancestors) {
+                parentEvent <- events[ which(events$compartment1 == node), ]
+                childEvent['time'] <- parent_time - as.numeric(parentEvent['time'])
+              } else {
+                childEvent['time'] <- parent_time - as.numeric(childEvent['time'])
+              }
+              
               self$events <- rbind(self$events, childEvent, stringsAsFactors=F)
               # same for the descendants
               generate.indiv.event(as.character(childEvent['compartment1']), childEvent['time'])
@@ -387,7 +391,7 @@ EventLogger <- R6Class("EventLogger",
       rootEvents <- events[ which(events$compartment2 == root), ] 
       for (x in 1:nrow(rootEvents)) {
         parentEvent <- rootEvents[x,]
-        if (parentEvent['compartment1'] == rootChildName) {
+        if (parentEvent['compartment1'] %in% ancestors) {
           parentEvent['time'] <- maxTime
         } else {
           parentEvent['time'] <- maxTime - as.numeric(parentEvent['time'])
