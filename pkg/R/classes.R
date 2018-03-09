@@ -379,8 +379,8 @@ EventLogger <- R6Class("EventLogger",
       }
       
       indices <- grep('NA', row.names(self$events), ignore.case=T, invert=T)
-      #match.noncumul.ordering <- order(row.names(self$events[indices,]))
-      self$events[indices,]
+      match.noncumul.ordering <- order(as.numeric(row.names(self$events[indices,])))
+      self$events[indices,][match.noncumul.ordering,]
     
     }
     
