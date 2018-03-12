@@ -6,6 +6,58 @@ library(R6)
 #  individual (risk group) with a specific transmission rate
 CompartmentType  <- R6Class("CompartmentType",
   public = list(
+    initialize = function(name=NA, unsampled = NA,
+                          susceptible=NA, branching.rates=NA,
+                          effective.size=NA, bottleneck.size=NA,
+                          migration.rates=NA, popn.growth.dynamics=NA) {
+      private$name <- name
+      private$unsampled <- unsampled
+      private$susceptible <- susceptible
+      private$branching.rates <- branching.rates               # named vector of transmission rates corresponding to different Compartment objects
+      private$effective.size <- effective.size
+      private$bottleneck.size <- bottleneck.size
+      private$migration.rates <- migration.rates               # named vector of migration rates of different Compartments
+      private$popn.growth.dynamics <- popn.growth.dynamics
+    },
+    
+    get.bottleneck.size = function() {
+      private$bottleneck.size
+    },
+    
+    get.name = function() {
+      private$name
+    },
+    
+    get.unsampled = function() {
+      private$unsampled
+    },
+    
+    get.susceptible = function() {
+      private$susceptible
+    },
+    
+    get.branching.rates = function() {
+      private$branching.rates
+    },
+    
+    get.branching.rate = function(name.type) {
+      private$branching.rates[[name.type]]
+    },
+    
+    get.migration.rates = function() {
+      private$migration.rates
+    },
+    
+    get.migration.rate = function(name.type) {
+      private$migration.rates[[name.type]]
+    },
+    
+    get.popn.growth.dynamics = function() {
+      private$popn.growth.dynamics
+    }
+    
+  ),
+  private = list(
     name = NULL,
     unsampled = NULL,
     susceptible = NULL,
@@ -13,84 +65,8 @@ CompartmentType  <- R6Class("CompartmentType",
     effective.size = NULL,
     bottleneck.size = NULL,
     migration.rates = NULL,
-    popn.growth.dynamics = NULL,
-    
-    initialize = function(name=NA, unsampled = NA,
-                          susceptible=NA, branching.rates=NA,
-                          effective.size=NA, bottleneck.size=NA,
-                          migration.rates=NA, popn.growth.dynamics=NA) {
-      self$name <- name
-      self$unsampled <- unsampled
-      self$susceptible <- susceptible
-      self$branching.rates <- branching.rates               # named vector of transmission rates corresponding to different Compartment objects
-      self$effective.size <- effective.size
-      self$bottleneck.size <- bottleneck.size
-      self$migration.rates <- migration.rates               # named vector of migration rates of different Compartments
-      self$popn.growth.dynamics <- popn.growth.dynamics
-    },
-    
-    get.bottleneck.size = function() {
-      self$bottleneck.size
-    },
-    
-    get.name = function() {
-      self$name
-    },
-    
-    get.unsampled = function() {
-      self$unsampled
-    },
-    
-    get.susceptible = function() {
-      self$susceptible
-    },
-    
-    get.branching.rates = function() {
-      self$branching.rates
-    },
-    
-    get.branching.rate = function(name.type) {
-      self$branching.rates[[name.type]]
-    },
-    
-    get.migration.rates = function() {
-      self$migration.rates
-    },
-    
-    get.migration.rate = function(name.type) {
-      self$migration.rates[[name.type]]
-    },
-    
-    get.popn.growth.dynamics = function() {
-      self$popn.growth.dynamics
-    },
-    
-    set.bottleneck.size = function(new.size) {
-      self$bottleneck.size <- new.size
-    }, 
-    
-    set.name = function(new.name) {
-      self$name <- new.name
-    },
-    
-    set.unsampled = function(new.no) {
-      self$unsampled <- new.no
-    },
-    
-    set.susceptible = function(new.no) {
-      self$susceptible <- new.no
-    },
-    
-    set.branching.rate = function(name.type, new.rate) {
-      self$branching.rates[[name.type]] <- new.rate
-    },
-    
-    set.migration.rate = function(name.type, new.rate) {
-      self$migration.rates[[name.type]] <- new.rate
-    }
-    
-  ),
-  private = list()
+    popn.growth.dynamics = NULL
+  )
 )
 
 
@@ -99,54 +75,54 @@ CompartmentType  <- R6Class("CompartmentType",
 # Compartment
 Compartment <- R6Class("Compartment",
   public = list(
+    initialize = function(name=NA, type=NA, source=NA, branching.time=NA, sampling.time=NA) {
+      private$name <- name
+      private$type <- type
+      private$source <- source
+      private$branching.time <- branching.time
+      private$sampling.time <- sampling.time
+    },
+    
+    get.name = function() {
+      private$name
+    },
+    
+    get.type = function() {
+      private$type
+    },
+    
+    get.source = function() {
+      private$source
+    },
+    
+    get.branching.time = function() {
+      private$branching.time
+    },
+    
+    get.sampling.time = function() {
+      private$sampling.time
+    },
+    
+    set.type = function(new.type) {
+      private$type <- new.type
+    },
+    
+    set.source = function(new.source) {
+      private$source <- new.source
+    },
+    
+    set.branching.time = function(new.branching.time) {
+      private$branching.time <- new.branching.time
+    }
+  
+  ),
+  private = list(
     name = NULL,
     type = NULL,          # reference to CompartmentType object
     source = NULL,
     branching.time = NULL,
-    sampling.time = NULL,
-    
-    initialize = function(name=NA, type=NA, source=NA, branching.time=NA, sampling.time=NA) {
-      self$name <- name
-      self$type <- type
-      self$source <- source
-      self$branching.time <- branching.time
-      self$sampling.time <- sampling.time
-    },
-    
-    get.name = function() {
-      self$name
-    },
-    
-    get.type = function() {
-      self$type
-    },
-    
-    get.source = function() {
-      self$source
-    },
-    
-    get.branching.time = function() {
-      self$branching.time
-    },
-    
-    get.sampling.time = function() {
-      self$sampling.time
-    },
-    
-    set.type = function(new.type) {
-      self$type <- new.type
-    },
-    
-    set.source = function(new.source) {
-      self$source <- new.source
-    },
-    
-    set.branching.time = function(new.branching.time) {
-      self$branching.time <- new.branching.time
-    }
-  
-  ),
-  private = list()
+    sampling.time = NULL
+  )
 )
 
 
@@ -155,50 +131,47 @@ Compartment <- R6Class("Compartment",
 # Lineage
 Lineage <- R6Class("Lineage",
   public = list(
-    name = NULL,
-    type = NULL,            # potential reference to LineageType object
-    sampling.time = NULL,
-    location = NULL,
     initialize = function(name=NA, type=NA, sampling.time=NA, location=NA) {
-      self$name <- name
-      self$type <- type
-      self$sampling.time <- sampling.time
-      self$location <- location
+      private$name <- name
+      private$type <- type
+      private$sampling.time <- sampling.time
+      private$location <- location
     },
     
     get.name = function() {
-      self$name
+      private$name
     },
     
     get.type = function() {
-      self$type
+      private$type
     },
     
     get.sampling.time = function() {
-      self$sampling.time
+      private$sampling.time
     },
     
     get.location = function() {
-      self$location
-    },
-    
-    set.sampling.time = function(new.sampling.time) {
-      self$sampling.time <- new.sampling.time
+      private$location
     },
     
     set.location = function(locationList, new.locationName) {
       new.locationObj <- locationList[[ which(sapply(locationList, function(x) {x$get.name()}) == new.locationName) ]]
-      self$location <- new.locationObj
+      private$location <- new.locationObj
     }
     
   ),
-  private = list()
+  private = list(
+    name = NULL,
+    type = NULL,            # potential reference to LineageType object
+    sampling.time = NULL,
+    location = NULL
+  )
 )
 
 
 
 
-# Event Logger (tracks migration, transmission, coalescent, and bottleneck events)
+# Event Logger (tracks migration, transmission, and coalescent events) (bottleneck events are logged as coalescent events)
 EventLogger <- R6Class("EventLogger",
   public = list(
     events = NULL,
