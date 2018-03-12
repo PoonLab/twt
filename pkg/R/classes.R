@@ -230,9 +230,7 @@ EventLogger <- R6Class("EventLogger",
       if (nrow(self$events.noncumul) == 0) {cat('No events to display.')}
       else {
         if (cumulative) { 
-          noncumul.eventlog <- self$events.noncumul
-          self$.generate.cumul.eventlog(noncumul.eventlog)                        # default eventlog shows cumulative time b/c more user friendly
-          #self$events
+          self$.generate.cumul.eventlog(self$events.noncumul)                        # default eventlog shows cumulative time b/c more user friendly
         } else {
           self$events.noncumul
         }
@@ -276,12 +274,18 @@ EventLogger <- R6Class("EventLogger",
    
    
    
-    get.events = function(event.type) {
-      eventList <- self$events.noncumul
+    get.events = function(event.type, cumulative=TRUE) {
+      if (cumulative) {
+        eventList <- self$.generate.cumul.eventlog(self$events.noncumul)
+      } else {
+        eventList <- self$events.noncumul
+      }
       indices <- which(eventList$event.type == event.type)
       if (length(indices) != 0) {
         as.data.frame(t(sapply(indices, function(x) {eventList[x,]})))
-      } else {NULL}
+      } else {
+        cat('No events of type "', event.type, '".')
+      }
      
     },
    

@@ -77,14 +77,14 @@ MODEL <- R6Class("MODEL",
     get.leaves.names = function(e) {
       # return a vector of Compartment object names that are terminal nodes (only a recipient)
       # @param e = EventLogger object
-      t_events <- e$get.events('transmission')
+      t_events <- e$get.events('transmission', cumulative=F)
       setdiff(unlist(t_events$compartment1), unlist(t_events$compartment2))
     },
     
     get.nonterminals = function(e) {
       # return an iterator over all names of internal nodes of the transmission tree
       # @param e = EventLogger object
-      t_events <- e$get.events('transmission')
+      t_events <- e$get.events('transmission', cumulative=F)
       intersect(unlist(t_events$compartment1), unlist(t_events$compartment2))
     },
     
