@@ -31,7 +31,8 @@ test.get.all.events <- function(){
                              stringsAsFactors=F)
   row.names(expected.noncumul) <- 1:5
   checkEquals(expected.noncumul,result.noncumul)
-  resultcumul <- e$get.all.events()
+  
+  result.cumul <- e$get.all.events()
   expected.cumul <- data.frame(event.type=character(),
                                   time=numeric(),
                                   lineage1=character(),
@@ -39,14 +40,14 @@ test.get.all.events <- function(){
                                   compartment1=character(),
                                   compartment2=character()
   )
-  expected.cumul <- rbind(expected.noncumul,
+  expected.cumul <- rbind(expected.cumul,
                              list(event.type="transmission", time=11, lineage1="NA", lineage2=NA, compartment1="I_95", compartment2="I_63"),
                              list(event.type="transmission", time=5, lineage1="NA", lineage2=NA, compartment1="I_73", compartment2="I_95"),
                              list(event.type="transmission", time=2, lineage1="NA", lineage2=NA, compartment1="I_20", compartment2="I_73"),
                              list(event.type="transmission", time=0, lineage1="NA", lineage2=NA, compartment1="I_94", compartment2="I_20"),
                              list(event.type="transmission", time=1, lineage1="NA", lineage2=NA, compartment1="I_97", compartment2="I_20"),
                              stringsAsFactors=F)
-  row.names(expected.noncumul) <- 1:5
+  row.names(expected.cumul) <- 1:5
   checkEquals(expected.cumul,result.cumul)
 }
 
