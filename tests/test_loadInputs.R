@@ -7,22 +7,21 @@ test <- MODEL$new(settings)
 
 # create an EventLogger object for testing
 e <- EventLogger$new()
-e$add.event("transmission", 2, "NA", "D", "F")
-e$add.event("transmission", 8, "NA", "G", "F")
-e$add.event("transmission", 3, "NA", "E", "D")
-e$add.event("transmission", 4, "NA", "B", "D")
-e$add.event("transmission", 5, "NA", "C", "B")
-e$add.event("transmission", 6, "NA", "A", "B" )
+e$add.event("transmission", 4, "NA", "I_95", "I_63")
+e$add.event("transmission", 6, "NA", "I_73", "I_95")
+e$add.event("transmission", 3, "NA", "I_20", "I_73")
+e$add.event("transmission", 2, "NA", "I_94", "I_20")
+e$add.event("transmission", 1, "NA", "I_97", "I_20")
 
 test.get.leaves.names <- function() {
   result <- get.leaves.names(e)  # return terminal nodes
-  expected <- c("I_73","I_94")
+  expected <- c("I_94","I_97")
   checkEquals(expected, result)
 }
 
 test.get.nonterminals <- function() {
   result <- get.nonterminals(e) # return internal nodes of the transmission tree
-  expected <- c("I_95","I_20")
+  expected <- c("I_95","I_73","I_20")
   checkEquals(expected, result)
 }
 
@@ -115,7 +114,7 @@ test.get.unsampled.hosts <- function(){
 }
 
 test.get.compartments <- function(){
-  result <- test$get.compartments()
+  result <- test$get.compartments() # retrieves compartments in a list
   checkEquals(2, length(result))
   result.names <-sapply(result, function(x){
     x$get.name()
@@ -131,7 +130,7 @@ test.get.compartments <- function(){
 }
 
 test.get.lineages <- function(){
-  result <- test$get.lineages()
+  result <- test$get.lineages() # retrieves lineages in a list
   checkEquals(6, length(result))
   
   result.hosts <- sapply(result,function(x){
@@ -152,7 +151,7 @@ test.get.lineages <- function(){
 }
 
 test.get.extant_lineages <- function(){
-  result <- test$get.extant_lineages()
+  result <- test$get.extant_lineages() # retrieves list of Lineages with sampling.time t=0
   checkEquals(4, length(result))
   result.hosts <- sapply(result,function(x){
     x$get.location()$get.name()
@@ -167,14 +166,14 @@ test.get.extant_lineages <- function(){
 }
 
 test.get.extant_comps <- function(){
-  result <- test$get.extant_comps()
+  result <- test$get.extant_comps() # retrieves list of Compartments containing Lineages with sampling.time t=0
   checkEquals(2, length(result))
   checkEquals('I_1', result[[1]]$get.name())
   checkEquals('I_2', result[[2]]$get.name())
 }
 
 test.get.non_extant_comps <- function(){
-  result <- test$get.non_extant_comps()
+  result <- test$get.non_extant_comps() # retrieves list of Compartments containing Lineages with sampling.time t!=0
   checkEquals(NULL, result)
 }
 
