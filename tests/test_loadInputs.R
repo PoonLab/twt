@@ -7,10 +7,12 @@ test <- MODEL$new(settings)
 
 # create an EventLogger object for testing
 e <- EventLogger$new()
-e$add.event("transmission", 4.615755e-05, "NA", "I_95", "I_63")
-e$add.event("transmission", 6.902650e-04, "NA", "I_73", "I_95")
-e$add.event("transmission", 3.345122e-04, "NA", "I_20", "I_49")
-e$add.event("transmission", 3.345122e-04, "NA", "I_94", "I_20")
+e$add.event("transmission", 2, "NA", "D", "F")
+e$add.event("transmission", 8, "NA", "G", "F")
+e$add.event("transmission", 3, "NA", "E", "D")
+e$add.event("transmission", 4, "NA", "B", "D")
+e$add.event("transmission", 5, "NA", "C", "B")
+e$add.event("transmission", 6, "NA", "A", "B" )
 
 test.get.leaves.names <- function() {
   result <- get.leaves.names(e)  # return terminal nodes
