@@ -1,56 +1,8 @@
-## test script
 require(R6)
-require(yaml)
-setwd('~/git/treeswithintrees')
-settings <- yaml.load_file('tests/fixtures/example2.yaml')
-test <- MODEL$new(settings)
-e <- EventLogger$new()
-tips.n.heights <- init.fixed.samplings(test)
-init.branching.events(test, e)    # applies only to example1.yaml for now, since they provide a "host tree" w/ transmission events
-e <- generate.transmission.events(test, e)
-transm.tree <- .to.transmission.tree(e)
-
-e <- EventLogger$new()
-sapply(1:nrow(file), function(x) {
-  e$add.event(name=file[x,'event.type'], 
-                    time=file[x,'time'], 
-                    obj1=file[x,'lineage1'], 
-                    obj2=file[x,'compartment1'], 
-                    obj3=file[x,'compartment2'])
-})
-e.mixed <- EventLogger$new()
-sapply(1:nrow(mixed.file), function(x) {
-  e.mixed$add.event(name=mixed.file[x,'event.type'], 
-                    time=mixed.file[x,'time'], 
-                    obj1=mixed.file[x,'lineage1'], 
-                    obj2=mixed.file[x,'compartment1'], 
-                    obj3=mixed.file[x,'compartment2'], 
-                    cumulative=F)
-})
-
-
-x <- EventLogger$new()
-x$add.event('transmission',  2.597914e-04, NA, 'US_host_8', 'US_host_2')
-x$add.event('transmission',  8.423922e-04, NA, 'US_host_10', 'US_host_8')
-
 
 # Load all of the different objects into one larger class
 MODEL <- R6Class("MODEL",
   public = list(
-    
-    settings = NULL,
-    types = NULL,
-    unsampled.hosts = NULL,
-    compartments = NULL,
-    lineages = NULL,
-
-    extant_lineages = NULL,
-    extant_comps = NULL,
-    non_extant_comps = NULL, 
-    
-    locations = NULL,         
-    choices = NULL,
-    
     initialize = function(settings=NA) {
       private$load.types(settings)
       private$load.unsampled.hosts()
@@ -66,25 +18,25 @@ MODEL <- R6Class("MODEL",
       private$init.pairs()
     },
     
-    get.types = function() {self$types},
-    get.unsampled.hosts = function() {self$unsampled.hosts},
-    get.compartments = function() {self$compartments},
-    get.lineages = function() {self$lineages},
-    get.extant_lineages = function() {self$extant_lineages},
-    get.extant_comps = function() {self$extant_comps},
-    get.non_extant_comps = function() {self$non_extant_comps},
+    get.types = function() {private$types},
+    get.unsampled.hosts = function() {private$unsampled.hosts},
+    get.compartments = function() {private$compartments},
+    get.lineages = function() {private$lineages},
+    get.extant_lineages = function() {private$extant_lineages},
+    get.extant_comps = function() {private$extant_comps},
+    get.non_extant_comps = function() {private$non_extant_comps},
     
     get.leaves.names = function(e) {
       # return a vector of Compartment object names that are terminal nodes (only a recipient)
       # @param e = EventLogger object
-      t_events <- e$get.events('transmission')
+      t_events <- e$get.events('transmission', cumulative=F)
       setdiff(unlist(t_events$compartment1), unlist(t_events$compartment2))
     },
     
     get.nonterminals = function(e) {
       # return an iterator over all names of internal nodes of the transmission tree
       # @param e = EventLogger object
-      t_events <- e$get.events('transmission')
+      t_events <- e$get.events('transmission', cumulative=F)
       intersect(unlist(t_events$compartment1), unlist(t_events$compartment2))
     },
     
@@ -95,7 +47,7 @@ MODEL <- R6Class("MODEL",
     
     get.pairs = function() {
       # function extracts and returns all the current pairs of pathogen lineages that may coalesce
-      self$choices
+      private$choices
     },
     
     add.pair = function(L1, L2, host) {
@@ -103,20 +55,31 @@ MODEL <- R6Class("MODEL",
       # when a Lineage is sampled
       # can also be used to update the location of a pair
       pair <- sort(c(L1, L2))
-      self$choices[[paste(pair[1], pair[2], sep=',')]] <- host
+      private$choices[[paste(pair[1], pair[2], sep=',')]] <- host
     },
     
     remove.pair = function(L1, L2) {
       # when a coalescence occurs
       # when Lineages reach a tranmission bottleneck, forcing coalescence
       pair <- sort(c(L1, L2))
-      self$choices[[paste(pair[1], pair[2], sep=',')]] <- NULL
+      private$choices[[paste(pair[1], pair[2], sep=',')]] <- NULL
     }
     
   ),
   
   
   private = list(
+    types = NULL,
+    unsampled.hosts = NULL,
+    compartments = NULL,
+    lineages = NULL,
+    
+    extant_lineages = NULL,
+    extant_comps = NULL,
+    non_extant_comps = NULL, 
+    
+    locations = NULL,         
+    choices = NULL,
     
 
     load.types = function(settings) {
@@ -135,7 +98,7 @@ MODEL <- R6Class("MODEL",
                                  popn.growth.dynamics = private$init.popn.growth.dynamics(params$popn.growth.dynamics)
         )
       })
-      self$types <- unlist(types)
+      private$types <- unlist(types)
     },
     
     
@@ -143,14 +106,14 @@ MODEL <- R6Class("MODEL",
     load.unsampled.hosts = function() {
       ## function creates "blank" Compartment objects for Unsampled Hosts (US) 
       ## stored in lists for each section within a CompartmentType object
-      us.hosts <- sapply(self$types, function(x) {
+      us.hosts <- sapply(private$types, function(x) {
           nBlanks <- x$get.unsampled()
           sapply(1:nBlanks, function(blank) {
             Compartment$new(name = paste0('US_', x$get.name(), '_', blank),
                             type = x)
           })
       })
-      self$unsampled.hosts <- unlist(us.hosts)
+      private$unsampled.hosts <- unlist(us.hosts)
     },
     
     
@@ -163,7 +126,7 @@ MODEL <- R6Class("MODEL",
         
         if (params$type %in% names(settings$CompartmentType)) {
           searchTypes <- which(names(settings$CompartmentType) == params$type)
-          typeObj <- self$types[[ searchTypes ]]                  # pointer to CompartmentType object
+          typeObj <- private$types[[ searchTypes ]]                  # pointer to CompartmentType object
         } else {
           stop(params$type, ' of Compartment ', comp, ' is not a specified Compartment Type object')
         }
@@ -180,23 +143,23 @@ MODEL <- R6Class("MODEL",
         })
         
       })
-      self$compartments <- unlist(compartments)
+      private$compartments <- unlist(compartments)
     },
     
     
     set.sources = function() {
       ## re-iterates over generated Compartment objects and populates `source` attr with R6 objects
       ## sets 'pointers' to other Compartment objects after generated w/ private$load.compartments()
-      compNames <- sapply(self$compartments, function(n){n$get.name()})
-      compartments <- sapply(self$compartments, function(x) {
+      compNames <- sapply(private$compartments, function(n){n$get.name()})
+      compartments <- sapply(private$compartments, function(x) {
         if (paste0(x$get.source(),'_1') %in% compNames) {                         # FIXME: arbitrary assignment of source
           searchComps <- which(compNames == paste0(x$get.source(),'_1'))          # FIXME: arbitrarily assigning source to first object in Compartment with $name == x$get.source()
-          sourceObj <- self$compartments[[ searchComps ]]    
+          sourceObj <- private$compartments[[ searchComps ]]    
           x$set.source(sourceObj)
         } # TODO: else statement { if source is 'undefined' or not in the list, must be assigned to an unsampled host (US) }
         x
       })
-      self$compartments <- compartments
+      private$compartments <- compartments
     },
     
     
@@ -235,8 +198,8 @@ MODEL <- R6Class("MODEL",
         sapply(1:nlocationObj, function(compNum) {
           sapply(1:nIndiv, function(obj) {
             # set 'pointer' to Compartment object for location
-            searchComps <- sapply(self$compartments, function(y){which(y$get.name() == paste0(params$location, '_', compNum))})
-            locationObj <- self$compartments[[ which( searchComps == 1) ]]
+            searchComps <- sapply(private$compartments, function(y){which(y$get.name() == paste0(params$location, '_', compNum))})
+            locationObj <- private$compartments[[ which( searchComps == 1) ]]
             Lineage$new(name = paste0(locationObj$get.name(),':',label,'_',obj),                          # unique identifier
                         type = params$type,
                         sampling.time = sampleTimes[obj],
@@ -246,38 +209,38 @@ MODEL <- R6Class("MODEL",
         })
       
       })
-      self$lineages <- unlist(lineages)
+      private$lineages <- unlist(lineages)
     },
     
     
    
     init.extant.lineages = function() {
       # intializes list of Lineages with sampling.time t=0
-      res <- sapply(self$lineages, function(b){
+      res <- sapply(private$lineages, function(b){
         if (b$get.sampling.time() == 0) {b}
       })
-      self$extant_lineages <- unlist(res)
+      private$extant_lineages <- unlist(res)
     },
     
     
     
     init.extant.comps = function() {
       # initializes list of Compartments containing Lineages with sampling.time t=0
-      res <- sapply(self$extant_lineages, function(b){
+      res <- sapply(private$extant_lineages, function(b){
         b$get.location()
       })
-      self$extant_comps <- unique(res)
+      private$extant_comps <- unique(res)
     },
     
     
     
     init.non.extant.comps = function() {
       # initializes list of Compartments containing Lineages with sampling.time t!=0
-      extant.names <- sapply(self$extant_comps, function(a){a$get.name()})
-      res <- sapply(self$compartments, function(b) {
+      extant.names <- sapply(private$extant_comps, function(a){a$get.name()})
+      res <- sapply(private$compartments, function(b) {
         if (b$get.name() %in% extant.names == F) {b}
       })
-      self$non_extant_comps <- unlist(res)
+      private$non_extant_comps <- unlist(res)
     },
     
     
@@ -328,12 +291,12 @@ MODEL <- R6Class("MODEL",
     init.locations = function() {
       # helper function for private$init.pairs()
       # collect host locations of all extant pathogen lineages into dict of host1: [path1, path2, path3, ...]
-      self$locations <- list()      # reset list
-      for (node in self$extant_lineages) {
-        if (node$get.location()$get.name() %in% names(self$locations) == F) {
-          self$locations[[node$get.location()$get.name()]] <- list()
+      private$locations <- list()      # reset list
+      for (node in private$extant_lineages) {
+        if (node$get.location()$get.name() %in% names(private$locations) == F) {
+          private$locations[[node$get.location()$get.name()]] <- list()
         }
-        self$locations[[node$get.location()$get.name()]] <- c(self$locations[[node$get.location()$get.name()]], node$get.name())
+        private$locations[[node$get.location()$get.name()]] <- c(private$locations[[node$get.location()$get.name()]], node$get.name())
       }
     },
     
@@ -341,14 +304,14 @@ MODEL <- R6Class("MODEL",
     
     init.pairs = function() {
       # extract all pairs of pathogen lineages that may coalesce
-      self$choices <- list()
-      for (hostNum in seq_along(self$locations)) {
-        host <- self$locations[[hostNum]]
+      private$choices <- list()
+      for (hostNum in seq_along(private$locations)) {
+        host <- private$locations[[hostNum]]
         if (length(host) > 1) {
           combns <- combn(host,2)
           for (column in 1:ncol(combns)) {
             pair <- sort(unlist(combns[,column]))
-            self$choices[[paste(pair[1], pair[2], sep=',')]] <- names(self$locations)[[hostNum]]
+            private$choices[[paste(pair[1], pair[2], sep=',')]] <- names(private$locations)[[hostNum]]
           }
         }
       }

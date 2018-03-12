@@ -6,6 +6,58 @@ library(R6)
 #  individual (risk group) with a specific transmission rate
 CompartmentType  <- R6Class("CompartmentType",
   public = list(
+    initialize = function(name=NA, unsampled = NA,
+                          susceptible=NA, branching.rates=NA,
+                          effective.size=NA, bottleneck.size=NA,
+                          migration.rates=NA, popn.growth.dynamics=NA) {
+      private$name <- name
+      private$unsampled <- unsampled
+      private$susceptible <- susceptible
+      private$branching.rates <- branching.rates               # named vector of transmission rates corresponding to different Compartment objects
+      private$effective.size <- effective.size
+      private$bottleneck.size <- bottleneck.size
+      private$migration.rates <- migration.rates               # named vector of migration rates of different Compartments
+      private$popn.growth.dynamics <- popn.growth.dynamics
+    },
+    
+    get.bottleneck.size = function() {
+      private$bottleneck.size
+    },
+    
+    get.name = function() {
+      private$name
+    },
+    
+    get.unsampled = function() {
+      private$unsampled
+    },
+    
+    get.susceptible = function() {
+      private$susceptible
+    },
+    
+    get.branching.rates = function() {
+      private$branching.rates
+    },
+    
+    get.branching.rate = function(name.type) {
+      private$branching.rates[[name.type]]
+    },
+    
+    get.migration.rates = function() {
+      private$migration.rates
+    },
+    
+    get.migration.rate = function(name.type) {
+      private$migration.rates[[name.type]]
+    },
+    
+    get.popn.growth.dynamics = function() {
+      private$popn.growth.dynamics
+    }
+    
+  ),
+  private = list(
     name = NULL,
     unsampled = NULL,
     susceptible = NULL,
@@ -13,84 +65,8 @@ CompartmentType  <- R6Class("CompartmentType",
     effective.size = NULL,
     bottleneck.size = NULL,
     migration.rates = NULL,
-    popn.growth.dynamics = NULL,
-    
-    initialize = function(name=NA, unsampled = NA,
-                          susceptible=NA, branching.rates=NA,
-                          effective.size=NA, bottleneck.size=NA,
-                          migration.rates=NA, popn.growth.dynamics=NA) {
-      self$name <- name
-      self$unsampled <- unsampled
-      self$susceptible <- susceptible
-      self$branching.rates <- branching.rates               # named vector of transmission rates corresponding to different Compartment objects
-      self$effective.size <- effective.size
-      self$bottleneck.size <- bottleneck.size
-      self$migration.rates <- migration.rates               # named vector of migration rates of different Compartments
-      self$popn.growth.dynamics <- popn.growth.dynamics
-    },
-    
-    get.bottleneck.size = function() {
-      self$bottleneck.size
-    },
-    
-    get.name = function() {
-      self$name
-    },
-    
-    get.unsampled = function() {
-      self$unsampled
-    },
-    
-    get.susceptible = function() {
-      self$susceptible
-    },
-    
-    get.branching.rates = function() {
-      self$branching.rates
-    },
-    
-    get.branching.rate = function(name.type) {
-      self$branching.rates[[name.type]]
-    },
-    
-    get.migration.rates = function() {
-      self$migration.rates
-    },
-    
-    get.migration.rate = function(name.type) {
-      self$migration.rates[[name.type]]
-    },
-    
-    get.popn.growth.dynamics = function() {
-      self$popn.growth.dynamics
-    },
-    
-    set.bottleneck.size = function(new.size) {
-      self$bottleneck.size <- new.size
-    }, 
-    
-    set.name = function(new.name) {
-      self$name <- new.name
-    },
-    
-    set.unsampled = function(new.no) {
-      self$unsampled <- new.no
-    },
-    
-    set.susceptible = function(new.no) {
-      self$susceptible <- new.no
-    },
-    
-    set.branching.rate = function(name.type, new.rate) {
-      self$branching.rates[[name.type]] <- new.rate
-    },
-    
-    set.migration.rate = function(name.type, new.rate) {
-      self$migration.rates[[name.type]] <- new.rate
-    }
-    
-  ),
-  private = list()
+    popn.growth.dynamics = NULL
+  )
 )
 
 
@@ -99,54 +75,54 @@ CompartmentType  <- R6Class("CompartmentType",
 # Compartment
 Compartment <- R6Class("Compartment",
   public = list(
+    initialize = function(name=NA, type=NA, source=NA, branching.time=NA, sampling.time=NA) {
+      private$name <- name
+      private$type <- type
+      private$source <- source
+      private$branching.time <- branching.time
+      private$sampling.time <- sampling.time
+    },
+    
+    get.name = function() {
+      private$name
+    },
+    
+    get.type = function() {
+      private$type
+    },
+    
+    get.source = function() {
+      private$source
+    },
+    
+    get.branching.time = function() {
+      private$branching.time
+    },
+    
+    get.sampling.time = function() {
+      private$sampling.time
+    },
+    
+    set.type = function(new.type) {
+      private$type <- new.type
+    },
+    
+    set.source = function(new.source) {
+      private$source <- new.source
+    },
+    
+    set.branching.time = function(new.branching.time) {
+      private$branching.time <- new.branching.time
+    }
+  
+  ),
+  private = list(
     name = NULL,
     type = NULL,          # reference to CompartmentType object
     source = NULL,
     branching.time = NULL,
-    sampling.time = NULL,
-    
-    initialize = function(name=NA, type=NA, source=NA, branching.time=NA, sampling.time=NA) {
-      self$name <- name
-      self$type <- type
-      self$source <- source
-      self$branching.time <- branching.time
-      self$sampling.time <- sampling.time
-    },
-    
-    get.name = function() {
-      self$name
-    },
-    
-    get.type = function() {
-      self$type
-    },
-    
-    get.source = function() {
-      self$source
-    },
-    
-    get.branching.time = function() {
-      self$branching.time
-    },
-    
-    get.sampling.time = function() {
-      self$sampling.time
-    },
-    
-    set.type = function(new.type) {
-      self$type <- new.type
-    },
-    
-    set.source = function(new.source) {
-      self$source <- new.source
-    },
-    
-    set.branching.time = function(new.branching.time) {
-      self$branching.time <- new.branching.time
-    }
-  
-  ),
-  private = list()
+    sampling.time = NULL
+  )
 )
 
 
@@ -155,55 +131,50 @@ Compartment <- R6Class("Compartment",
 # Lineage
 Lineage <- R6Class("Lineage",
   public = list(
-    name = NULL,
-    type = NULL,            # potential reference to LineageType object
-    sampling.time = NULL,
-    location = NULL,
     initialize = function(name=NA, type=NA, sampling.time=NA, location=NA) {
-      self$name <- name
-      self$type <- type
-      self$sampling.time <- sampling.time
-      self$location <- location
+      private$name <- name
+      private$type <- type
+      private$sampling.time <- sampling.time
+      private$location <- location
     },
     
     get.name = function() {
-      self$name
+      private$name
     },
     
     get.type = function() {
-      self$type
+      private$type
     },
     
     get.sampling.time = function() {
-      self$sampling.time
+      private$sampling.time
     },
     
     get.location = function() {
-      self$location
-    },
-    
-    set.sampling.time = function(new.sampling.time) {
-      self$sampling.time <- new.sampling.time
+      private$location
     },
     
     set.location = function(locationList, new.locationName) {
       new.locationObj <- locationList[[ which(sapply(locationList, function(x) {x$get.name()}) == new.locationName) ]]
-      self$location <- new.locationObj
+      private$location <- new.locationObj
     }
     
   ),
-  private = list()
+  private = list(
+    name = NULL,
+    type = NULL,            # potential reference to LineageType object
+    sampling.time = NULL,
+    location = NULL
+  )
 )
 
 
 
 
-# Event Logger (tracks migration, transmission, coalescent, and bottleneck events)
+# Event Logger (tracks migration, transmission, and coalescent events) (bottleneck events are logged as coalescent events)
 EventLogger <- R6Class("EventLogger",
   public = list(
-    events = NULL,
-    events.noncumul = NULL,
-   
+
     initialize = function(events = data.frame(event.type=character(),
                                               time=numeric(),
                                               lineage1=character(),
@@ -218,73 +189,38 @@ EventLogger <- R6Class("EventLogger",
                                  compartment1=character(),
                                  compartment2=character()
                                 )
-                          ) 
-    {
-      self$events <- events
-      self$events.noncumul <- events.noncumul
+    ){
+      private$events <- events
+      private$events.noncumul <- events.noncumul
     },
    
    
-   
     get.all.events = function(cumulative=TRUE) {
-      if (nrow(self$events.noncumul) == 0) {cat('No events to display.')}
+      if (nrow(private$events.noncumul) == 0) {cat('No events to display.')}
       else {
         if (cumulative) { 
-          noncumul.eventlog <- self$events.noncumul
-          self$.generate.cumul.eventlog(noncumul.eventlog)                        # default eventlog shows cumulative time b/c more user friendly
-          #self$events
+          private$.generate.cumul.eventlog(private$events.noncumul)                        # default eventlog shows cumulative time b/c more user friendly
         } else {
-          self$events.noncumul
+          private$events.noncumul
         }
       }
     },
    
    
-   
-    .generate.cumul.eventlog = function(noncumul.eventlog) {
-      self$events <- data.frame(event.type=character(),
-                                time=numeric(),
-                                lineage1=character(),
-                                lineage2=character(),
-                                compartment1=character(),
-                                compartment2=character()
-      )
-      event.types <- unique(noncumul.eventlog$event.type)        # up to 3 different event types
-     
-      sapply(event.types, function(event.name) {
-        # for each type of event (transmission, migration, and/or coalescent)
-        # retrieve set of events of that event.name type
-        events <- noncumul.eventlog[ which(noncumul.eventlog$event.type == event.name), ]
-       
-        if (event.name == 'transmission') {
-          # find the longest path from root to tip
-          root <- setdiff(events$compartment2, events$compartment1)
-          tips <- setdiff(events$compartment1, events$compartment2)
-          maxTime <- private$find.max.time(events, root, tips)
-         
-          # trace from root to tips and calculate all subsequent cumulative times based on maxTime (end time of transmission tree simulation)
-          self$events <- rbind(self$events, private$generate.events(events, maxTime, root, tips), stringsAsFactors=F)
-         
-        } else {
-          # set of events and their times remain the same, since they are inputted as cumulative time already
-          NULL
-        }
-      })
-      self$events
-     
-    },
-   
-   
-   
-    get.events = function(event.type) {
-      eventList <- self$events.noncumul
+    get.events = function(event.type, cumulative=TRUE) {
+      if (cumulative) {
+        eventList <- private$.generate.cumul.eventlog(private$events.noncumul)
+      } else {
+        eventList <- private$events.noncumul
+      }
       indices <- which(eventList$event.type == event.type)
       if (length(indices) != 0) {
         as.data.frame(t(sapply(indices, function(x) {eventList[x,]})))
-      } else {NULL}
+      } else {
+        cat('No events of type "', event.type, '".')
+      }
      
     },
-   
    
    
     add.event = function(name, time, obj1, obj2, obj3) {
@@ -297,13 +233,12 @@ EventLogger <- R6Class("EventLogger",
       } else if (tolower(name) == 'coalescent') {
         nonCumulEvent <- list(event.type=name, time=time, lineage1=obj1, lineage2=obj2, compartment1=obj3, compartment2=NA)
       }
-      self$events.noncumul <- rbind(self$events.noncumul, nonCumulEvent, stringsAsFactors=F)
+      private$events.noncumul <- rbind(private$events.noncumul, nonCumulEvent, stringsAsFactors=F)
     },
    
    
-   
     clear.events = function() {
-      self$events = self$events.noncumul <- data.frame(event.type=character(),
+      private$events = private$events.noncumul <- data.frame(event.type=character(),
                                                        time=numeric(),
                                                        lineage1=character(),
                                                        lineage2=character(),
@@ -314,6 +249,41 @@ EventLogger <- R6Class("EventLogger",
    
   ),
   private = list(
+    events = NULL,
+    events.noncumul = NULL,
+    
+    .generate.cumul.eventlog = function(noncumul.eventlog) {
+      private$events <- data.frame(event.type=character(),
+                                time=numeric(),
+                                lineage1=character(),
+                                lineage2=character(),
+                                compartment1=character(),
+                                compartment2=character()
+      )
+      event.types <- unique(noncumul.eventlog$event.type)        # up to 3 different event types
+      
+      sapply(event.types, function(event.name) {
+        # for each type of event (transmission, migration, and/or coalescent)
+        # retrieve set of events of that event.name type
+        events <- noncumul.eventlog[ which(noncumul.eventlog$event.type == event.name), ]
+        
+        if (event.name == 'transmission') {
+          # find the longest path from root to tip
+          root <- setdiff(events$compartment2, events$compartment1)
+          tips <- setdiff(events$compartment1, events$compartment2)
+          maxTime <- private$find.max.time(events, root, tips)
+          
+          # trace from root to tips and calculate all subsequent cumulative times based on maxTime (end time of transmission tree simulation)
+          private$events <- rbind(private$events, private$generate.events(events, maxTime, root, tips), stringsAsFactors=F)
+          
+        } else {
+          # set of events and their times remain the same, since they are inputted as cumulative time already
+          NULL
+        }
+      })
+      private$events
+      
+    },
    
     find.max.time = function(events, root, tips) {
       # @oaram events = set of events of a particular type (ie. transmission, migration, coalescent)
@@ -359,11 +329,11 @@ EventLogger <- R6Class("EventLogger",
             for (x in seq_along(nodeEvents)) {
               childEvent <- nodeEvents[x,]
               childEvent['time'] <- parent_time - as.numeric(childEvent['time'])
-              self$events <- rbind(self$events, childEvent, stringsAsFactors=F)
+              private$events <- rbind(private$events, childEvent, stringsAsFactors=F)
               # same for the descendants
               generate.indiv.event(as.character(childEvent['compartment1']), childEvent['time'])
             }
-            return(self$events)
+            return(private$events)
           }
          
         }
@@ -373,14 +343,14 @@ EventLogger <- R6Class("EventLogger",
       for (x in seq_along(rootEvents)) {
         parentEvent <- rootEvents[x,]
         parentEvent['time'] <- maxTime - as.numeric(parentEvent['time'])
-        self$events <- rbind(self$events, parentEvent, stringsAsFactors=F)
+        private$events <- rbind(private$events, parentEvent, stringsAsFactors=F)
         # do the same for all of the descendants
         generate.indiv.event(as.character(parentEvent['compartment1']), parentEvent['time'])
       }
      
-      indices <- grep('NA', row.names(self$events), ignore.case=T, invert=T)
-      match.noncumul.ordering <- order(as.numeric(row.names(self$events[indices,])))
-      self$events[indices,][match.noncumul.ordering,]
+      indices <- grep('NA', row.names(private$events), ignore.case=T, invert=T)
+      match.noncumul.ordering <- order(as.numeric(row.names(private$events[indices,])))
+      private$events[indices,][match.noncumul.ordering,]
      
     }
                          
