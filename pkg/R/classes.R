@@ -174,9 +174,7 @@ Lineage <- R6Class("Lineage",
 # Event Logger (tracks migration, transmission, and coalescent events) (bottleneck events are logged as coalescent events)
 EventLogger <- R6Class("EventLogger",
   public = list(
-    events = NULL,
-    events.noncumul = NULL,
-   
+
     initialize = function(events = data.frame(event.type=character(),
                                               time=numeric(),
                                               lineage1=character(),
@@ -191,67 +189,29 @@ EventLogger <- R6Class("EventLogger",
                                  compartment1=character(),
                                  compartment2=character()
                                 )
-                          ) 
-    {
-      self$events <- events
-      self$events.noncumul <- events.noncumul
+    ){
+      private$events <- events
+      private$events.noncumul <- events.noncumul
     },
    
    
-   
     get.all.events = function(cumulative=TRUE) {
-      if (nrow(self$events.noncumul) == 0) {cat('No events to display.')}
+      if (nrow(private$events.noncumul) == 0) {cat('No events to display.')}
       else {
         if (cumulative) { 
-          self$.generate.cumul.eventlog(self$events.noncumul)                        # default eventlog shows cumulative time b/c more user friendly
+          private$.generate.cumul.eventlog(private$events.noncumul)                        # default eventlog shows cumulative time b/c more user friendly
         } else {
-          self$events.noncumul
+          private$events.noncumul
         }
       }
     },
    
    
-   
-    .generate.cumul.eventlog = function(noncumul.eventlog) {
-      self$events <- data.frame(event.type=character(),
-                                time=numeric(),
-                                lineage1=character(),
-                                lineage2=character(),
-                                compartment1=character(),
-                                compartment2=character()
-      )
-      event.types <- unique(noncumul.eventlog$event.type)        # up to 3 different event types
-     
-      sapply(event.types, function(event.name) {
-        # for each type of event (transmission, migration, and/or coalescent)
-        # retrieve set of events of that event.name type
-        events <- noncumul.eventlog[ which(noncumul.eventlog$event.type == event.name), ]
-       
-        if (event.name == 'transmission') {
-          # find the longest path from root to tip
-          root <- setdiff(events$compartment2, events$compartment1)
-          tips <- setdiff(events$compartment1, events$compartment2)
-          maxTime <- private$find.max.time(events, root, tips)
-         
-          # trace from root to tips and calculate all subsequent cumulative times based on maxTime (end time of transmission tree simulation)
-          self$events <- rbind(self$events, private$generate.events(events, maxTime, root, tips), stringsAsFactors=F)
-         
-        } else {
-          # set of events and their times remain the same, since they are inputted as cumulative time already
-          NULL
-        }
-      })
-      self$events
-     
-    },
-   
-   
-   
     get.events = function(event.type, cumulative=TRUE) {
       if (cumulative) {
-        eventList <- self$.generate.cumul.eventlog(self$events.noncumul)
+        eventList <- private$.generate.cumul.eventlog(private$events.noncumul)
       } else {
-        eventList <- self$events.noncumul
+        eventList <- private$events.noncumul
       }
       indices <- which(eventList$event.type == event.type)
       if (length(indices) != 0) {
@@ -261,7 +221,6 @@ EventLogger <- R6Class("EventLogger",
       }
      
     },
-   
    
    
     add.event = function(name, time, obj1, obj2, obj3) {
@@ -274,13 +233,12 @@ EventLogger <- R6Class("EventLogger",
       } else if (tolower(name) == 'coalescent') {
         nonCumulEvent <- list(event.type=name, time=time, lineage1=obj1, lineage2=obj2, compartment1=obj3, compartment2=NA)
       }
-      self$events.noncumul <- rbind(self$events.noncumul, nonCumulEvent, stringsAsFactors=F)
+      private$events.noncumul <- rbind(private$events.noncumul, nonCumulEvent, stringsAsFactors=F)
     },
    
    
-   
     clear.events = function() {
-      self$events = self$events.noncumul <- data.frame(event.type=character(),
+      private$events = private$events.noncumul <- data.frame(event.type=character(),
                                                        time=numeric(),
                                                        lineage1=character(),
                                                        lineage2=character(),
@@ -291,6 +249,41 @@ EventLogger <- R6Class("EventLogger",
    
   ),
   private = list(
+    events = NULL,
+    events.noncumul = NULL,
+    
+    .generate.cumul.eventlog = function(noncumul.eventlog) {
+      private$events <- data.frame(event.type=character(),
+                                time=numeric(),
+                                lineage1=character(),
+                                lineage2=character(),
+                                compartment1=character(),
+                                compartment2=character()
+      )
+      event.types <- unique(noncumul.eventlog$event.type)        # up to 3 different event types
+      
+      sapply(event.types, function(event.name) {
+        # for each type of event (transmission, migration, and/or coalescent)
+        # retrieve set of events of that event.name type
+        events <- noncumul.eventlog[ which(noncumul.eventlog$event.type == event.name), ]
+        
+        if (event.name == 'transmission') {
+          # find the longest path from root to tip
+          root <- setdiff(events$compartment2, events$compartment1)
+          tips <- setdiff(events$compartment1, events$compartment2)
+          maxTime <- private$find.max.time(events, root, tips)
+          
+          # trace from root to tips and calculate all subsequent cumulative times based on maxTime (end time of transmission tree simulation)
+          private$events <- rbind(private$events, private$generate.events(events, maxTime, root, tips), stringsAsFactors=F)
+          
+        } else {
+          # set of events and their times remain the same, since they are inputted as cumulative time already
+          NULL
+        }
+      })
+      private$events
+      
+    },
    
     find.max.time = function(events, root, tips) {
       # @oaram events = set of events of a particular type (ie. transmission, migration, coalescent)
@@ -336,11 +329,11 @@ EventLogger <- R6Class("EventLogger",
             for (x in seq_along(nodeEvents)) {
               childEvent <- nodeEvents[x,]
               childEvent['time'] <- parent_time - as.numeric(childEvent['time'])
-              self$events <- rbind(self$events, childEvent, stringsAsFactors=F)
+              private$events <- rbind(private$events, childEvent, stringsAsFactors=F)
               # same for the descendants
               generate.indiv.event(as.character(childEvent['compartment1']), childEvent['time'])
             }
-            return(self$events)
+            return(private$events)
           }
          
         }
@@ -350,14 +343,14 @@ EventLogger <- R6Class("EventLogger",
       for (x in seq_along(rootEvents)) {
         parentEvent <- rootEvents[x,]
         parentEvent['time'] <- maxTime - as.numeric(parentEvent['time'])
-        self$events <- rbind(self$events, parentEvent, stringsAsFactors=F)
+        private$events <- rbind(private$events, parentEvent, stringsAsFactors=F)
         # do the same for all of the descendants
         generate.indiv.event(as.character(parentEvent['compartment1']), parentEvent['time'])
       }
      
-      indices <- grep('NA', row.names(self$events), ignore.case=T, invert=T)
-      match.noncumul.ordering <- order(as.numeric(row.names(self$events[indices,])))
-      self$events[indices,][match.noncumul.ordering,]
+      indices <- grep('NA', row.names(private$events), ignore.case=T, invert=T)
+      match.noncumul.ordering <- order(as.numeric(row.names(private$events[indices,])))
+      private$events[indices,][match.noncumul.ordering,]
      
     }
                          
