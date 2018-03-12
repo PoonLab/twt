@@ -1,7 +1,7 @@
 require(R6)
 require(RUnit)
 require(yaml)
-source('loadInputs.R')
+source('pkg/R/loadInputs.R')
 settings <- yaml.load_file('tests/fixtures/test.yaml')
 test <- MODEL$new(settings)
 
