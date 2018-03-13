@@ -196,7 +196,7 @@ EventLogger <- R6Class("EventLogger",
       if (nrow(private$events.noncumul) == 0) {cat('No events to display.')}
       else {
         if (cumulative) { 
-          private$.generate.cumul.eventlog(private$events.noncumul)                        # default eventlog shows cumulative time b/c more user friendly
+          private$generate.cumul.eventlog(private$events.noncumul)                        # default eventlog shows cumulative time b/c more user friendly
         } else {
           private$events.noncumul
         }
@@ -206,13 +206,26 @@ EventLogger <- R6Class("EventLogger",
    
     get.events = function(event.type, cumulative=TRUE) {
       if (cumulative) {
-        eventList <- private$.generate.cumul.eventlog(private$events.noncumul)
+        eventList <- private$generate.cumul.eventlog(private$events.noncumul)
       } else {
         eventList <- private$events.noncumul
       }
       indices <- which(eventList$event.type == event.type)
       if (length(indices) != 0) {
-        as.data.frame(t(sapply(indices, function(x) {eventList[x,]})))
+        df <- data.frame(event.type=character(),
+                         time=numeric(),
+                         lineage1=character(),
+                         lineage2=character(),
+                         compartment1=character(),
+                         compartment2=character()
+        )
+        step1 <- sapply(indices, function(x) {eventList[x,]})
+        for (x in 1:ncol(step1)) {
+          Event <- step1[,x]
+          df <- rbind(df, Event, stringsAsFactors=F)
+        }
+        df
+        # as.data.frame(t(sapply(indices, function(x) {eventList[x,]})))
       } else {
         cat('No events of type "', event.type, '".')
       }
@@ -249,7 +262,7 @@ EventLogger <- R6Class("EventLogger",
     events = NULL,
     events.noncumul = NULL,
     
-    .generate.cumul.eventlog = function(noncumul.eventlog) {
+    generate.cumul.eventlog = function(noncumul.eventlog) {
       private$events <- data.frame(event.type=character(),
                                 time=numeric(),
                                 lineage1=character(),

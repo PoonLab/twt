@@ -47,12 +47,12 @@ test.get.all.events <- function(){
                              list(event.type="transmission", time=0, lineage1="NA", lineage2=NA, compartment1="I_94", compartment2="I_20"),
                              list(event.type="transmission", time=1, lineage1="NA", lineage2=NA, compartment1="I_97", compartment2="I_20"),
                              stringsAsFactors=F)
-  row.names(expected.cumul) <- 1:5
+  row.names(expected.cumul) <- as.character(1:5)
   checkEquals(expected.cumul,result.cumul)
 }
 
 test.get.events <- function(){
-  result <- e$get.events("transmission")
+  result <- e$get.events("transmission", cumulative=F)
   expected <- data.frame(event.type=character(),
                          time=numeric(),
                          lineage1=character(),

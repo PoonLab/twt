@@ -1,6 +1,5 @@
 ## test script
-require(R6)
-require(yaml)
+require(twt)
 setwd('~/git/treeswithintrees')
 settings <- yaml.load_file('tests/fixtures/example2.yaml')
 test <- MODEL$new(settings)
