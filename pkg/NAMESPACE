@@ -11,6 +11,5 @@ export(init.branching.events)
 export(generate.transmission.events)
 export(.to.transmission.tree)
 
-useDynLib(treeswithintrees)
 
 

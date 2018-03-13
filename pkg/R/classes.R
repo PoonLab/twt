@@ -1,6 +1,3 @@
-library(R6)
-
-
 # CompartmentType
 #  Defines a type of compartment such as a class of host
 #  individual (risk group) with a specific transmission rate

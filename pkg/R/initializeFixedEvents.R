@@ -175,7 +175,7 @@ generate.transmission.events <- function(inputs, eventlog) {
 
 
 .to.transmission.tree <- function(eventlog) {
-  require(ape, quietly=TRUE)
+  # require(ape, quietly=TRUE)
   # function converts the transmission events stored in an EventLogger object into a transmission tree
 
   t_events <- eventlog$get.events('transmission', cumulative=FALSE)

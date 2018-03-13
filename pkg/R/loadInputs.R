@@ -1,5 +1,3 @@
-require(R6)
-
 # Load all of the different objects into one larger class
 MODEL <- R6Class("MODEL",
   public = list(
