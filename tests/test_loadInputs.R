@@ -1,6 +1,5 @@
-require(R6)
-require(RUnit)
-require(yaml)
+require(twt)
+setwd('~/git/treeswithintrees')
 source('pkg/R/loadInputs.R')
 settings <- yaml.load_file('tests/fixtures/test.yaml')
 test <- MODEL$new(settings)
@@ -14,13 +13,13 @@ e$add.event("transmission", 2, "NA", "I_94", "I_20")
 e$add.event("transmission", 1, "NA", "I_97", "I_20")
 
 test.get.leaves.names <- function() {
-  result <- get.leaves.names(e)  # return terminal nodes
+  result <- test$get.leaves.names(e)  # return terminal nodes
   expected <- c("I_94","I_97")
   checkEquals(expected, result)
 }
 
 test.get.nonterminals <- function() {
-  result <- get.nonterminals(e) # return internal nodes of the transmission tree
+  result <- test$get.nonterminals(e) # return internal nodes of the transmission tree
   expected <- c("I_95","I_73","I_20")
   checkEquals(expected, result)
 }
@@ -70,26 +69,6 @@ test.get.types <- function(){
   checkEquals(expected.popn.growth.dynamics, result[[1]]$get.popn.growth.dynamics())
   checkEquals(1000, result[[1]]$get.susceptible())
   checkEquals(20, result[[1]]$get.unsampled())
-  
-  result[[1]]$set.bottleneck.size(2)
-  checkEquals(2, result[[1]]$get.bottleneck.size())
-  
-  result[[1]]$set.branching.rate('host',0.2)
-  checkEquals(0.2, result[[1]]$get.branching.rate('host'))
-  checkEquals(list('host'=0.2), result[[1]]$get.branching.rates())
-  
-  result[[1]]$set.migration.rate('host',0.01)
-  checkEquals(0.01, result[[1]]$get.migration.rate('host'))
-  checkEquals(list('host'=0.01), result[[1]]$get.migration.rates())
-  
-  result[[1]]$set.name('cell')
-  checkEquals('cell', result[[1]]$get.name())
-  
-  result[[1]]$set.susceptible(1010)
-  checkEquals(1010, result[[1]]$get.susceptible())
-  
-  result[[1]]$set.unsampled(25)
-  checkEquals(25, result[[1]]$get.unsampled())
 }
 
 test.get.unsampled.hosts <- function(){
@@ -153,11 +132,13 @@ test.get.lineages <- function(){
 test.get.extant_lineages <- function(){
   result <- test$get.extant_lineages() # retrieves list of Lineages with sampling.time t=0
   checkEquals(4, length(result))
+  
   result.hosts <- sapply(result,function(x){
     x$get.location()$get.name()
   })
   checkEquals(2, length(which(result.hosts=='I_1')))
   checkEquals(2, length(which(result.hosts=='I_2')))
+  
   result.times <- sapply(result,function(x){
     x$get.sampling.time()
   })
