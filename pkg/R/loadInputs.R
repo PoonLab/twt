@@ -24,6 +24,11 @@ MODEL <- R6Class("MODEL",
     get.extant_comps = function() {private$extant_comps},
     get.non_extant_comps = function() {private$non_extant_comps},
     
+    get.names = function(listR6obj) {
+      # @param listR6obj = list of R6 objects of class CompartmentType, Compartment, or Lineage
+      sapply(listR6obj, function(x){x$get.name()})
+    },
+    
     get.leaves.names = function(e) {
       # return a vector of Compartment object names that are terminal nodes (only a recipient)
       # @param e = EventLogger object

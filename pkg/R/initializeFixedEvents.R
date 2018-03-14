@@ -1,13 +1,10 @@
-# treeswithintrees/Wiki/Simulation Pseudocode step 2
-# after the objects are generated from user inputs, we need to initialize the list of fixed events
-
-
-init.fixed.samplings <- function(inputs) {
+init.fixed.samplings <- function(model) {
+  # treeswithintrees/Wiki/Simulation Pseudocode step 2
   # retrieve sampling time and populate tip labels / times in ape::phylo object (building it tips up)
-  # @param inputs = MODEL object
+  # @param model = MODEL object
 
   # add lineage sampling events from Lineage objects
-  lineages <- unlist(inputs$get.lineages())
+  lineages <- unlist(model$get.lineages())
 
   list(
     # store label w/ corresponding tip height in new ape::phylo object (not casted into `phylo` yet)
@@ -19,6 +16,8 @@ init.fixed.samplings <- function(inputs) {
 }
 
 
+
+# after the objects are generated from user inputs, we need to initialize the list of fixed events
 # Case 1 : User provides a host transmission tree
 .to.eventlog <- function(newick) {
   # function converts an ape::phylo tree object into transmission events stored in a NEW EventLogger object
@@ -50,6 +49,7 @@ init.fixed.samplings <- function(inputs) {
 }
 
 
+
 # Case 2 : User manually inputs a host transmission tree into YAML format under Compartments header
 init.branching.events <- function(inputs, eventlog) {
   # @param inputs = MODEL object
@@ -78,22 +78,27 @@ init.branching.events <- function(inputs, eventlog) {
 
 
 
-
 # Case 3: no host tree provided, transmission events need to be generated
-generate.transmission.events <- function(inputs, eventlog) {
-  # treeswithintrees/Wiki/Simulation Pseudocode step 3 & 4
+generate.transmission.events <- function(model, eventlog) {
+  # treeswithintrees/Wiki/Simulation Pseudocode step 3 & 4; refer to issue # 12 discussion
   # simulate transmission events and fix them to the timeline of lineage sampled events
-  # @param inputs = MODEL object
+  # @param model = MODEL object
   # @param eventlog = EventLogger object
   
-  # for each CompartmentType: 
-  indiv.types.comps <- sapply(unlist(inputs$get.extant_comps()), function(a){a$get.type()$get.name()})  
-  active.lineages <- sapply(inputs$get.extant_lineages(), function(b){b$get.location()$get.type()$get.name()})
-  enumerate <- lapply(inputs$get.types(), function(x) {
-    
-    # 1. enumerate active compartments, including unsampled hosts (U) at time t=0
+  sampled_comps <- model$get.extant_comps()                # init Compartments currently existing w/ Lineages at sampling.time = 0
+  sampled_compnames <- model$get.names(sampled_comps)
+  not_yet_sampled_comps <- model$get.non_extant_comps()    # init remaining Compartments w/ Lineages not yet sampled
+  nys_compnames <- model$get.names(not_yet_sampled_comps)
+  us_comps <- model$get.unsampled.hosts()
+  us_compnames <- model$get.names(us_comps)
+  
+  # for each CompartmentType:
+  indiv.types <- sapply(unlist(sampled_comps), function(a){a$get.type()$get.name()})
+  active.lineages <- sapply(model$get.extant_lineages(), function(b){b$get.location()$get.name()})
+  popn.totals <- lapply(model$get.types(), function(x) {
+    # 1. enumerate active compartments, including unsampled infected hosts (U) at time t=0
     U <- x$get.unsampled()
-    A <- length(which(indiv.types.comps == x$get.name()))
+    A <- length(which(indiv.types == x$get.name()))
     
     # 2. enumerate active lineages of infected (I), pairs of active lineages within hosts at time t=0
     I <- length(which(active.lineages == x$get.name()))
@@ -104,72 +109,45 @@ generate.transmission.events <- function(inputs, eventlog) {
     data.frame(U=U, A=A, I=I, S=S)
   })
   
-  sampled_comps <- inputs$get.extant_comps()                # initialize sampled Compartments as those currently existing with Lineages at sampling.time = 0
-  not_yet_sampled_comps <- inputs$get.non_extant_comps()    # initialize not yet sampled Compartmentss as the remaining Compartments with Lineages not yet sampled
-  nys_compnames <- sapply(not_yet_sampled_comps, function(x){x$get.name()})
-  us_comps <- inputs$get.unsampled.hosts()
-  us_compnames <- sapply(us_comps, function(x){x$get.name()})
-  # a source can transmit to multiple recipients, but cannot receive a transmission from one of its descendants
+  # retrieve record of sampling times of lineages
+  fixed.samplings <- init.fixed.samplings(model)
+  time.bands <- sort(unique(fixed.samplings$tip.height))
+  current.time <- 0.0
+  
+  
+  # calc transmission rates among all source-recipient pairings of CompartmentTypes
+  sr.pairings <- combn(sampled_compnames, 2)         # TODO: include unsampled infected hosts
+  sr.pair.dict <- matrix(nrow=2, ncol=2*ncol(sr.pairings))
+  sr.indiv.rates <- vector(mode='numeric', length=2*ncol(sr.pairings))
+  
+  for(x in 1:ncol(sr.pairings)) {
+    comp1 <- sampled_comps[[which(sampled_compnames == sr.pairings[1,x])]]
+    comp2 <- sampled_comps[[which(sampled_compnames == sr.pairings[2,x])]]
+    comp1_type <- comp1$get.type()$get.name()
+    comp2_type <- comp2$get.type()$get.name()
+    
+    # comp1 as source, comp2 as recipient
+    sr.pair.dict[1, x*2-1] <- sr.pairings[1,x]          # row 1 = source
+    sr.pair.dict[2, x*2-1] <- sr.pairings[2,x]          # row 2 = recipient
+    sr.indiv.rates[x*2-1] <- model$get.types()[[comp1_type]]$get.branching.rate(comp2_type)
+    
+    # comp2 as source, comp1 as recipient
+    sr.pair.dict[1, x*2] <- sr.pairings[2,x]
+    sr.pair.dict[2, x*2] <- sr.pairings[1,x]
+    sr.indiv.rates[x*2] <- model$get.types()[[comp2_type]]$get.branching.rate(comp1_type)
+  }
+  
   
   # main loop
   while (length(sampled_comps) > 1) {
-    # grab a recipient from list of extant
-    r_ind <- sample(1:length(sampled_comps), 1)
-    recipient <- sampled_comps[[r_ind]]
-    sampled_comps[[r_ind]] <- NULL            # remove chosen recipient from list of extant, as well as host_popn
+    # determine the "time band" (time interval between the last sampling event and the next sampling event across all Types)
+    # time.band <- 
     
-    # filter sampled, not-yet-sampled, and unsampled-infected hosts to excluded those with intrinsic transmission rate = 0
-    filtered_popn <- sapply(c(sampled_comps, not_yet_sampled_comps, us_comps), function(x) {
-      intrins.rate <- inputs$get.types()[[ x$get.type()$get.name() ]]$get.branching.rate( recipient$get.type()$get.name() )
-      if (intrins.rate == 0) {NULL} else {x}
-    })
-    if (length(filtered_popn) == 0) {
-      stop ('The intrinsic transmission rates for all possible sources are set to zero, or all sources are extinct.')
-    }
-    source <- sample(filtered_popn, 1)[[1]]  # sample source from filtered population
+    # total rate of ANY transmission event occurring is the weighted sum of these rates
     
-    
-    # calculate total event rate (lambda) = intrinsic base rate (ie. rate of TypeA --> TypeB transmission) x N_TypeA x N_TypeB
-    # includes N_U and N_S for each type, and retrieves intrinsic base transmission rate of X --> Y transmission
-    r_type <- recipient$get.type()$get.name()
-    s_type <- source$get.type()$get.name()
-    base.rate <- inputs$get.types()[[s_type]]$get.branching.rate(r_type)
-    s_popN <- enumerate[[s_type]]
-    r_popN <- enumerate[[r_type]]
-    total.rate <- base.rate * (as.numeric(s_popN['U']) + as.numeric(s_popN['I'])) * as.numeric(r_popN['S'])
-    
-    # calculate change in time between source transmitting to recipient
-    delta_t <- rexp(n = 1, rate = as.numeric(total.rate))
-    
-    
-    # update recipient object `source` attr
-    recipient$set.source(source)                
-
-    # add transmission event to EventLogger object
-    eventlog$add.event('transmission', delta_t, obj1=NA, recipient$get.name(), source$get.name(), cumulative=FALSE)  # argument `lineage` is determined later at coalescence
-    
-    # update all counts
-    r_popN['S'] <- r_popN['S'] + 1
-    r_popN['I'] <- r_popN['I'] - 1       # if source is US_host, US-- and I++ as it moves from host_popn into extant list (cancels out)
-    
-    # if a US host enters the sampled_comps, then it must be removed from the us_comps list to avoid duplication
-    if (source$get.name() %in% us_compnames) {
-      sampled_comps[[length(sampled_comps)+1]] <- source
-      source_ind <- which(us_compnames == source$get.name())
-      us_compnames <- us_compnames[-source_ind]
-      us_comps[[source_ind]] <- NULL          
-    }
-    # if a not-yet-sampled Compartment enters the sampled_comps, then it must be removed from the NYS comps lists to avoid duplication
-    if (source$get.name() %in% nys_compnames) {
-      sampled_comps[[length(sampled_comps)+1]] <- source
-      source_ind <- which(nys_compnames == source$get.name())
-      nys_compnames <- nys_compnames[-source.ind]
-      not_yet_sampled_comps[[source_ind]] <- NULL
-    }
-    
+    # check each source-recipient pairing to see if a recipient has another sampling time that is earlier in time than the projected transmission time
   }
   
-  eventlog
 }
 
 
