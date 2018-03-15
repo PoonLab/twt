@@ -94,7 +94,7 @@ generate.transmission.events <- function(model, eventlog) {
   
   # for each CompartmentType:
   indiv.types <- sapply(unlist(sampled_comps), function(a){a$get.type()$get.name()})
-  active.lineages <- sapply(model$get.extant_lineages(), function(b){b$get.location()$get.name()})
+  active.lineages <- sapply(model$get.extant_lineages(), function(b){b$get.location()$get.type()$get.name()})
   popn.totals <- lapply(model$get.types(), function(x) {
     # 1. enumerate active compartments, including unsampled infected hosts (U) at time t=0
     U <- x$get.unsampled()
@@ -137,13 +137,26 @@ generate.transmission.events <- function(model, eventlog) {
     sr.indiv.rates[x*2] <- model$get.types()[[comp2_type]]$get.branching.rate(comp1_type)
   }
   
+  # total rate of ANY transmission event occurring is the weighted sum of these rates in the dictionary
+  total.rate <- 0.0
+  nlegitPairings <- length(which(sr.indiv.rates != 0))
+  for (i in 1:length(sr.indiv.rates)) {
+    total.rate <- total.rate + (sr.indiv.rates[i] * 1/nlegitPairings)
+  }
+  
   
   # main loop
-  while (length(sampled_comps) > 1) {
+  while (length(c(sampled_compnames, nys_compnames)) > 1) {
     # determine the "time band" (time interval between the last sampling event and the next sampling event across all Types)
-    # time.band <- 
+    if (length(time.bands) == 0) {
+      # the first and only time interval is infinite
+    } else {
+      
+    }
     
-    # total rate of ANY transmission event occurring is the weighted sum of these rates
+    waiting.time <- rexp(n=1, rate=total.rate)
+    
+    
     
     # check each source-recipient pairing to see if a recipient has another sampling time that is earlier in time than the projected transmission time
   }
