@@ -129,20 +129,16 @@ generate.transmission.events <- function(model, eventlog) {
     # comp1 as source, comp2 as recipient
     sr.pair.dict[1, x*2-1] <- sr.pairings[1,x]          # row 1 = source
     sr.pair.dict[2, x*2-1] <- sr.pairings[2,x]          # row 2 = recipient
-    sr.indiv.rates[x*2-1] <- model$get.types()[[comp1_type]]$get.branching.rate(comp2_type)
+    sr.indiv.rates[x*2-1] <- model$get.types()[[comp1_type]]$get.branching.rate(comp2_type) * (1 / (popn.totals[[comp1_type]]$U + popn.totals[[comp1_type]]$A)) # weighted by number of source and recipient Types
     
     # comp2 as source, comp1 as recipient
     sr.pair.dict[1, x*2] <- sr.pairings[2,x]
     sr.pair.dict[2, x*2] <- sr.pairings[1,x]
-    sr.indiv.rates[x*2] <- model$get.types()[[comp2_type]]$get.branching.rate(comp1_type)
+    sr.indiv.rates[x*2] <- model$get.types()[[comp2_type]]$get.branching.rate(comp1_type) * (1 / (popn.totals[[comp2_type]]$U + popn.totals[[comp2_type]]$A))
   }
   
   # total rate of ANY transmission event occurring is the weighted sum of these rates in the dictionary
-  total.rate <- 0.0
-  nlegitPairings <- length(which(sr.indiv.rates != 0))
-  for (i in 1:length(sr.indiv.rates)) {
-    total.rate <- total.rate + (sr.indiv.rates[i] * 1/nlegitPairings)
-  }
+  total.rate <- sum(sr.indiv.rates)
   
   
   # main loop
@@ -151,10 +147,17 @@ generate.transmission.events <- function(model, eventlog) {
     if (length(time.bands) == 0) {
       # the first and only time interval is infinite
     } else {
-      
+      bandwidth <- 
     }
     
-    waiting.time <- rexp(n=1, rate=total.rate)
+    waiting.time <- current.time + rexp(n=1, rate=total.rate)
+    # if waiting time exceeds the current time band, proceed to next time band, and update current.time
+    if (waiting.time > bandwidth) {
+      current.time <- bandwidth
+      next
+    } else {
+      # determine source and recipient by relative transmission rate sums by type
+    }
     
     
     
