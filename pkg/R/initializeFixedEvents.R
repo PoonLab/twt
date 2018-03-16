@@ -4,7 +4,7 @@ init.fixed.samplings <- function(model) {
   # @param model = MODEL object
 
   # add lineage sampling events from Lineage objects
-  lineages <- unlist(model$get.lineages())
+  lineages <- model$get.lineages()
 
   list(
     # store label w/ corresponding tip height in new ape::phylo object (not casted into `phylo` yet)
@@ -109,10 +109,22 @@ generate.transmission.events <- function(model, eventlog) {
     data.frame(U=U, A=A, I=I, S=S)
   })
   
-  # retrieve record of sampling times of lineages
-  fixed.samplings <- init.fixed.samplings(model)
-  time.bands <- sort(unique(fixed.samplings$tip.height))
-  current.time <- 0.0
+  
+  
+  # record relevant sampling times of lineages for each Compartment
+  all.lineages <- model$get.lineages()
+  lineage.locations <- sapply(all.lineages, function(x) {x$get.location()$get.name()})
+  time.bands <- vector()         # vector of minimum sampling times for each Compartment
+  max.s.times <- vector()        # vector of maximum sampling times for each Compartment
+  for (x in 1:length(model$get.compartments())) {
+    single.comp.lineages <- all.lineages[ which(lineage.locations == model$get.compartments()[[x]]$get.name()) ]
+    single.comp.sampling.times <- sapply(single.comp.lineages, function(b) {
+      b$get.sampling.time()
+    })
+    time.bands <- c(time.bands, min(single.comp.sampling.times))     # NOTE: only the unique ones matter
+    max.s.times <- c(max.s.times, max(single.comp.sampling.times))
+  }
+
   
   
   # calc transmission rates among all source-recipient pairings of CompartmentTypes
@@ -141,28 +153,38 @@ generate.transmission.events <- function(model, eventlog) {
   total.rate <- sum(sr.indiv.rates)
   
   
-  # main loop
-  while (length(c(sampled_compnames, nys_compnames)) > 1) {
-    # determine the "time band" (time interval between the last sampling event and the next sampling event across all Types)
-    if (length(time.bands) == 0) {
-      # the first and only time interval is infinite
-    } else {
-      bandwidth <- 
-    }
-    
-    waiting.time <- current.time + rexp(n=1, rate=total.rate)
-    # if waiting time exceeds the current time band, proceed to next time band, and update current.time
-    if (waiting.time > bandwidth) {
-      current.time <- bandwidth
-      next
-    } else {
-      # determine source and recipient by relative transmission rate sums by type
-    }
-    
-    
-    
-    # check each source-recipient pairing to see if a recipient has another sampling time that is earlier in time than the projected transmission time
+  
+  current.time <- 0.0
+  
+  # determine the "time band" (time interval between the last sampling event and the next sampling event across all Types)
+  if (length(time.bands) == 0) {
+    # the next time interval (bandwidth) is infinite
+  } else {
+    # remove the first element in the listed chunks of time.bands
+    time.bands <- time.bands[-1]
+    # set the minimum element in time.bands as the new upper bound in time
+    bandwidth <- min(time.bands)
   }
+  
+  waiting.time <- current.time + rexp(n=1, rate=total.rate)
+  # if waiting time exceeds the current time band, proceed to next time band, and update current.time
+  if (waiting.time > bandwidth) {
+    current.time <- bandwidth
+    next
+  } else {
+    # determine source and recipient by relative transmission rate sums by type
+    # sample individual source and recipient compartments within Types, uniformly distributed
+    legitPairings <- sr.pair.dict[, which(sr.indiv.rates != 0)]
+    sr.pair <- legitPairings[, sample(1:ncol(legitPairings), 1)]
+    source <- sr.pair[1]
+    recipient <- sr.pair[2]
+  }
+  
+  
+  # check each source-recipient pairing to see if a recipient has another sampling time that is earlier in time than the projected transmission time
+
+    
+    
   
 }
 
