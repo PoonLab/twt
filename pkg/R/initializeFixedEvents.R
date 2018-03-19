@@ -117,12 +117,15 @@ generate.transmission.events <- function(model, eventlog) {
   time.bands <- vector()         # vector of minimum sampling times for each Compartment
   max.s.times <- vector()        # vector of maximum sampling times for each Compartment
   for (x in 1:length(model$get.compartments())) {
-    single.comp.lineages <- all.lineages[ which(lineage.locations == model$get.compartments()[[x]]$get.name()) ]
+    compName <- model$get.compartments()[[x]]$get.name()
+    single.comp.lineages <- all.lineages[ which(lineage.locations == compName) ]
     single.comp.sampling.times <- sapply(single.comp.lineages, function(b) {
       b$get.sampling.time()
     })
     time.bands <- c(time.bands, min(single.comp.sampling.times))     # NOTE: only the unique ones matter
     max.s.times <- c(max.s.times, max(single.comp.sampling.times))
+    names(time.bands) <- c(names(time.bands)[nzchar(x=names(time.bands))], compName)
+    names(max.s.times) <- c(names(max.s.times)[nzchar(x=names(max.s.times))], compName)
   }
 
   
@@ -172,19 +175,40 @@ generate.transmission.events <- function(model, eventlog) {
     current.time <- bandwidth
     next
   } else {
-    # determine source and recipient by relative transmission rate sums by type
-    # sample individual source and recipient compartments within Types, uniformly distributed
-    legitPairings <- sr.pair.dict[, which(sr.indiv.rates != 0)]
-    sr.pair <- legitPairings[, sample(1:ncol(legitPairings), 1)]
-    source <- sr.pair[1]
-    recipient <- sr.pair[2]
+    while (TRUE) {
+      # determine source and recipient by relative transmission rate sums by type
+      # sample individual source and recipient compartments within Types, uniformly distributed
+      legitPairings <- sr.pair.dict[, which(sr.indiv.rates != 0)]
+      sr.pair <- legitPairings[, sample(1:ncol(legitPairings), 1)]
+      source <- sampled_comps[[which(sampled_compnames == sr.pair[1])]]
+      recipient <- sampled_comps[[which(sampled_compnames == sr.pair[2])]]
+      
+      # check if the recipient has another sampling time that is earlier in time than the projected transmission time
+      if (recipient$get.name() %in% names(max.s.times)) {
+        if (max.s.times[recipient$get.name()] > current.time) {
+          # this sr.pairing must be disqualified
+          TRUE                                                  # FIXME: could go infinitely if all pairs have earlier sampling times than the current.time
+        } else {
+          FALSE
+        }
+      }
+    }
+    
+    # update recipient object `source` attr and `branching.time` attr
+    recipient$set.source(source)
+    recipient$set.branching.time(current.time)
+    
+    # add transmission event to EventLogger object
+    eventlog$add.event('transmission', current.time, obj1=NA, recipient$get.name(), source$get.name(), cumulative=T)
+    
+    # update all counts
+    popn.totals[[recipient$get.type()$get.name()]]$S <- popn.totals[[recipient$get.type()$get.name()]]$S + 1
+    popn.totals[[recipient$get.type()$get.name()]]$I <- popn.totals[[recipient$get.type()$get.name()]]$I - 1
+    
+    # remove all sr.pairs in dictionary that contain the recipient as a source
+    
   }
   
-  
-  # check each source-recipient pairing to see if a recipient has another sampling time that is earlier in time than the projected transmission time
-
-    
-    
   
 }
 
