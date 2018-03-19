@@ -175,25 +175,19 @@ generate.transmission.events <- function(model, eventlog) {
     current.time <- bandwidth
     next
   } else {
-    while (TRUE) {
-      # determine source and recipient by relative transmission rate sums by type
-      # sample individual source and recipient compartments within Types, uniformly distributed
-      legitPairings <- sr.pair.dict[, which(sr.indiv.rates != 0)]
-      sr.pair <- legitPairings[, sample(1:ncol(legitPairings), 1)]
-      source <- sampled_comps[[which(sampled_compnames == sr.pair[1])]]
-      recipient <- sampled_comps[[which(sampled_compnames == sr.pair[2])]]
+    # determine source and recipient by relative transmission rate sums by type
+    # sample individual source and recipient compartments within Types, uniformly distributed
+    legitPairings <- sr.pair.dict[, which(sr.indiv.rates != 0)]
+    # check if the recipient has another sampling time that is earlier in time than the projected transmission time
+    if (recipient$get.name() %in% names(max.s.times)) {
+      if (max.s.times[recipient$get.name()] > current.time) {
+        # this sr.pairing must be disqualified       # FIXME: could go infinitely if all pairs have earlier sampling times than the current.time
+      } 
       
-      # check if the recipient has another sampling time that is earlier in time than the projected transmission time
-      if (recipient$get.name() %in% names(max.s.times)) {
-        if (max.s.times[recipient$get.name()] > current.time) {
-          # this sr.pairing must be disqualified
-          TRUE                                                  # FIXME: could go infinitely if all pairs have earlier sampling times than the current.time
-        } else {
-          FALSE
-        }
-      }
-    }
-    
+    sr.pair <- legitPairings[, sample(1:ncol(legitPairings), 1)]
+    source <- sampled_comps[[which(sampled_compnames == sr.pair[1])]]
+    recipient <- sampled_comps[[which(sampled_compnames == sr.pair[2])]]
+      
     # update recipient object `source` attr and `branching.time` attr
     recipient$set.source(source)
     recipient$set.branching.time(current.time)

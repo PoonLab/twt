@@ -2,9 +2,9 @@
 CompartmentTypes:
   'blood':                                        # assume only one blood (plasma) compartment 
     unsampled: 20
-    susceptible: 50                               
-    branching.rates: (blood=0.0, cell=0.0)        # blood no transmission to blood - transmission is to uninfected cell
-    migration.rates: (blood=0.0, cell=0.01)       # infection of a cell (migration rate from blood -> cell)
+    susceptible: 50                               # blood no transmission to blood - transmission is to uninfected cell
+    branching.rates: (blood=0.0, cell=0.05)       # infection of a cell (transmission rate from blood -> cell)
+    migration.rates: (blood=0.0, cell=0.0)        
     bottleneck.size: 1                            # assume a single virus enters an uninfected cell
     popn.growth.dynamics:                         # no replication in blood 
       piece1:
@@ -14,10 +14,10 @@ CompartmentTypes:
         - slope: 0
   'cell':
     unsampled: 5
-    susceptible: 30                               # branching rate from cell -> blood is release of virus particles into blood
-    branching.rates: (blood=0.05, cell=0.0)       # assume no direct cell-to-cell transmission
-    migration.rates: (blood=0.0, cell=0.0)        # assume no migration to infected cells
-    bottleneck.size: undefined
+    susceptible: 30                               
+    branching.rates: (blood=0.0, cell=0.0)        # assume no direct cell-to-cell transmission
+    migration.rates: (blood=0.01, cell=0.0)       # migration rate from cell -> blood is release of virus particles back into blood
+    bottleneck.size: undefined                    # assume no migration to infected cells
     popn.growth.dynamics:                         # extinction of lineages cannot be sampled, is expressed by coalescent rate
       piece1:
         - start: 0
