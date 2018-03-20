@@ -114,14 +114,20 @@ generate.transmission.events <- function(model, eventlog) {
   # record relevant sampling times of lineages for each Compartment
   all.lineages <- model$get.lineages()
   lineage.locations <- sapply(all.lineages, function(x) {x$get.location()$get.name()})
+  possibleSourceTypes <- list()
   max.s.times <- vector()        # vector of maximum sampling times for each Compartment
   for (x in 1:length(model$get.compartments())) {
     comp <- model$get.compartments()[[x]]
     recipientType <- comp$get.type()$get.name()
-    recipientRates <- unique(sapply(model$get.types(), function(a) {
-      a$get.branching.rate(recipientType)
-    }))
-    if (length(recipientRates) == 1 && recipientRates[1] == 0) {
+    recipientRates <- sapply(model$get.types(), function(a) {
+      if (a$get.branching.rate(recipientType) == 0) {
+        NULL
+      } else {
+        a$get.branching.rate(recipientType)
+      }
+    })
+    recipientRates[sapply(recipientRates, is.null)] <- NULL
+    if (length(recipientRates) == 0) {
       # means that this compartment will never be a recipient (ie. example3.yaml 'blood' compartment)
       next
     } else {
@@ -131,6 +137,7 @@ generate.transmission.events <- function(model, eventlog) {
       })
       max.s.times <- c(max.s.times, max(single.comp.sampling.times))
       names(max.s.times) <- c(names(max.s.times)[nzchar(x=names(max.s.times))], comp$get.name())
+      possibleSourceTypes <- c(possibleSourceTypes, paste0(comp$get.name())=names(recipientRates))   ################# FIXME paste0(comp$get.name())
     }
   }
 
@@ -139,7 +146,8 @@ generate.transmission.events <- function(model, eventlog) {
   # draw all possible recipients that has a max sampling time less than or equal to the current.time
   qualified.sampled.recipients <- which(max.s.times >= current.time)
   
-  # calc transmission rates among all source-recipient pairings of CompartmentTypes
+  # calc transmission rates among all source-recipient pairings of CompartmentTypes for each qualified sampled recipient
+  
   sr.pairings <- combn(sampled_compnames, 2)         # TODO: include unsampled infected hosts
   sr.pair.dict <- matrix(nrow=2, ncol=2*ncol(sr.pairings))
   sr.indiv.rates <- vector(mode='numeric', length=2*ncol(sr.pairings))
