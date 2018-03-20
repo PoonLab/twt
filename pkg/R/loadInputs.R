@@ -26,7 +26,7 @@ MODEL <- R6Class("MODEL",
     
     get.names = function(listR6obj) {
       # @param listR6obj = list of R6 objects of class CompartmentType, Compartment, or Lineage
-      sapply(listR6obj, function(x){x$get.name()})
+      unname(sapply(listR6obj, function(x){x$get.name()}))
     },
     
     get.leaves.names = function(e) {

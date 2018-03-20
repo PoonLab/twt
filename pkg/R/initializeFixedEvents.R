@@ -114,21 +114,30 @@ generate.transmission.events <- function(model, eventlog) {
   # record relevant sampling times of lineages for each Compartment
   all.lineages <- model$get.lineages()
   lineage.locations <- sapply(all.lineages, function(x) {x$get.location()$get.name()})
-  time.bands <- vector()         # vector of minimum sampling times for each Compartment
   max.s.times <- vector()        # vector of maximum sampling times for each Compartment
   for (x in 1:length(model$get.compartments())) {
-    compName <- model$get.compartments()[[x]]$get.name()
-    single.comp.lineages <- all.lineages[ which(lineage.locations == compName) ]
-    single.comp.sampling.times <- sapply(single.comp.lineages, function(b) {
-      b$get.sampling.time()
-    })
-    time.bands <- c(time.bands, min(single.comp.sampling.times))     # NOTE: only the unique ones matter
-    max.s.times <- c(max.s.times, max(single.comp.sampling.times))
-    names(time.bands) <- c(names(time.bands)[nzchar(x=names(time.bands))], compName)
-    names(max.s.times) <- c(names(max.s.times)[nzchar(x=names(max.s.times))], compName)
+    comp <- model$get.compartments()[[x]]
+    recipientType <- comp$get.type()$get.name()
+    recipientRates <- unique(sapply(model$get.types(), function(a) {
+      a$get.branching.rate(recipientType)
+    }))
+    if (length(recipientRates) == 1 && recipientRates[1] == 0) {
+      # means that this compartment will never be a recipient (ie. example3.yaml 'blood' compartment)
+      next
+    } else {
+      single.comp.lineages <- all.lineages[ which(lineage.locations == comp$get.name()) ]
+      single.comp.sampling.times <- sapply(single.comp.lineages, function(b) {
+        b$get.sampling.time()
+      })
+      max.s.times <- c(max.s.times, max(single.comp.sampling.times))
+      names(max.s.times) <- c(names(max.s.times)[nzchar(x=names(max.s.times))], comp$get.name())
+    }
   }
 
+  current.time <- 0.0
   
+  # draw all possible recipients that has a max sampling time less than or equal to the current.time
+  qualified.sampled.recipients <- which(max.s.times >= current.time)
   
   # calc transmission rates among all source-recipient pairings of CompartmentTypes
   sr.pairings <- combn(sampled_compnames, 2)         # TODO: include unsampled infected hosts
@@ -157,7 +166,7 @@ generate.transmission.events <- function(model, eventlog) {
   
   
   
-  current.time <- 0.0
+  
   
   # determine the "time band" (time interval between the last sampling event and the next sampling event across all Types)
   if (length(time.bands) == 0) {
