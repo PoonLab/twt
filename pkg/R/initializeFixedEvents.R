@@ -114,7 +114,7 @@ generate.transmission.events <- function(model, eventlog) {
   # record relevant sampling times of lineages for each Compartment
   all.lineages <- model$get.lineages()
   lineage.locations <- sapply(all.lineages, function(x) {x$get.location()$get.name()})
-  possibleSourceTypes <- list()
+  possibleSourceTypes <- list()  # list of all different types of source that each recipient could possibly receive a transmission from
   max.s.times <- vector()        # vector of maximum sampling times for each Compartment
   for (x in 1:length(model$get.compartments())) {
     comp <- model$get.compartments()[[x]]
@@ -137,7 +137,8 @@ generate.transmission.events <- function(model, eventlog) {
       })
       max.s.times <- c(max.s.times, max(single.comp.sampling.times))
       names(max.s.times) <- c(names(max.s.times)[nzchar(x=names(max.s.times))], comp$get.name())
-      possibleSourceTypes <- c(possibleSourceTypes, paste0(comp$get.name())=names(recipientRates))   ################# FIXME paste0(comp$get.name())
+      possibleSourceTypes <- c(possibleSourceTypes, list(names(recipientRates)))
+      names(possibleSourceTypes)[[length(possibleSourceTypes)]] <- recipientType
     }
   }
 
@@ -147,34 +148,32 @@ generate.transmission.events <- function(model, eventlog) {
   qualified.sampled.recipients <- which(max.s.times >= current.time)
   
   # calc transmission rates among all source-recipient pairings of CompartmentTypes for each qualified sampled recipient
+  possibleTransmissions <- possibleSourceTypes[ qualified.sampled.recipients ]
   
-  sr.pairings <- combn(sampled_compnames, 2)         # TODO: include unsampled infected hosts
-  sr.pair.dict <- matrix(nrow=2, ncol=2*ncol(sr.pairings))
-  sr.indiv.rates <- vector(mode='numeric', length=2*ncol(sr.pairings))
-  
-  for(x in 1:ncol(sr.pairings)) {
-    comp1 <- sampled_comps[[which(sampled_compnames == sr.pairings[1,x])]]
-    comp2 <- sampled_comps[[which(sampled_compnames == sr.pairings[2,x])]]
-    comp1_type <- comp1$get.type()$get.name()
-    comp2_type <- comp2$get.type()$get.name()
-    
-    # comp1 as source, comp2 as recipient
-    sr.pair.dict[1, x*2-1] <- sr.pairings[1,x]          # row 1 = source
-    sr.pair.dict[2, x*2-1] <- sr.pairings[2,x]          # row 2 = recipient
-    sr.indiv.rates[x*2-1] <- model$get.types()[[comp1_type]]$get.branching.rate(comp2_type) * (1 / (popn.totals[[comp1_type]]$U + popn.totals[[comp1_type]]$A)) # weighted by number of source and recipient Types
-    
-    # comp2 as source, comp1 as recipient
-    sr.pair.dict[1, x*2] <- sr.pairings[2,x]
-    sr.pair.dict[2, x*2] <- sr.pairings[1,x]
-    sr.indiv.rates[x*2] <- model$get.types()[[comp2_type]]$get.branching.rate(comp1_type) * (1 / (popn.totals[[comp2_type]]$U + popn.totals[[comp2_type]]$A))
-  }
+  indiv.rates.n.quantities <- sapply(model$get.types(), function(x) {
+    sourceType <- x$get.name()
+    recipientTypes <- names(x$get.branching.rates())
+    sapply(recipientTypes, function(y) {
+      pairRate <- x$get.branching.rate(y) * (popn.totals[[y]]$S + 1) * popn.totals[[sourceType]]$A        # is it I (Infected Compartments) or A (Active Compartments) ?
+      qualified.r <- which(names(possibleTransmissions) == y)
+      if (length(qualified.r) == 0) {
+        nPairs <- 0
+      } else {
+        qualified.sr <- which(sapply(qualified.r, function(z) {
+          sourceType %in% possibleTransmissions[z]
+        }))
+        if (length(qualified.sr) == 0) {
+          nPairs <- 0
+        } else {
+          nPairs <- length(qualified.sr)                   # the number of pairs that have this transmission type
+        }
+      }
+      pairRate * nPairs
+    })
+  })
   
   # total rate of ANY transmission event occurring is the weighted sum of these rates in the dictionary
-  total.rate <- sum(sr.indiv.rates)
-  
-  
-  
-  
+  total.rate <- sum(indiv.rates.n.quantities)
   
   # determine the "time band" (time interval between the last sampling event and the next sampling event across all Types)
   if (length(time.bands) == 0) {
