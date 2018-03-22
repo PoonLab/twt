@@ -85,15 +85,13 @@ generate.transmission.events <- function(model, eventlog) {
   # @param model = MODEL object
   # @param eventlog = EventLogger object
   
-  sampled_comps <- model$get.extant_comps()                # init Compartments currently existing w/ Lineages at sampling.time = 0
-  sampled_compnames <- model$get.names(sampled_comps)
-  not_yet_sampled_comps <- model$get.non_extant_comps()    # init remaining Compartments w/ Lineages not yet sampled
-  nys_compnames <- model$get.names(not_yet_sampled_comps)
+  comps <- model$get.compartments()
+  compnames <- model$get.names(comps)
   us_comps <- model$get.unsampled.hosts()
   us_compnames <- model$get.names(us_comps)
   
   # for each CompartmentType:
-  indiv.types <- sapply(unlist(sampled_comps), function(a){a$get.type()$get.name()})
+  indiv.types <- sapply(unlist(comps), function(a){a$get.type()$get.name()})
   active.lineages <- sapply(model$get.extant_lineages(), function(b){b$get.location()$get.type()$get.name()})
   popn.totals <- lapply(model$get.types(), function(x) {
     # 1. enumerate active compartments, including unsampled infected hosts (U) at time t=0
@@ -115,7 +113,7 @@ generate.transmission.events <- function(model, eventlog) {
   all.lineages <- model$get.lineages()
   lineage.locations <- sapply(all.lineages, function(x) {x$get.location()$get.name()})
   possibleSourceTypes <- list()  # list of all different types of source that each recipient could possibly receive a transmission from
-  max.s.times <- vector()        # vector of maximum sampling times for each Compartment
+  time.bands <- vector()        # vector of maximum sampling times for each Compartment
   for (x in 1:length(model$get.compartments())) {
     comp <- model$get.compartments()[[x]]
     recipientType <- comp$get.type()$get.name()
@@ -135,89 +133,81 @@ generate.transmission.events <- function(model, eventlog) {
       single.comp.sampling.times <- sapply(single.comp.lineages, function(b) {
         b$get.sampling.time()
       })
-      max.s.times <- c(max.s.times, max(single.comp.sampling.times))
-      names(max.s.times) <- c(names(max.s.times)[nzchar(x=names(max.s.times))], comp$get.name())
+      time.bands <- c(time.bands, max(single.comp.sampling.times))
+      names(time.bands) <- c(names(time.bands)[nzchar(x=names(time.bands))], comp$get.name())
       possibleSourceTypes <- c(possibleSourceTypes, list(names(recipientRates)))
       names(possibleSourceTypes)[[length(possibleSourceTypes)]] <- recipientType
     }
   }
 
+  
+  
   current.time <- 0.0
   
-  # draw all possible recipients that has a max sampling time less than or equal to the current.time
-  qualified.sampled.recipients <- which(max.s.times >= current.time)
-  
-  # calc transmission rates among all source-recipient pairings of CompartmentTypes for each qualified sampled recipient
-  possibleTransmissions <- possibleSourceTypes[ qualified.sampled.recipients ]
-  
-  indiv.rates.n.quantities <- sapply(model$get.types(), function(x) {
-    sourceType <- x$get.name()
-    recipientTypes <- names(x$get.branching.rates())
-    sapply(recipientTypes, function(y) {
-      pairRate <- x$get.branching.rate(y) * (popn.totals[[y]]$S + 1) * popn.totals[[sourceType]]$A        # is it I (Infected Compartments) or A (Active Compartments) ?
-      qualified.r <- which(names(possibleTransmissions) == y)
-      if (length(qualified.r) == 0) {
-        nPairs <- 0
-      } else {
-        qualified.sr <- which(sapply(qualified.r, function(z) {
-          sourceType %in% possibleTransmissions[z]
-        }))
-        if (length(qualified.sr) == 0) {
+  while (length(comps) > 1) {
+    # draw all possible recipients that has a max sampling time less than or equal to the current.time
+    qualified.sampled.recipients <- which(time.bands <= current.time)
+    
+    # calc transmission rates among all source-recipient pairings of CompartmentTypes for each qualified sampled recipient
+    possibleTransmissions <- possibleSourceTypes[ qualified.sampled.recipients ]
+    
+    indiv.rates.n.quantities <- sapply(model$get.types(), function(x) {
+      sourceType <- x$get.name()
+      recipientTypes <- names(x$get.branching.rates())
+      sapply(recipientTypes, function(y) {
+        pairRate <- x$get.branching.rate(y) * (popn.totals[[y]]$S + 1) * popn.totals[[sourceType]]$A  
+        qualified.r <- which(names(possibleTransmissions) == y)
+        if (length(qualified.r) == 0) {
           nPairs <- 0
         } else {
-          nPairs <- length(qualified.sr)                   # the number of pairs that have this transmission type
+          qualified.sr <- which(sapply(qualified.r, function(z) {
+            sourceType %in% possibleTransmissions[z]
+          }))
+          if (length(qualified.sr) == 0) {
+            nPairs <- 0
+          } else {
+            nPairs <- length(qualified.sr)                   # the number of pairs that have this transmission type
+          }
         }
-      }
-      pairRate * nPairs
+        pairRate * nPairs
+      })
     })
-  })
-  
-  # total rate of ANY transmission event occurring is the weighted sum of these rates in the dictionary
-  total.rate <- sum(indiv.rates.n.quantities)
-  
-  # determine the "time band" (time interval between the last sampling event and the next sampling event across all Types)
-  if (length(time.bands) == 0) {
-    # the next time interval (bandwidth) is infinite
-  } else {
-    # remove the first element in the listed chunks of time.bands
-    time.bands <- time.bands[-1]
-    # set the minimum element in time.bands as the new upper bound in time
-    bandwidth <- min(time.bands)
+    
+    # total rate of ANY transmission event occurring is the weighted sum of these rates in the dictionary
+    total.rate <- sum(indiv.rates.n.quantities)
+    
+    # sample waiting time
+    waiting.time <- current.time + rexp(n=1, rate=total.rate)
+    
+    
+    if (length(which(time.bands <= current.time)) > length(qualified.sampled.recipients)) {
+      # check if the waiting time exceeds any sampling time within the compartments previously not qualifying as sampled recipients
+      # if so, update the current time to the new upper bound in time (waiting time), and re-start the filtering to include new qualified recipients
+      current.time <- waiting.time
+      next
+    } else {
+      # determine source and recipient by relative transmission rate sums by type
+      # sample individual source and recipient compartments within Types, uniformly distributed
+      r_name <- sample(names(qualified.sampled.recipients), 1)
+      recipient <- comps[[ which(compnames == r_name) ]]
+      r_type <- recipient$get.type()$get.name()
+      
+      # update recipient object `source` attr and `branching.time` attr
+      recipient$set.source(source)
+      recipient$set.branching.time(current.time)
+      
+      # add transmission event to EventLogger object
+      eventlog$add.event('transmission', current.time, obj1=NA, recipient$get.name(), source$get.name(), cumulative=T)
+      
+      # update all counts
+      popn.totals[[r_type]]$S <- popn.totals[[r_type]]$S + 1
+      popn.totals[[r_type]]$I <- popn.totals[[r_type]]$I - 1
+      
+      # remove all sr.pairs in dictionary that contain the recipient as a source
+      
+    }
   }
   
-  waiting.time <- current.time + rexp(n=1, rate=total.rate)
-  # if waiting time exceeds the current time band, proceed to next time band, and update current.time
-  if (waiting.time > bandwidth) {
-    current.time <- bandwidth
-    next
-  } else {
-    # determine source and recipient by relative transmission rate sums by type
-    # sample individual source and recipient compartments within Types, uniformly distributed
-    legitPairings <- sr.pair.dict[, which(sr.indiv.rates != 0)]
-    # check if the recipient has another sampling time that is earlier in time than the projected transmission time
-    if (recipient$get.name() %in% names(max.s.times)) {
-      if (max.s.times[recipient$get.name()] > current.time) {
-        # this sr.pairing must be disqualified       # FIXME: could go infinitely if all pairs have earlier sampling times than the current.time
-      } 
-      
-    sr.pair <- legitPairings[, sample(1:ncol(legitPairings), 1)]
-    source <- sampled_comps[[which(sampled_compnames == sr.pair[1])]]
-    recipient <- sampled_comps[[which(sampled_compnames == sr.pair[2])]]
-      
-    # update recipient object `source` attr and `branching.time` attr
-    recipient$set.source(source)
-    recipient$set.branching.time(current.time)
-    
-    # add transmission event to EventLogger object
-    eventlog$add.event('transmission', current.time, obj1=NA, recipient$get.name(), source$get.name(), cumulative=T)
-    
-    # update all counts
-    popn.totals[[recipient$get.type()$get.name()]]$S <- popn.totals[[recipient$get.type()$get.name()]]$S + 1
-    popn.totals[[recipient$get.type()$get.name()]]$I <- popn.totals[[recipient$get.type()$get.name()]]$I - 1
-    
-    # remove all sr.pairs in dictionary that contain the recipient as a source
-    
-  }
   
   
 }

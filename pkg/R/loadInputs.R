@@ -21,8 +21,6 @@ MODEL <- R6Class("MODEL",
     get.compartments = function() {private$compartments},
     get.lineages = function() {private$lineages},
     get.extant_lineages = function() {private$extant_lineages},
-    get.extant_comps = function() {private$extant_comps},
-    get.non_extant_comps = function() {private$non_extant_comps},
     
     get.names = function(listR6obj) {
       # @param listR6obj = list of R6 objects of class CompartmentType, Compartment, or Lineage
@@ -140,8 +138,7 @@ MODEL <- R6Class("MODEL",
           Compartment$new(name = paste0(comp,'_', obj),            # unique identifier
                           type = typeObj,
                           source = params$source,        
-                          branching.time = params$branching.time,
-                          sampling.time = params$sampling.time
+                          branching.time = params$branching.time
           )
         })
         
@@ -223,27 +220,6 @@ MODEL <- R6Class("MODEL",
         if (b$get.sampling.time() == 0) {b}
       })
       private$extant_lineages <- unlist(res)
-    },
-    
-    
-    
-    init.extant.comps = function() {
-      # initializes list of Compartments containing Lineages with sampling.time t=0
-      res <- sapply(private$extant_lineages, function(b){
-        b$get.location()
-      })
-      private$extant_comps <- unique(res)
-    },
-    
-    
-    
-    init.non.extant.comps = function() {
-      # initializes list of Compartments containing Lineages with sampling.time t!=0
-      extant.names <- sapply(private$extant_comps, function(a){a$get.name()})
-      res <- sapply(private$compartments, function(b) {
-        if (b$get.name() %in% extant.names == F) {b}
-      })
-      private$non_extant_comps <- unlist(res)
     },
     
     

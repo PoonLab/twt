@@ -72,12 +72,11 @@ CompartmentType  <- R6Class("CompartmentType",
 # Compartment
 Compartment <- R6Class("Compartment",
   public = list(
-    initialize = function(name=NA, type=NA, source=NA, branching.time=NA, sampling.time=NA) {
+    initialize = function(name=NA, type=NA, source=NA, branching.time=NA) {
       private$name <- name
       private$type <- type
       private$source <- source
       private$branching.time <- branching.time
-      private$sampling.time <- sampling.time
     },
     
     get.name = function() {
@@ -94,10 +93,6 @@ Compartment <- R6Class("Compartment",
     
     get.branching.time = function() {
       private$branching.time
-    },
-    
-    get.sampling.time = function() {
-      private$sampling.time
     },
     
     set.type = function(new.type) {
@@ -117,8 +112,7 @@ Compartment <- R6Class("Compartment",
     name = NULL,
     type = NULL,          # reference to CompartmentType object
     source = NULL,
-    branching.time = NULL,
-    sampling.time = NULL
+    branching.time = NULL
   )
 )
 
