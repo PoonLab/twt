@@ -85,7 +85,7 @@ generate.transmission.events <- function(model, eventlog) {
   # @param model = MODEL object
   # @param eventlog = EventLogger object
   
-  comps <- model$get.compartments()
+  comps <- model$get.compartments()                     # should comps include the unsampled infected compartments?
   compnames <- model$get.names(comps)
   us_comps <- model$get.unsampled.hosts()
   us_compnames <- model$get.names(us_comps)
@@ -191,20 +191,21 @@ generate.transmission.events <- function(model, eventlog) {
       r_name <- sample(names(qualified.sampled.recipients), 1)
       recipient <- comps[[ which(compnames == r_name) ]]
       r_type <- recipient$get.type()$get.name()
+      comps[[ which(compnames == r_name) ]] <- NULL
+      
+      source <- sample(comps, 1)
+      source_name <- source$get.name()
       
       # update recipient object `source` attr and `branching.time` attr
       recipient$set.source(source)
       recipient$set.branching.time(current.time)
       
       # add transmission event to EventLogger object
-      eventlog$add.event('transmission', current.time, obj1=NA, recipient$get.name(), source$get.name(), cumulative=T)
+      eventlog$add.event('transmission', current.time, obj1=NA, r_name, source_name, cumulative=T)
       
       # update all counts
       popn.totals[[r_type]]$S <- popn.totals[[r_type]]$S + 1
       popn.totals[[r_type]]$I <- popn.totals[[r_type]]$I - 1
-      
-      # remove all sr.pairs in dictionary that contain the recipient as a source
-      
     }
   }
   
