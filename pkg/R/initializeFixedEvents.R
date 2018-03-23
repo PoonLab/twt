@@ -114,8 +114,8 @@ generate.transmission.events <- function(model, eventlog) {
   lineage.locations <- sapply(all.lineages, function(x) {x$get.location()$get.name()})
   possibleSourceTypes <- list()  # list of all different types of source that each recipient could possibly receive a transmission from
   time.bands <- vector()        # vector of maximum sampling times for each Compartment
-  for (x in 1:length(model$get.compartments())) {
-    comp <- model$get.compartments()[[x]]
+  for (x in 1:length(comps)) {
+    comp <- comps[[x]]
     recipientType <- comp$get.type()$get.name()
     recipientRates <- sapply(model$get.types(), function(a) {
       if (a$get.branching.rate(recipientType) == 0) {
@@ -178,39 +178,43 @@ generate.transmission.events <- function(model, eventlog) {
     
     # sample waiting time
     waiting.time <- current.time + rexp(n=1, rate=total.rate)
-    
+    # update the current time to the new upper bound in time (waiting time)
+    current.time <- waiting.time
     
     if (length(which(time.bands <= current.time)) > length(qualified.sampled.recipients)) {
       # check if the waiting time exceeds any sampling time within the compartments previously not qualifying as sampled recipients
-      # if so, update the current time to the new upper bound in time (waiting time), and re-start the filtering to include new qualified recipients
-      current.time <- waiting.time
+      # re-start the filtering to include new qualified recipients
       next
     } else {
       # determine source and recipient by relative transmission rate sums by type
       # sample individual source and recipient compartments within Types, uniformly distributed
       r_name <- sample(names(qualified.sampled.recipients), 1)
-      recipient <- comps[[ which(compnames == r_name) ]]
+      r_ind <- which(compnames == r_name)
+      recipient <- comps[[ r_ind ]]
       r_type <- recipient$get.type()$get.name()
-      comps[[ which(compnames == r_name) ]] <- NULL
       
-      source <- sample(comps, 1)
-      source_name <- source$get.name()
+      # remove recipient from relevant lists
+      comps[[ r_ind ]] <- NULL
+      compnames <- compnames[-r_ind]
+      time.bands <- time.bands[ -which(names(time.bands) == r_name) ]
+      
+      source <- sample(comps, 1)[[1]]
+      s_name <- source$get.name()
       
       # update recipient object `source` attr and `branching.time` attr
       recipient$set.source(source)
       recipient$set.branching.time(current.time)
       
       # add transmission event to EventLogger object
-      eventlog$add.event('transmission', current.time, obj1=NA, r_name, source_name, cumulative=T)
+      eventlog$add.event('transmission', current.time, obj1='NA', r_name, s_name)
       
       # update all counts
       popn.totals[[r_type]]$S <- popn.totals[[r_type]]$S + 1
-      popn.totals[[r_type]]$I <- popn.totals[[r_type]]$I - 1
+      popn.totals[[r_type]]$A <- popn.totals[[r_type]]$A - 1
     }
   }
   
-  
-  
+  eventlog
 }
 
 

@@ -187,7 +187,7 @@ EventLogger <- R6Class("EventLogger",
    
    
     get.all.events = function(cumulative=TRUE) {
-      if (nrow(private$events.noncumul) == 0) {cat('No events to display.')}
+      if (nrow(private$events) == 0) {cat('No events to display.')}
       else {
         if (cumulative) {
           private$events                    # default eventlog shows cumulative time b/c more user friendly
@@ -224,11 +224,11 @@ EventLogger <- R6Class("EventLogger",
       # @param obj3 = name of a source compartment object in mode character for a transmission or migration event
                  # OR name of a compartment object in mode character for a coalescent event
       if (tolower(name) == 'transmission' || tolower(name) == 'migration') {
-        nonCumulEvent <- list(event.type=name, time=time, lineage1=obj1, lineage2=NA, compartment1=obj2, compartment2=obj3)
+        CumulEvent <- list(event.type=name, time=time, lineage1=obj1, lineage2=NA, compartment1=obj2, compartment2=obj3)
       } else if (tolower(name) == 'coalescent') {
-        nonCumulEvent <- list(event.type=name, time=time, lineage1=obj1, lineage2=obj2, compartment1=obj3, compartment2=NA)
+        CumulEvent <- list(event.type=name, time=time, lineage1=obj1, lineage2=obj2, compartment1=obj3, compartment2=NA)
       }
-      private$events.noncumul <- rbind(private$events.noncumul, nonCumulEvent, stringsAsFactors=F)
+      private$events <- rbind(private$events, CumulEvent, stringsAsFactors=F)
     },
    
    
@@ -315,7 +315,7 @@ EventLogger <- R6Class("EventLogger",
         # traverse descendants
         generate.indiv.event(as.character(parentEvent['compartment1']), as.numeric(parentEvent['time']))
         # root's individualt delta t from when it was infected to when it made its first transmission is 'undefined'
-        parentEvent['time'] <- 'inf'
+        parentEvent['time'] <- NaN
         private$events.noncumul <- rbind(private$events.noncumul, parentEvent, stringsAsFactors=F)
       }
      
