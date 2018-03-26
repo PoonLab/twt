@@ -51,13 +51,13 @@ init.fixed.samplings <- function(model) {
 
 
 # Case 2 : User manually inputs a host transmission tree into YAML format under Compartments header
-init.branching.events <- function(inputs, eventlog) {
-  # @param inputs = MODEL object
+init.branching.events <- function(model, eventlog) {
+  # @param model = MODEL object
   # @param eventlog = EventLogger object
 
   # if the user input includes a tree (host tree) then add transmission events
-  comps <- inputs$get.compartments()
-  lineages <- inputs$get.lineages()
+  comps <- model$get.compartments()
+  lineages <- model$get.lineages()
 
   transmissions <- sapply(comps, function(x) {
     branching.time <- x$get.branching.time()
@@ -89,6 +89,8 @@ generate.transmission.events <- function(model, eventlog) {
   compnames <- model$get.names(comps)
   us_comps <- model$get.unsampled.hosts()
   us_compnames <- model$get.names(us_comps)
+  source.popn <- c(comps, us_comps)
+  source.popn.names <- model$get.names(source.popn)
   
   # for each CompartmentType:
   indiv.types <- sapply(unlist(comps), function(a){a$get.type()$get.name()})
@@ -114,8 +116,10 @@ generate.transmission.events <- function(model, eventlog) {
   lineage.locations <- sapply(all.lineages, function(x) {x$get.location()$get.name()})
   possibleSourceTypes <- list()  # list of all different types of source that each recipient could possibly receive a transmission from
   time.bands <- vector()        # vector of maximum sampling times for each Compartment
-  for (x in 1:length(comps)) {
-    comp <- comps[[x]]
+  
+  
+  for (x in 1:length(source.popn)) {
+    comp <- source.popn[[x]]
     recipientType <- comp$get.type()$get.name()
     recipientRates <- sapply(model$get.types(), function(a) {
       if (a$get.branching.rate(recipientType) == 0) {
@@ -124,15 +128,23 @@ generate.transmission.events <- function(model, eventlog) {
         a$get.branching.rate(recipientType)
       }
     })
-    recipientRates[sapply(recipientRates, is.null)] <- NULL
+    recipientRates[sapply(recipientRates, is.null)] <- NULL      # remove branching rates of 0
+    
     if (length(recipientRates) == 0) {
       # means that this compartment will never be a recipient (ie. example3.yaml 'blood' compartment)
       next
     } else {
-      single.comp.lineages <- all.lineages[ which(lineage.locations == comp$get.name()) ]
-      single.comp.sampling.times <- sapply(single.comp.lineages, function(b) {
-        b$get.sampling.time()
-      })
+      # check if comp is a us_comp
+      comp.native.lineages <- which(lineage.locations == comp$get.name())
+      if (length(comp.native.lineages) == 0) {
+        single.comp.sampling.times <- 0
+      } else {
+        single.comp.lineages <- all.lineages[ comp.native.lineages ]
+        single.comp.sampling.times <- sapply(single.comp.lineages, function(b) {
+          b$get.sampling.time()
+        })
+      }
+      
       time.bands <- c(time.bands, max(single.comp.sampling.times))
       names(time.bands) <- c(names(time.bands)[nzchar(x=names(time.bands))], comp$get.name())
       possibleSourceTypes <- c(possibleSourceTypes, list(names(recipientRates)))
@@ -144,7 +156,7 @@ generate.transmission.events <- function(model, eventlog) {
   
   current.time <- 0.0
   
-  while (length(comps) > 1) {
+  while (length(source.popn) > 1) {
     # draw all possible recipients that has a max sampling time less than or equal to the current.time
     qualified.sampled.recipients <- which(time.bands <= current.time)
     
@@ -155,7 +167,7 @@ generate.transmission.events <- function(model, eventlog) {
       sourceType <- x$get.name()
       recipientTypes <- names(x$get.branching.rates())
       sapply(recipientTypes, function(y) {
-        pairRate <- x$get.branching.rate(y) * (popn.totals[[y]]$S + 1) * popn.totals[[sourceType]]$A  
+        pairRate <- x$get.branching.rate(y) * (popn.totals[[y]]$S + 1) * (popn.totals[[sourceType]]$A + popn.totals[[sourceType]]$U)  
         qualified.r <- which(names(possibleTransmissions) == y)
         if (length(qualified.r) == 0) {
           nPairs <- 0
@@ -187,19 +199,22 @@ generate.transmission.events <- function(model, eventlog) {
       next
     } else {
       # determine source and recipient by relative transmission rate sums by type
-      # sample individual source and recipient compartments within Types, uniformly distributed
+      # sample individual recipient compartment within Types, uniformly distributed
       r_name <- sample(names(qualified.sampled.recipients), 1)
-      r_ind <- which(compnames == r_name)
-      recipient <- comps[[ r_ind ]]
+      r_ind <- which(source.popn.names == r_name)
+      recipient <- source.popn[[ r_ind ]]
       r_type <- recipient$get.type()$get.name()
       
       # remove recipient from relevant lists
-      comps[[ r_ind ]] <- NULL
-      compnames <- compnames[-r_ind]
+      source.popn[[ r_ind ]] <- NULL
+      source.popn.names <- source.popn.names[-r_ind]
       time.bands <- time.bands[ -which(names(time.bands) == r_name) ]
       
-      source <- sample(comps, 1)[[1]]
+      # sample individual source compartment within Types, uniformly distributed
+      source <- sample(source.popn, 1)[[1]]
       s_name <- source$get.name()
+      
+      # remove source from somewhere?
       
       # update recipient object `source` attr and `branching.time` attr
       recipient$set.source(source)
@@ -272,7 +287,7 @@ generate.transmission.events <- function(model, eventlog) {
     edge.length[x] <- t_events[x,]$time
   }
   
-  phy <- list(tip.label=unlist(tip.label), Nnode=Nnode, edge.length=as.numeric(unlist(edge.length)), edge=edge, node.label=unlist(node.label))
+  phy <- list(tip.label=tip.label, Nnode=Nnode, edge.length=as.numeric(edge.length), edge=edge, node.label=node.label[!is.na(node.label)])
   attr(phy, 'class') <- 'phylo'
   attr(phy, 'order') <- 'cladewise'
   phy

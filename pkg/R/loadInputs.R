@@ -2,18 +2,15 @@
 MODEL <- R6Class("MODEL",
   public = list(
     initialize = function(settings=NA) {
-      private$load.types(settings)
-      private$load.unsampled.hosts()
-      private$load.compartments(settings)
-      private$set.sources()
-      private$load.lineages(settings)
+      private$types <- private$load.types(settings)
+      private$unsampled.hosts <- private$load.unsampled.hosts()
+      private$compartments <- private$load.compartments(settings)
+      private$compartments <- private$set.sources()
+      private$lineages <- private$load.lineages(settings)
       
-      private$init.extant.lineages()
-      private$init.extant.comps()
-      private$init.non.extant.comps()
-      
-      private$init.locations()
-      private$init.pairs()
+      private$extant_lineages <- private$init.extant.lineages()
+      private$locations <- private$init.locations()
+      private$choices <- private$init.pairs()
     },
     
     get.types = function() {private$types},
@@ -99,7 +96,7 @@ MODEL <- R6Class("MODEL",
                                  popn.growth.dynamics = private$init.popn.growth.dynamics(params$popn.growth.dynamics)
         )
       })
-      private$types <- unlist(types)
+      unlist(types)
     },
     
     
@@ -114,7 +111,7 @@ MODEL <- R6Class("MODEL",
                             type = x)
           })
       })
-      private$unsampled.hosts <- unlist(us.hosts)
+      unlist(us.hosts)
     },
     
     
@@ -143,7 +140,7 @@ MODEL <- R6Class("MODEL",
         })
         
       })
-      private$compartments <- unlist(compartments)
+      unlist(compartments)
     },
     
     
@@ -159,7 +156,7 @@ MODEL <- R6Class("MODEL",
         } # TODO: else statement { if source is 'undefined' or not in the list, must be assigned to an unsampled host (US) }
         x
       })
-      private$compartments <- compartments
+      compartments
     },
     
     
@@ -209,7 +206,7 @@ MODEL <- R6Class("MODEL",
         })
       
       })
-      private$lineages <- unlist(lineages)
+      unlist(lineages)
     },
     
     
@@ -219,7 +216,7 @@ MODEL <- R6Class("MODEL",
       res <- sapply(private$lineages, function(b){
         if (b$get.sampling.time() == 0) {b}
       })
-      private$extant_lineages <- unlist(res)
+      unlist(res)
     },
     
     
@@ -277,6 +274,7 @@ MODEL <- R6Class("MODEL",
         }
         private$locations[[node$get.location()$get.name()]] <- c(private$locations[[node$get.location()$get.name()]], node$get.name())
       }
+      private$locations
     },
     
     
@@ -294,6 +292,7 @@ MODEL <- R6Class("MODEL",
           }
         }
       }
+      private$choices
     }
     
     

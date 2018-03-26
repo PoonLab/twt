@@ -295,7 +295,7 @@ EventLogger <- R6Class("EventLogger",
           if (length(row.names(nodeEvents)) == 0) {
             return(NULL)
           } else {
-            for (x in seq_along(nodeEvents)) {
+            for (x in 1:nrow(nodeEvents)) {
               childEvent <- nodeEvents[x,]
               # traverse descendants
               generate.indiv.event(as.character(childEvent['compartment1']), as.numeric(childEvent['time']))
@@ -310,7 +310,7 @@ EventLogger <- R6Class("EventLogger",
       
       # beginning of function generate.events()
       rootEvents <- events[ which(events$compartment2 == root), ] 
-      for (x in seq_along(rootEvents)) {
+      for (x in 1:nrow(rootEvents)) {
         parentEvent <- rootEvents[x,]
         # traverse descendants
         generate.indiv.event(as.character(parentEvent['compartment1']), as.numeric(parentEvent['time']))
