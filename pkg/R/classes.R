@@ -315,7 +315,7 @@ EventLogger <- R6Class("EventLogger",
         # traverse descendants
         generate.indiv.event(as.character(parentEvent['compartment1']), as.numeric(parentEvent['time']))
         # root's individualt delta t from when it was infected to when it made its first transmission is 'undefined'
-        parentEvent['time'] <- NaN
+        parentEvent['time'] <- 0      # 0 or 1 by convention (see treeswithintrees closed issue #29)
         private$events.noncumul <- rbind(private$events.noncumul, parentEvent, stringsAsFactors=F)
       }
      

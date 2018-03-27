@@ -94,19 +94,15 @@ generate.transmission.events <- function(model, eventlog) {
   
   # for each CompartmentType:
   indiv.types <- sapply(unlist(comps), function(a){a$get.type()$get.name()})
-  active.lineages <- sapply(model$get.extant_lineages(), function(b){b$get.location()$get.type()$get.name()})
   popn.totals <- lapply(model$get.types(), function(x) {
     # 1. enumerate active compartments, including unsampled infected hosts (U) at time t=0
     U <- x$get.unsampled()
     A <- length(which(indiv.types == x$get.name()))
     
-    # 2. enumerate active lineages of infected (I), pairs of active lineages within hosts at time t=0
-    I <- length(which(active.lineages == x$get.name()))
-    
-    # 3. enumerate number of susceptibles (S) at time t=0
+    # 2. enumerate number of susceptibles (S) at time t=0
     S <- x$get.susceptible()
     
-    data.frame(U=U, A=A, I=I, S=S)
+    data.frame(U=U, A=A, S=S)
   })
   
   
@@ -117,8 +113,9 @@ generate.transmission.events <- function(model, eventlog) {
   possibleSourceTypes <- list()  # list of all different types of source that each recipient could possibly receive a transmission from
   time.bands <- vector()        # vector of maximum sampling times for each Compartment
   
-  
   for (x in 1:length(source.popn)) {
+    # generates a comprehensive dictionary of all possibilities
+    # filtered first to remove all with branching rates of 0, then at 'while' loop
     comp <- source.popn[[x]]
     recipientType <- comp$get.type()$get.name()
     recipientRates <- sapply(model$get.types(), function(a) {
@@ -137,7 +134,7 @@ generate.transmission.events <- function(model, eventlog) {
       # check if comp is a us_comp
       comp.native.lineages <- which(lineage.locations == comp$get.name())
       if (length(comp.native.lineages) == 0) {
-        single.comp.sampling.times <- 0
+        single.comp.sampling.times <- NA
       } else {
         single.comp.lineages <- all.lineages[ comp.native.lineages ]
         single.comp.sampling.times <- sapply(single.comp.lineages, function(b) {
@@ -156,7 +153,7 @@ generate.transmission.events <- function(model, eventlog) {
   
   current.time <- 0.0
   
-  while (length(source.popn) > 1) {
+  while (length(comps) > 1) {
     # draw all possible recipients that has a max sampling time less than or equal to the current.time
     qualified.sampled.recipients <- which(time.bands <= current.time)
     
@@ -194,27 +191,39 @@ generate.transmission.events <- function(model, eventlog) {
     current.time <- waiting.time
     
     if (length(which(time.bands <= current.time)) > length(qualified.sampled.recipients)) {
-      # check if the waiting time exceeds any sampling time within the compartments previously not qualifying as sampled recipients
-      # re-start the filtering to include new qualified recipients
+      # check if the waiting time exceeds any sampling time within the sampled compartments previously not qualifying as a recipient
+      # re-start the filtering to include new qualified sampled infected recipients
       next
     } else {
       # determine source and recipient by relative transmission rate sums by type
       # sample individual recipient compartment within Types, uniformly distributed
       r_name <- sample(names(qualified.sampled.recipients), 1)
-      r_ind <- which(source.popn.names == r_name)
-      recipient <- source.popn[[ r_ind ]]
+      r_ind_s_popn <- which(source.popn.names == r_name)
+      r_ind_comps <- which(compnames == r_name)
+      
+      recipient <- comps[[ r_ind_comps ]]
       r_type <- recipient$get.type()$get.name()
       
       # remove recipient from relevant lists
-      source.popn[[ r_ind ]] <- NULL
-      source.popn.names <- source.popn.names[-r_ind]
+      comps[[ r_ind_comps ]] <- NULL
+      compnames <- compnames[-r_ind_comps]
+      source.popn[[ r_ind_s_popn ]] <- NULL
+      source.popn.names <- source.popn.names[-r_ind_s_popn]
       time.bands <- time.bands[ -which(names(time.bands) == r_name) ]
       
       # sample individual source compartment within Types, uniformly distributed
       source <- sample(source.popn, 1)[[1]]
       s_name <- source$get.name()
       
-      # remove source from somewhere?
+      # if source is a us_comp, now holds a sampled lineage we care about 
+      s_ind_timebands <- which(names(time.bands) == s_name)
+      if (is.na(time.bands[s_ind_timebands])) {
+        # update "max sampling time" of particular us_comp from NA to current.time
+        time.bands[s_ind_timebands] <- current.time
+        # add us_comp source to list of comps (can now be a recipient)
+        comps[[length(comps)+1]] <- source
+        compnames[[length(compnames)+1]] <- s_name
+      }
       
       # update recipient object `source` attr and `branching.time` attr
       recipient$set.source(source)

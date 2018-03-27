@@ -85,7 +85,7 @@ MODEL <- R6Class("MODEL",
       ## within each CompartmentType, there are distinct compartments with: 
       # individual transmission & migration rates
       # unsampled host & susceptible populations 
-      types <- sapply(names(settings$CompartmentTypes), function(x) {
+      unlist(sapply(names(settings$CompartmentTypes), function(x) {
         params <- settings$CompartmentTypes[[x]]
         x <- CompartmentType$new(name = x,
                                  unsampled = params$unsampled,
@@ -95,8 +95,7 @@ MODEL <- R6Class("MODEL",
                                  bottleneck.size = params$bottleneck.size,
                                  popn.growth.dynamics = private$init.popn.growth.dynamics(params$popn.growth.dynamics)
         )
-      })
-      unlist(types)
+      }))
     },
     
     
@@ -104,14 +103,13 @@ MODEL <- R6Class("MODEL",
     load.unsampled.hosts = function() {
       ## function creates "blank" Compartment objects for Unsampled Hosts (US) 
       ## stored in lists for each section within a CompartmentType object
-      us.hosts <- sapply(private$types, function(x) {
+      unlist(sapply(private$types, function(x) {
           nBlanks <- x$get.unsampled()
           sapply(1:nBlanks, function(blank) {
             Compartment$new(name = paste0('US_', x$get.name(), '_', blank),
                             type = x)
           })
-      })
-      unlist(us.hosts)
+      }))
     },
     
     
@@ -119,7 +117,7 @@ MODEL <- R6Class("MODEL",
     load.compartments = function(settings) {
       ## function creates Compartment objects
       ## `type` attr points directly back to a CompartmentType object, and `name` attr is a unique identifier
-      compartments <- sapply(names(settings$Compartments), function(comp) {
+      unlist(sapply(names(settings$Compartments), function(comp) {
         params <- settings$Compartments[[comp]]
         
         if (params$type %in% names(settings$CompartmentType)) {
@@ -139,8 +137,7 @@ MODEL <- R6Class("MODEL",
           )
         })
         
-      })
-      unlist(compartments)
+      }))
     },
     
     
@@ -148,7 +145,7 @@ MODEL <- R6Class("MODEL",
       ## re-iterates over generated Compartment objects and populates `source` attr with R6 objects
       ## sets 'pointers' to other Compartment objects after generated w/ private$load.compartments()
       compNames <- sapply(private$compartments, function(n){n$get.name()})
-      compartments <- sapply(private$compartments, function(x) {
+      sapply(private$compartments, function(x) {
         if (paste0(x$get.source(),'_1') %in% compNames) {                         # FIXME: arbitrary assignment of source
           searchComps <- which(compNames == paste0(x$get.source(),'_1'))          # FIXME: arbitrarily assigning source to first object in Compartment with $name == x$get.source()
           sourceObj <- private$compartments[[ searchComps ]]    
@@ -156,7 +153,6 @@ MODEL <- R6Class("MODEL",
         } # TODO: else statement { if source is 'undefined' or not in the list, must be assigned to an unsampled host (US) }
         x
       })
-      compartments
     },
     
     
@@ -166,7 +162,7 @@ MODEL <- R6Class("MODEL",
       ## `location` attr points directly to a Compartment object, and `name` attr is unique identifier
       ## identifiers create unique Lineages for each Compartment, 
       ## but Compartment A_1 could have Lineage cell_1 and Compartment B_1 also have a separate Lineage cell_1
-      lineages <- sapply(names(settings$Lineages), function(label) {
+      unlist(sapply(names(settings$Lineages), function(label) {
         params <- settings$Lineages[[label]]
         
         if (params$location %in% names(settings$Compartments)) {
@@ -205,18 +201,16 @@ MODEL <- R6Class("MODEL",
           })
         })
       
-      })
-      unlist(lineages)
+      }))
     },
     
     
    
     init.extant.lineages = function() {
       # intializes list of Lineages with sampling.time t=0
-      res <- sapply(private$lineages, function(b){
+      unlist(sapply(private$lineages, function(b){
         if (b$get.sampling.time() == 0) {b}
-      })
-      unlist(res)
+      }))
     },
     
     
