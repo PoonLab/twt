@@ -98,7 +98,7 @@ generate.transmission.events <- function(model, eventlog) {
   popn.totals <- lapply(model$get.types(), function(x) {
     # 1. enumerate active compartments, including unsampled infected hosts (U) at time t=0
     U <- x$get.unsampled()
-    A <- length(which(indiv.types == x$get.name()))
+    A <- length(which(indiv.types == x$get.name()))  # number of active sampled compartments at t=0
     
     # 2. enumerate active lineages of infected (I), pairs of active lineages within hosts at time t=0
     I <- length(which(active.lineages == x$get.name()))
@@ -106,7 +106,7 @@ generate.transmission.events <- function(model, eventlog) {
     # 3. enumerate number of susceptibles (S) at time t=0
     S <- x$get.susceptible()
     
-    data.frame(U=U, A=A, I=I, S=S)
+    data.frame(U=U, A=A, I=I, S=S)  # a single row
   })
   
   
@@ -116,8 +116,9 @@ generate.transmission.events <- function(model, eventlog) {
   lineage.locations <- sapply(all.lineages, function(x) {x$get.location()$get.name()})
   possibleSourceTypes <- list()  # list of all different types of source that each recipient could possibly receive a transmission from
   time.bands <- vector()        # vector of maximum sampling times for each Compartment
-  
-  
+
+
+  # for every infected compartment as potential recipient (skip unsampled)
   for (x in 1:length(source.popn)) {
     comp <- source.popn[[x]]
     recipientType <- comp$get.type()$get.name()
