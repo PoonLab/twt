@@ -145,16 +145,3 @@ test.get.extant_lineages <- function(){
   expected.times <- rep(0, 4)
   checkEquals(expected.times, result.times)
 }
-
-test.get.extant_comps <- function(){
-  result <- test$get.extant_comps() # retrieves list of Compartments containing Lineages with sampling.time t=0
-  checkEquals(2, length(result))
-  checkEquals('I_1', result[[1]]$get.name())
-  checkEquals('I_2', result[[2]]$get.name())
-}
-
-test.get.non_extant_comps <- function(){
-  result <- test$get.non_extant_comps() # retrieves list of Compartments containing Lineages with sampling.time t!=0
-  checkEquals(NULL, result)
-}
-
