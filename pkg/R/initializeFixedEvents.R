@@ -115,11 +115,10 @@ generate.transmission.events <- function(model, eventlog) {
   possibleSourceTypes <- list()  # list of different types of source that each recipient could possibly receive a transmission from
   time.bands <- vector()         # vector of maximum sampling times for each Compartment
 
-  for (x in 1:length(source.popn)) {
+  for (comp in source.popn) {
     # for loop generates a comprehensive dictionary of all possibilities of a source with a given recipient Compartment
     # filtered first within the for loop to remove all source -> recipient pairs with branching rates of 0
     # filtered again at while loop to skip unsampled compartments as potential recipients unless they were first a source
-    comp <- source.popn[[x]]
     recipientType <- comp$get.type()$get.name()
     recipientRates <- sapply(model$get.types(), function(a) {
       if (a$get.branching.rate(recipientType) == 0) { NULL } 
