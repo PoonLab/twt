@@ -9,7 +9,6 @@ extant_comps <- sapply(unname(input$get.pairs()),function(x){comps[[which(compna
 compnames.for.extlings <- sapply(input$get.extant_lineages(),function(x){
   x$get.location()$get.name()
 })
-waiting.times <- vector()
 
 # count the number of extant lineages in one compartment
 num.extlings <- function(x){
@@ -26,26 +25,31 @@ wait.time <- function(k, alpha, beta){
 #   x$get.type()$get.popn.growth.dynamics()
 # })
 
-for (comp in extant_comps){
-  # get popn.growth.dynamics
-  popn.growth <- comp$get.type()$get.popn.growth.dynamics()
-  time <- 0
-  # iterate through the pieces of population growth dynamics to draw waiting time
-  for (piece in popn.growth){
-    wait <- wait.time(num.extlings(comp), piece$intercept, piece$slope)
-    time = time+wait
-    if (time > piece$end){
-      time <- piece$end
-      # and draw waiting time for next piece
+get.min.waittime <- function(extant_comps){
+  waiting.times <- vector()
+  for (comp in extant_comps){
+    # get popn.growth.dynamics
+    popn.growth <- comp$get.type()$get.popn.growth.dynamics()
+    # get name of the compartment
+    name <- comp$get.name()
+    time <- 0
+    # iterate through the pieces of population growth dynamics to draw waiting time
+    for (i in 1:nrow(popn.growth)){
+      piece <- popn.growth[i,]
+      wait <- wait.time(num.extlings(name), piece$intercept, piece$slope)
+      time = time+wait
+      if (time > piece$end){
+        time <- piece$end
+        # and draw waiting time for next piece
+      }
+      else {
+        waiting.times <- c(waiting.times,time)
+        names(waiting.times)[[length(waiting.times)]] <- name
+        break
+      }
     }
-    else {
-      waiting.times <- c(waiting.times,time)
-      names(waiting.times)[[length(waiting.times)]] <- comp
-      break
-    }
+    # take the shortest waiting time as the outcome
+    waiting.times
   }
-  # take the shortest waiting time as the outcome
-  min(waiting.times)
+  return(min(waiting.times))
 }
-
-
