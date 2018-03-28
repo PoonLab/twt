@@ -1,9 +1,11 @@
-# takes in a MODEL object
-waittimes.for.allcomps <- function(input){
-  comps <- input$get.compartments()
-  compnames <- input$get.names(comps)
-  extant_comps <- sapply(unname(input$get.pairs()),function(x){comps[[which(compnames == x)]]})# extant compartments with multiple lineages
-  compnames.for.extlings <- sapply(input$get.extant_lineages(),function(x){
+waittimes.for.allextcomps <- function(model){
+  # draw waiting times for all compartments that have two or more extant lineages
+  # @param model = MODEL object
+  # @return vector of waiting times
+  comps <- model$get.compartments()
+  compnames <- model$get.names(comps)
+  extant_comps <- sapply(unname(model$get.pairs()),function(x){comps[[which(compnames == x)]]})# extant compartments with multiple lineages
+  compnames.for.extlings <- sapply(model$get.extant_lineages(),function(x){
     x$get.location()$get.name()
   })
   
@@ -23,6 +25,7 @@ waittimes.for.allcomps <- function(input){
   # })
   
   get.waittimes <- function(extant_comps){
+    # initialize a vector for waiting times
     waiting.times <- vector()
     for (comp in extant_comps){
       # get popn.growth.dynamics
@@ -35,12 +38,15 @@ waittimes.for.allcomps <- function(input){
         piece <- popn.growth[i,]
         wait <- wait.time(num.extlings(name), piece$intercept, piece$slope)
         time = time+wait
+        #if waiting time exceeds the end time of the piece, move time to the end time
         if (time > piece$end){
           time <- piece$end
           # and draw waiting time for next piece
         }
         else {
+          # add the waiting time of current compartment to the vector of waiting times
           waiting.times <- c(waiting.times,time)
+          # associate the waiting times with their compartments
           names(waiting.times)[[length(waiting.times)]] <- name
           break
         }
