@@ -4,10 +4,10 @@ waittimes.for.allextcomps <- function(model){
   # @return vector of waiting times
   comps <- model$get.compartments()
   compnames <- model$get.names(comps)
-  extant_comps <- sapply(unname(model$get.pairs()),function(x){comps[[which(compnames == x)]]})# extant compartments with multiple lineages
-  compnames.for.extlings <- sapply(model$get.extant_lineages(),function(x){
+  extant_comps <- unique(sapply(unname(model$get.pairs()),function(x){comps[[which(compnames == x)]]}))# extant compartments with multiple lineages
+  compnames.for.extlings <- unique(sapply(model$get.extant_lineages(),function(x){
     x$get.location()$get.name()
-  })
+  }))# compartment names for extant lineages
   
   # count the number of extant lineages in one compartment
   num.extlings <- function(x){
