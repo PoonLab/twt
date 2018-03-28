@@ -21,6 +21,9 @@ init.fixed.samplings <- function(model) {
 # Case 1 : User provides a host transmission tree
 .to.eventlog <- function(newick) {
   # function converts an ape::phylo tree object into transmission events stored in a NEW EventLogger object
+  # @param newick = Newick string in mode character
+  # @return e = EventLogger object initialized with list of fixed transmission events
+  
   e <- EventLogger$new()
   phy <- read.tree(text=newick)
   
@@ -54,6 +57,7 @@ init.fixed.samplings <- function(model) {
 init.branching.events <- function(model, eventlog) {
   # @param model = MODEL object
   # @param eventlog = EventLogger object
+  # @return eventlog = EventLogger object initialized with list of fixed transmission events
 
   # if the user input includes a tree (host tree) then add transmission events
   comps <- model$get.compartments()
@@ -74,22 +78,22 @@ init.branching.events <- function(model, eventlog) {
     # add transmission event to EventLogger object
     eventlog$add.event('transmission',  branching.time, lineage, x$get.name(), source)
   })
+  
+  eventlog
 }
 
 
 
 # Case 3: no host tree provided, transmission events need to be generated
 generate.transmission.events <- function(model, eventlog) {
-  # treeswithintrees/Wiki/Simulation Pseudocode step 3 & 4; refer to issue # 12 discussion
   # simulate transmission events and fix them to the timeline of lineage sampled events
   # @param model = MODEL object
   # @param eventlog = EventLogger object
+  # @return eventlog = EventLogger object populated with generated transmission events
   
-  comps <- model$get.compartments()                     # should comps include the unsampled infected compartments?
+  comps <- model$get.compartments()           
   compnames <- model$get.names(comps)
-  us_comps <- model$get.unsampled.hosts()
-  us_compnames <- model$get.names(us_comps)
-  source.popn <- c(comps, us_comps)
+  source.popn <- c(comps, model$get.unsampled.hosts())
   source.popn.names <- model$get.names(source.popn)
   
   # for each CompartmentType:
@@ -106,37 +110,35 @@ generate.transmission.events <- function(model, eventlog) {
   })
   
   
-  # record relevant sampling times of lineages for each Compartment
-  all.lineages <- model$get.lineages()
-  lineage.locations <- sapply(all.lineages, function(x) {x$get.location()$get.name()})
-  possibleSourceTypes <- list()  # list of all different types of source that each recipient could possibly receive a transmission from
-  time.bands <- vector()        # vector of maximum sampling times for each Compartment
+  # record max sampling times of lineages for each Compartment
+  lineage.locations <- sapply(model$get.lineages(), function(x) {x$get.location()$get.name()})
+  possibleSourceTypes <- list()  # list of different types of source that each recipient could possibly receive a transmission from
+  time.bands <- vector()         # vector of maximum sampling times for each Compartment
 
   for (x in 1:length(source.popn)) {
-    # generates a comprehensive dictionary of all possibilities
-    # filtered first to remove all with branching rates of 0
-    # filtered again at 'while' loop to skip unsampled compartments as potential recipients unless was first a source
+    # for loop generates a comprehensive dictionary of all possibilities of a source with a given recipient Compartment
+    # filtered first within the for loop to remove all source -> recipient pairs with branching rates of 0
+    # filtered again at while loop to skip unsampled compartments as potential recipients unless they were first a source
     comp <- source.popn[[x]]
     recipientType <- comp$get.type()$get.name()
     recipientRates <- sapply(model$get.types(), function(a) {
-      if (a$get.branching.rate(recipientType) == 0) {
-        NULL
-      } else {
-        a$get.branching.rate(recipientType)
-      }
+      if (a$get.branching.rate(recipientType) == 0) { NULL } 
+      else { a$get.branching.rate(recipientType) }
     })
-    recipientRates[sapply(recipientRates, is.null)] <- NULL      # remove branching rates of 0
+    recipientRates[sapply(recipientRates, is.null)] <- NULL      # remove source -> recipient pairs w/ branching rates of 0
     
     if (length(recipientRates) == 0) {
       # means that this compartment will never be a recipient (ie. example3.yaml 'blood' compartment)
       next
     } else {
-      # check if comp is a us_comp
+      # check if comp is a us_comp (us_comps have no sampled lineages native to their compartment)
       comp.native.lineages <- which(lineage.locations == comp$get.name())
       if (length(comp.native.lineages) == 0) {
-        single.comp.sampling.times <- NA
+        # us_comp is not allowed to be a recipient without first being a source
+        # placeholder 'NA' to be filtered out later in while loop
+        single.comp.sampling.times <- NA   
       } else {
-        single.comp.lineages <- all.lineages[ comp.native.lineages ]
+        single.comp.lineages <- model$get.lineages()[ comp.native.lineages ]
         single.comp.sampling.times <- sapply(single.comp.lineages, function(b) {
           b$get.sampling.time()
         })
@@ -153,17 +155,20 @@ generate.transmission.events <- function(model, eventlog) {
   current.time <- 0.0
   
   while (length(comps) > 1) {
-    # draw all possible recipients that has a max sampling time less than or equal to the current.time
+    # draw all possible recipients that has a max sampling time less than or equal to the current.time (NAs are excluded)
     qualified.sampled.recipients <- which(time.bands <= current.time)
     
-    # calc transmission rates among all source-recipient pairings of CompartmentTypes for each qualified sampled recipient
+    # retrieve transmission rates from dictionary of recipientRates for each qualified sampled recipient
     possibleTransmissions <- possibleSourceTypes[ qualified.sampled.recipients ]
     
+    # calc transmission rates among all source-recipient pairings of CompartmentTypes
     indiv.rates.n.quantities <- sapply(model$get.types(), function(x) {
       sourceType <- x$get.name()
       recipientTypes <- names(x$get.branching.rates())
       sapply(recipientTypes, function(y) {
+        # rate = B(Us+Is)Sr
         pairRate <- x$get.branching.rate(y) * (popn.totals[[y]]$S + 1) * (popn.totals[[sourceType]]$A + popn.totals[[sourceType]]$U)  
+        
         qualified.r <- which(names(possibleTransmissions) == y)
         if (length(qualified.r) == 0) {
           nPairs <- 0
@@ -177,6 +182,7 @@ generate.transmission.events <- function(model, eventlog) {
             nPairs <- length(qualified.sr)                   # the number of pairs that have this transmission type
           }
         }
+        
         pairRate * nPairs
       })
     })
@@ -184,9 +190,8 @@ generate.transmission.events <- function(model, eventlog) {
     # total rate of ANY transmission event occurring is the weighted sum of these rates in the dictionary
     total.rate <- sum(indiv.rates.n.quantities)
     
-    # sample waiting time
+    # sample waiting time & update the current time to the new upper bound in time (waiting time)
     waiting.time <- current.time + rexp(n=1, rate=total.rate)
-    # update the current time to the new upper bound in time (waiting time)
     current.time <- waiting.time
     
     if (length(which(time.bands <= current.time)) > length(qualified.sampled.recipients)) {
@@ -243,14 +248,16 @@ generate.transmission.events <- function(model, eventlog) {
 
 
 .to.transmission.tree <- function(eventlog) {
-  # require(ape, quietly=TRUE)
   # function converts the transmission events stored in an EventLogger object into a transmission tree
+  # @param eventlog = EventLogger object
+  # @return phy = ape::phylo object
 
   t_events <- eventlog$get.events('transmission', cumulative=FALSE)
   tips <- unlist(setdiff(t_events$compartment1, t_events$compartment2))
   internals <- unlist(intersect(t_events$compartment1, t_events$compartment2))
   root <- unlist(setdiff(t_events$compartment2, t_events$compartment1))
   
+  # initializing attributes of an ape::phylo object
   tip.label <- vector()
   edge.length <- vector()
   Nnode <- length(unique(t_events$compartment2))
@@ -290,7 +297,6 @@ generate.transmission.events <- function(model, eventlog) {
     
     #edge[2*x-1,] <- as.numeric(c(source.ind, source.ind))      # source --> source
     edge[x,] <- as.numeric(c(source.ind, recipient.ind))     # source --> recipient
-    
     #edge.length[2*x-1] = 
     edge.length[x] <- t_events[x,]$time
   }
