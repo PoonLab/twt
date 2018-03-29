@@ -217,43 +217,51 @@ MODEL <- R6Class("MODEL",
     
     init.popn.growth.dynamics = function(pieces) {
       # @param pieces, list of linear pieces of a given CompartmentType
-      # @return matrix, where each row represents a linear piece and comprises the following columns
-        # start time
-        # end time
-        # intercept
-        # slope
-      mat <- matrix(nrow=length(pieces), ncol=4)
-      res <- t(sapply(seq_along(pieces), function(x) {
-        sapply(seq_along(pieces[[x]]), function(y){
-          if (names(pieces[[x]][[y]]) == 'end') {
-            if (is.character(pieces[[x]][[y]])) {         # deals with single case where end time infinity is of mode character
-              entry <- NA
-            } else {
-              entry <- pieces[[x]][[y]]
-            }
-          } else {
-            entry <- pieces[[x]][[y]]
-          }
-          mat[x,y] <- entry
-        })
-      }))
+      # @return matrix, where each row represents a linear piece and comprises the following columns:
+        # time = inputted time of the piece
+        # popn = inputted popn size of the piece at time `time`
+        # slope = slope of the piece 
+        # intercept = y-intercept of the piece
+      mat <- matrix(nrow=length(pieces), 
+                    ncol=4, 
+                    dimnames=list(1:length(pieces), c('time', 'popn', 'slope', 'intercept')))
+      for (x in seq_along(pieces)) {
+        mat[x,1] <- unlist(pieces[[x]])['time']
+        mat[x,2] <- unlist(pieces[[x]])['popn']
+      }
       
       # checks for the following:
       
       # only one piece must have a start time of zero
-      if ( length(which(res[,'start'] == 0)) != 1 ) {
-        stop ('One and only one linear piece in the population growth dynamics functions is allowed to have a start time of zero (forward in time).')
+      if ( length(which(mat[,'time'] == 0)) != 1 ) {
+        stop ('One and only one linear piece in the population growth 
+              dynamics functions is allowed to have a start time of zero (forward in time).')
       }
-      # only one piece must have an end time of infinity (undefined)
-      if ( length( which(sapply(res[,'end'], function(x){is.character(x)})) ) != 1 ) {
-        stop ('One and only one linear piece in the population growth dynamics functions is allowed to have an undefined end time (forward in time).')
+      # all times must be of mode numeric
+      if (is.numeric(mat[,'time']) == FALSE) {
+        stop ('All linear pieces must have times in mode `numeric`.')
       }
-      # every other start time must have an equal end time and vice versa ( no gaps in time for piecewise growth function)
-      if ( length(intersect(res[,'start'], res[,'end'])) != (nrow(res)-1) ) {
-        stop ('There are time gaps and/or overlaps within the population growth dynamics functions.')
+      # all times must be unique
+      if (length(unique(mat[,'time'])) < length(mat[,'time'])) {
+        stop ('All linear pieces must have unique times.')
       }
       
-      res
+      # order pieces sequentially based on times (in order to calculate slopes)
+      mat <- mat[order(mat[,'time']), ]
+      # calculate slope and intercept for each piece and populate the matrix
+      for (x in seq_along(pieces)) {
+        if (x == length(pieces)) {
+          # it is assumed that the final piece will continue towards infinite time at the same population
+          # size as the final piece's, with a slope of 0
+          slope <- 0
+        } else {
+          slope <- mat[x+1, 'popn'] - mat[x, 'popn'] / mat[x+1, 'time'] - mat[x, 'time']
+        }
+        yInt <- mat[x, 'popn'] - slope * mat[x, 'time']
+        mat[x, 'slope'] <- slope
+        mat[x, 'intercept'] <- yInt
+      }
+      mat
     },
     
     
