@@ -1,23 +1,36 @@
+
+# draw waiting time for one piece of population growth dynamics
+wait.time <- function(k, alpha, beta){
+  u <- runif(1, 0, 1)
+  (1-(1-u)^(beta/choose(k,2)))*alpha/beta
+}
+
 waittimes.for.allextcomps <- function(model){
   # draw waiting times for all compartments that have two or more extant lineages
   # @param model = MODEL object
   # @return vector of waiting times
   comps <- model$get.compartments()
   compnames <- model$get.names(comps)
-  extant_comps <- unique(sapply(unname(model$get.pairs()),function(x){comps[[which(compnames == x)]]}))# extant compartments with multiple lineages
-  compnames.for.extlings <- unique(sapply(model$get.extant_lineages(),function(x){
-    x$get.location()$get.name()
-  }))# compartment names for extant lineages
+  
+  # extant compartments with multiple lineages
+  extant_comps <- unique(sapply(
+    unname(model$get.pairs()),
+    function(x) {
+      comps[[which(compnames == x)]]
+    }
+  ))
+  
+  # compartment names for extant lineages
+  compnames.for.extlings <- unique(sapply(
+    model$get.extant_lineages(),
+    function(x) {
+      x$get.location()$get.name()
+    }
+  ))
   
   # count the number of extant lineages in one compartment
-  num.extlings <- function(x){
+  num.extlings <- function(x) {
     length(which(compnames.for.extlings==x))
-  }
-  
-  # draw waiting time for one piece of population growth dynamics
-  wait.time <- function(k, alpha, beta){
-    u <- runif(1, 0, 1)
-    (1-(1-u)^(beta/choose(k,2)))*alpha/beta
   }
   
   # popn.growth <- sapply(extant_comps,function(x){
