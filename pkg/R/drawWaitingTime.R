@@ -21,12 +21,12 @@ waittimes.for.allextcomps <- function(model){
   ))
   
   # compartment names for extant lineages
-  compnames.for.extlings <- unique(sapply(
+  compnames.for.extlings <- sapply(
     model$get.extant_lineages(),
     function(x) {
       x$get.location()$get.name()
     }
-  ))
+  )
   
   # count the number of extant lineages in one compartment
   num.extlings <- function(x) {
