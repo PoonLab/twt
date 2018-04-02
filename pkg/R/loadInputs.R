@@ -266,7 +266,7 @@ MODEL <- R6Class("MODEL",
           # size as the final piece's, with a slope of 0
           slope <- 0
         } else {
-          slope <- mat[x+1, 'popn'] - mat[x, 'popn'] / mat[x+1, 'time'] - mat[x, 'time']
+          slope <- (mat[x+1, 'popn'] - mat[x, 'popn']) / (mat[x+1, 'time'] - mat[x, 'time'])
         }
         yInt <- mat[x, 'popn'] - slope * mat[x, 'time']
         mat[x, 'slope'] <- slope
