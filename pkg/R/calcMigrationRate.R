@@ -11,7 +11,7 @@ calc.migration.rates <- function(model) {
   for (x in extant.lineages) {
     recipientType <- x$get.location()$get.type()$get.name()
     recipientRates <- sapply(model$get.types(), function(a) {
-      if (length(a$get.migration.rates()) == 0) {   # TODO: boot this set out completely (every rate will be zero, no such migration from this source)
+      if (length(a$get.migration.rates()) == 0) {
         NULL
       } else {
         if (a$get.migration.rate(recipientType) == 0) { NULL }
@@ -28,37 +28,41 @@ calc.migration.rates <- function(model) {
       # retrieve the type of each possible source compartment
       # store all possible compartments that a lineage could have migrated from 
       possibleSourceTypes <- c(possibleSourceTypes, list(names(recipientRates)))
-      names(possibleSourcetypes)[[length(possibleSourceTypes)]] <- recipientType
+      names(possibleSourceTypes)[[length(possibleSourceTypes)]] <- recipientType
     }
   }
   
-  # store the different possibilities of source -> recipient pair types migration rates
-  indiv.rates.n.quantities <- sapply(model$get.types(), function(b) {
-    sourceType <- b$get.name()
-    recipientTypes <- names(b$get.migration.rates())
-    sapply(recipientTypes, function(c) {
-      # for each resulting migration rate, multiply the rate by the number of source -> recipient pair types
-      # rate = ?
-      pairRate <- b$get.migration.rate(c)
-      
-      qualified.r <- which(names(possibleSourceTypes) == c)
-      if (length(qualified.r) == 0) {
-        nPairs <- 0
-      } else {
-        qualified.sr <- which(sapply(qualified.r, function(d) {
-          sourcetype %in% possibleSourceTypes[d]
-        }))
-        if (length(qualified.sr) == 0) {
+  if (length(possibleSourceTypes) == 0) {
+    0             # no migration across any compartment types
+  } else {
+    # store the different possibilities of source -> recipient pair types migration rates
+    indiv.rates.n.quantities <- sapply(model$get.types(), function(b) {
+      sourceType <- b$get.name()
+      recipientTypes <- names(b$get.migration.rates())
+      sapply(recipientTypes, function(c) {
+        # for each resulting migration rate, multiply the rate by the number of source -> recipient pair types
+        # rate = ?
+        pairRate <- b$get.migration.rate(c)
+        
+        qualified.r <- which(names(possibleSourceTypes) == c)
+        if (length(qualified.r) == 0) {
           nPairs <- 0
         } else {
-          nPairs <- length(qualified.sr)                # the number of pairs that have this migration pair type
+          qualified.sr <- which(sapply(qualified.r, function(d) {
+            sourceType %in% possibleSourceTypes[d]
+          }))
+          if (length(qualified.sr) == 0) {
+            nPairs <- 0
+          } else {
+            nPairs <- length(qualified.sr)                # the number of pairs that have this migration pair type
+          }
         }
-      }
+        pairRate * nPairs
+      })
     })
-    pairRate * nPairs
-  })
-  
-  # total rate of ANY migration event occurring is the weighted sum of these rates in the dictionary
-  sum(indiv.rates.n.quantities)
+    
+    # total rate of ANY migration event occurring is the weighted sum of these rates in the dictionary
+    sum(indiv.rates.n.quantities)
+  }
   
 }

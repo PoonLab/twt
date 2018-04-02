@@ -8,8 +8,8 @@ CompartmentTypes:
     bottleneck.size: 1                 # bottleneck size when transmission event occurs
     popn.growth.dynamics:
       piece1:
-        - time: 0
-        - popn: 1                         # at t=0, infection starts at popn size of 1
+        - time: 5
+        - popn: 10                    
 Compartments:
   'I':
     type: host                         # CompartmentType 

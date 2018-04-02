@@ -7,7 +7,7 @@ CompartmentTypes:
     unsampled: 20
     susceptible: 1000
     branching.rates: (host=0.2)     # only one CompartmentType, in this case represents transmission rates
-    migration.rates: ()             # assume no migration
+    migration.rates: (host=0.01)             # assume no migration
     bottleneck.size: 1              # bottleneck size when transmission event occurs
     popn.growth.dynamics:
       piece1:

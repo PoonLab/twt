@@ -226,6 +226,12 @@ MODEL <- R6Class("MODEL",
                     ncol=4, 
                     dimnames=list(1:length(pieces), c('time', 'popn', 'slope', 'intercept')))
       for (x in seq_along(pieces)) {
+        if ('time' %in% names(unlist(pieces[[x]])) == F) {
+          stop ('Parameter "time" not defined for piece "', names(pieces)[[x]], '".')
+        }
+        if ('popn' %in% names(unlist(pieces[[x]])) == F) {
+          stop ('Parameter "popn" not defined for piece "', names(pieces)[[x]], '".')
+        }
         mat[x,1] <- unlist(pieces[[x]])['time']
         mat[x,2] <- unlist(pieces[[x]])['popn']
       }
@@ -233,7 +239,7 @@ MODEL <- R6Class("MODEL",
       # checks for the following:
       
       # only one piece must have a start time of zero
-      if ( length(which(mat[,'time'] == 0)) != 1 ) {
+      if ( length(which(mat[,'time'] == 0)) > 1 ) {
         stop ('One and only one linear piece in the population growth 
               dynamics functions is allowed to have a start time of zero (forward in time).')
       }
@@ -247,7 +253,12 @@ MODEL <- R6Class("MODEL",
       }
       
       # order pieces sequentially based on times (in order to calculate slopes)
-      mat <- mat[order(mat[,'time']), ]
+      if (nrow(mat) == 1) {
+        mat <- as.matrix(t(mat[order(mat[,'time']), ]))
+        rownames(mat) <- c(1:length(nrow(mat)))
+      } else {
+        mat <- mat[order(mat[,'time']), ]
+      }
       # calculate slope and intercept for each piece and populate the matrix
       for (x in seq_along(pieces)) {
         if (x == length(pieces)) {
