@@ -156,8 +156,11 @@ generate.transmission.events <- function(model, eventlog) {
   while (length(comps) > 1) {
     # draw all possible recipients that has a max sampling time less than or equal to the current.time (NAs are excluded)
     qualified.sampled.recipients <- which(time.bands <= current.time)
+    if (length(qualified.sampled.recipients) < 1) {
+      stop ('There must be at least one Compartment containing a Lineage with a sampling time of t=0.')
+    }
     
-    # retrieve transmission rates from dictionary of recipientRates for each qualified sampled recipient
+    # retrieve transmission types from dictionary of possibleSourceTypes for each qualified sampled recipient
     possibleTransmissions <- possibleSourceTypes[ qualified.sampled.recipients ]
     
     # calc transmission rates among all source-recipient pairings of CompartmentTypes
@@ -165,7 +168,7 @@ generate.transmission.events <- function(model, eventlog) {
       sourceType <- x$get.name()
       recipientTypes <- names(x$get.branching.rates())
       sapply(recipientTypes, function(y) {
-        # rate = B(Us+Is)Sr
+        # rate = B(Us+Is)(Sr+1)
         pairRate <- x$get.branching.rate(y) * (popn.totals[[y]]$S + 1) * (popn.totals[[sourceType]]$A + popn.totals[[sourceType]]$U)  
         
         qualified.r <- which(names(possibleTransmissions) == y)
