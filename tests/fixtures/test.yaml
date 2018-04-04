@@ -11,13 +11,13 @@ CompartmentTypes:
         - time: 0
         - popn: 1                      # at t=0, infection starts at popn size of 1
       piece2:
-        - time: 0.75
+        - time: 5
         - popn: 50
       piece3:
-        - time: 1.5
+        - time: 10
         - popn: 100
       piece4:
-        - time: 2.25
+        - time: 15
         - popn: 150
 LineageType:
   'virus':

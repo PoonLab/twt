@@ -5,7 +5,7 @@ wait.time <- function(k, alpha, beta){
   (1-(1-u)^(beta/choose(k,2)))*alpha/beta
 }
 
-waittimes.for.allextcomps <- function(model){
+waittimes.for.allextcomps <- function(model, current.time){
   # draw waiting times for all compartments that have two or more extant lineages
   # @param model = MODEL object
   # @return vector of waiting times
@@ -45,15 +45,20 @@ waittimes.for.allextcomps <- function(model){
       popn.growth <- comp$get.type()$get.popn.growth.dynamics()
       # get name of the compartment
       name <- comp$get.name()
-      time <- 0
+      # get the infection time of the compartment
+      infect.time <- comp$get.branching.time()
+      # time = compartment infection time - current simulation time
+      time <- infect.time-current.time
+      x <- which(popn.growth[,'time']< time)
+      pieces <- popn.growth[x,]
       # iterate through the pieces of population growth dynamics to draw waiting time
-      for (i in 1:nrow(popn.growth)){
-        piece <- popn.growth[i,]
-        wait <- wait.time(num.extlings(name), piece$intercept, piece$slope)
-        time = time+wait
-        #if waiting time exceeds the end time of the piece, move time to the end time
-        if (time > piece$end){
-          time <- piece$end
+      for (i in 1:nrow(pieces)){
+        wait <- wait.time(num.extlings(name), piece['intercept'], piece['slope'])
+        time = time-wait
+        #if waiting time exceeds the start time of the piece, move time to the start time (end time of the previous piece)
+        if (time < piece['time']){
+          time <- piece['time']
+          waittime.for.piece <- 
           # and draw waiting time for next piece
         }
         else {
