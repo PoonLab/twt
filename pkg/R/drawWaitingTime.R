@@ -37,40 +37,44 @@ waittimes.for.allextcomps <- function(model, current.time){
   #   x$get.type()$get.popn.growth.dynamics()
   # })
   
-  get.waittimes <- function(extant_comps){
-    # initialize a vector for waiting times
-    waiting.times <- vector()
-    for (comp in extant_comps){
-      # get popn.growth.dynamics
-      popn.growth <- comp$get.type()$get.popn.growth.dynamics()
-      # get name of the compartment
-      name <- comp$get.name()
-      # get the infection time of the compartment
-      infect.time <- comp$get.branching.time()
-      # time = compartment infection time - current simulation time
-      time <- infect.time-current.time
-      x <- which(popn.growth[,'time']< time)
-      pieces <- popn.growth[x,]
-      # iterate through the pieces of population growth dynamics to draw waiting time
-      for (i in 1:nrow(pieces)){
-        wait <- wait.time(num.extlings(name), piece['intercept'], piece['slope'])
-        time = time-wait
-        #if waiting time exceeds the start time of the piece, move time to the start time (end time of the previous piece)
-        if (time < piece['time']){
-          time <- piece['time']
-          waittime.for.piece <- 
-          # and draw waiting time for next piece
-        }
-        else {
-          # add the waiting time of current compartment to the vector of waiting times
-          waiting.times <- c(waiting.times,time)
-          # associate the waiting times with their compartments
-          names(waiting.times)[[length(waiting.times)]] <- name
-          break
-        }
+  # initialize a vector for waiting times
+  waiting.times <- vector()
+  for (comp in extant_comps){
+    # get popn.growth.dynamics
+    popn.growth <- comp$get.type()$get.popn.growth.dynamics()
+    # get name of the compartment
+    name <- comp$get.name()
+    # get the infection time of the compartment
+    infect.time <- comp$get.branching.time()
+    # delta time = compartment infection time - current simulation time
+    dt <- infect.time-current.time
+    # obtain all the pieces of the popn.growth.dynamics that are valid for current simulation time
+    x <- which(popn.growth[,'time']< time)
+    pieces <- popn.growth[x,]
+    # forward time in popn.growth.dynamics
+    time <- dt
+    # reverse waiting time
+    wt <- 0
+    # iterate through the valid pieces of population growth dynamics to draw waiting time
+    for (i in nrow(pieces):1){
+      piece <- pieces[i,]
+      wait <- wait.time(num.extlings(name), piece['intercept'], piece['slope'])
+      time = time-wait
+      #if waiting time exceeds the start time of the piece, move time to the start time (end time of the previous piece)
+      if (time < piece['time']){
+        time <- piece['time']
+        wt <- dt-time
+        # and draw waiting time for previous piece
+      }
+      else {
+        wt = wt+wait
+        # add the waiting time of current compartment to the vector of waiting times
+        waiting.times <- c(waiting.times,wt)
+        # associate the waiting times with their compartments
+        names(waiting.times)[[length(waiting.times)]] <- name
+        break
       }
     }
-    return(waiting.times)
   }
-  get.waittimes(extant_comps)
+  return(waiting.times)
 }
