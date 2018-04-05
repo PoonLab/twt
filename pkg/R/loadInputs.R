@@ -8,7 +8,7 @@ MODEL <- R6Class("MODEL",
       private$compartments <- private$set.sources()
       private$lineages <- private$load.lineages(settings)
       
-      private$extant_lineages <- private$init.extant.lineages()
+      private$extant_lineages <- private$get.extant.lineages(0)
       private$locations <- private$init.locations()
       private$choices <- private$init.pairs()
     },
@@ -17,7 +17,11 @@ MODEL <- R6Class("MODEL",
     get.unsampled.hosts = function() {private$unsampled.hosts},
     get.compartments = function() {private$compartments},
     get.lineages = function() {private$lineages},
-    get.extant_lineages = function() {private$extant_lineages},
+    
+    get.extant_lineages = function(time) {
+      private$extant_lineages <- private$get.extant.lineages(time)
+      private$extant_lineages
+    },
     
     get.names = function(listR6obj) {
       # @param listR6obj = list of R6 objects of class CompartmentType, Compartment, or Lineage
@@ -73,8 +77,6 @@ MODEL <- R6Class("MODEL",
     lineages = NULL,
     
     extant_lineages = NULL,
-    extant_comps = NULL,
-    non_extant_comps = NULL, 
     
     locations = NULL,         
     choices = NULL,
@@ -206,10 +208,10 @@ MODEL <- R6Class("MODEL",
     
     
    
-    init.extant.lineages = function() {
+    get.extant.lineages = function(time) {
       # intializes list of Lineages with sampling.time t=0
       unlist(sapply(private$lineages, function(b){
-        if (b$get.sampling.time() == 0) {b}
+        if (b$get.sampling.time() <= time) {b}
       }))
     },
     

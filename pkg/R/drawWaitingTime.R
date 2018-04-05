@@ -73,6 +73,7 @@ waittimes.for.allextcomps <- function(model, current.time){
         # associate the waiting times with their compartments
         names(waiting.times)[[length(waiting.times)]] <- name
         break
+
       }
     }
   }
