@@ -58,7 +58,7 @@ waittimes.for.allextcomps <- function(model, current.time){
         #if waiting time exceeds the start time of the piece, move time to the start time (end time of the previous piece)
         if (time < piece['time']){
           time <- piece['time']
-          waittime.for.piece <- 
+          #waittime.for.piece <- 
           # and draw waiting time for next piece
         }
         else {
