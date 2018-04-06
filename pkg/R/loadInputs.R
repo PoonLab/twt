@@ -254,6 +254,12 @@ MODEL <- R6Class("MODEL",
         stop ('All linear pieces must have unique times.')
       }
       
+      # if no piece with time t=0, add it into the matrix
+      if ( length(which(mat[,'time'] == 0)) == 0 ) {
+        mat <- rbind(mat, c(0, 1, NA, NA))                                  # FIXME: what is population size at time 0 if piece is not specified?
+        rownames(mat)[[length(rownames(mat))]] <- length(rownames(mat))
+      }
+      
       # order pieces sequentially based on times (in order to calculate slopes)
       if (nrow(mat) == 1) {
         mat <- as.matrix(t(mat[order(mat[,'time']), ]))
@@ -262,8 +268,8 @@ MODEL <- R6Class("MODEL",
         mat <- mat[order(mat[,'time']), ]
       }
       # calculate slope and intercept for each piece and populate the matrix
-      for (x in seq_along(pieces)) {
-        if (x == length(pieces)) {
+      for (x in 1:nrow(mat)) {
+        if (x == nrow(mat)) {
           # it is assumed that the final piece will continue towards infinite time at the same population
           # size as the final piece's, with a slope of 0
           slope <- 0

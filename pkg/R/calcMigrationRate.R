@@ -1,10 +1,11 @@
 # calculate migration rates across all compartments at a givent time
-calc.migration.rates <- function(model) {
+calc.migration.rates <- function(model, current.time) {
   # calculate migration rates across all compartments at a given time
   # @param model = MODEL object
+  # @param current.time = current time given from the simulation of the inner tree
   # @result = total rate of ANY mgiration event occurring from the list of extant lineages
   # retrieve all lineages that are currently extant
-  extant.lineages <- model$get.extant_lineages()
+  extant.lineages <- model$get.extant_lineages(current.time)
   possibleSourceTypes <- list() # list of different types of source compartment that each lineage could possibly have migrated from 
   
   # for each lineage
