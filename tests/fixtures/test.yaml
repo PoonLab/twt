@@ -28,6 +28,6 @@ Compartments:
     replicates: 2  
 Lineages:
   'I':
-    sampling.time: (0.2,0,0)             
+    sampling.time: (0,0,0)             
     location: I
     replicates: 3                      # implied to be per-host

@@ -157,7 +157,7 @@ generate.transmission.events <- function(model, eventlog) {
     # draw all possible recipients that has a max sampling time less than or equal to the current.time (NAs are excluded)
     qualified.sampled.recipients <- which(time.bands <= current.time)
     if (length(qualified.sampled.recipients) < 1) {
-      stop ('There must be at least one Compartment containing a Lineage with a sampling time of t=0.')
+      stop ('There must be at least one Compartment containing a Lineage with a max sampling time of t=0.')
     }
     
     # retrieve transmission types from dictionary of possibleSourceTypes for each qualified sampled recipient

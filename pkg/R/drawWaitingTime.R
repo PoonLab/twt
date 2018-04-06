@@ -1,18 +1,17 @@
-
 # draw waiting time for one piece of population growth dynamics
 wait.time <- function(k, alpha, beta){
   u <- runif(1, 0, 1)
   (1-(1-u)^(beta/choose(k,2)))*alpha/beta
 }
 
-waittimes.for.allextcomps <- function(model, current.time){
+calc.coal.wait.times <- function(model, current.time){
   # draw waiting times for all compartments that have two or more extant lineages
   # @param model = MODEL object
-  # @return vector of waiting times
+  # @return waiting.times = vector of waiting times
   comps <- model$get.compartments()
   compnames <- model$get.names(comps)
   
-  # extant compartments with multiple lineages
+  # retrieves compartments with multiple extant lineages
   extant_comps <- unique(sapply(
     unname(model$get.pairs()),
     function(x) {
@@ -20,62 +19,57 @@ waittimes.for.allextcomps <- function(model, current.time){
     }
   ))
   
-  # compartment names for extant lineages
-  compnames.for.extlings <- sapply(
-    model$get.extant_lineages(),
+  # retrieves compartment names for extant lineages
+  ext.lineages.compnames <- sapply(
+    model$get.extant_lineages(current.time),
     function(x) {
       x$get.location()$get.name()
     }
   )
   
-  # count the number of extant lineages in one compartment
-  num.extlings <- function(x) {
-    length(which(compnames.for.extlings==x))
+  # counts the number of extant lineages in one compartment
+  # calculated for parameter `k` in function `wait.time`
+  num.ext.lineages <- function(x) {
+    length(which(ext.lineages.compnames==x))
   }
   
-  # popn.growth <- sapply(extant_comps,function(x){
-  #   x$get.type()$get.popn.growth.dynamics()
-  # })
-  
-  # initialize a vector for waiting times
+  # initialize an empty vector for waiting times
   waiting.times <- vector()
   for (comp in extant_comps){
-    # get popn.growth.dynamics
-    popn.growth <- comp$get.type()$get.popn.growth.dynamics()
-    # get name of the compartment
-    name <- comp$get.name()
-    # get the infection time of the compartment
-    infect.time <- comp$get.branching.time()
-    # delta time = compartment infection time - current simulation time
-    dt <- infect.time-current.time
-    # obtain all the pieces of the popn.growth.dynamics that are valid for current simulation time
-    x <- which(popn.growth[,'time']< time)
-    pieces <- popn.growth[x,]
-    # forward time in popn.growth.dynamics
-    time <- dt
-    # reverse waiting time
-    wt <- 0
-    # iterate through the valid pieces of population growth dynamics to draw waiting time
+    compname <- comp$get.name()
+    popn.growth <- comp$get.type()$get.popn.growth.dynamics()             # retrieve popn.growth.dynamics for this compartment
+    delta.t = overall.t <- comp$get.branching.time() - current.time       # delta time = compartment infection time - current simulation time
+    piece.rows <- which(popn.growth[,'time'] < delta.t)
+    if (length(piece.rows) == 1) {
+      pieces <- as.matrix(t(popn.growth[piece.rows, ]))                   # obtain all the pieces of the popn.growth.dynamics that are valid for current simulation time
+      rownames(pieces) <- 1
+    } else {
+      pieces <- popn.growth[piece.rows, ]         
+    }
+    
     for (i in nrow(pieces):1){
+      # iterate through the valid pieces of population growth dynamics to draw waiting time
+      # in forward time, start at the current piece first and work backwards to earlier pieces in the popn.growth dynamic fxns (if needed)
       piece <- pieces[i,]
-      wait <- wait.time(num.extlings(name), piece['intercept'], piece['slope'])
-      time = time-wait
-      #if waiting time exceeds the start time of the piece, move time to the start time (end time of the previous piece)
-      if (time < piece['time']){
-        time <- piece['time']
-        wt <- dt-time
-        # and draw waiting time for previous piece
-      }
-      else {
-        wt = wt+wait
-        # add the waiting time of current compartment to the vector of waiting times
-        waiting.times <- c(waiting.times,wt)
-        # associate the waiting times with their compartments
-        names(waiting.times)[[length(waiting.times)]] <- name
+      wait <- wait.time(num.ext.lineages(compname), piece['intercept'], piece['slope'])
+      delta.t <- delta.t - wait
+      
+      # if waiting time exceeds the start time of the piece, move delta.t to the start time (end time of the previous piece)
+      if (delta.t < piece['time']){
+        delta.t <- piece['time']
+        if (delta.t == 0) {
+          waiting.times <- c(waiting.times, overall.t)                    # wait time 'maxed out', add total waiting time from current time
+          names(waiting.times)[[length(waiting.times)]] <- compname       # associate waiting times w/ their compartment name
+        }
+        # go to next piece and draw new waiting time
+      } else {
+        cumul.wait.time <- overall.t - delta.t
+        waiting.times <- c(waiting.times, cumul.wait.time)                # add the waiting time of current compartment to the vector of waiting times
+        names(waiting.times)[[length(waiting.times)]] <- compname         # associate the waiting times with their compartments
         break
-
       }
     }
+    
   }
   return(waiting.times)
 }

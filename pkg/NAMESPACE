@@ -12,5 +12,6 @@ export(generate.transmission.events)
 export(.to.transmission.tree)
 
 export(calc.migration.rates)
+export(calc.coal.wait.times)
 
 

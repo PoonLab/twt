@@ -7,7 +7,7 @@ inner.tree <- function(model, eventlog) {
   
   while (length(extant.lineages) > 1) {
     # calculate waiting times for coalescent events for each compartment with 2 or more lineages
-    coal.wait.times <- waittimes.for.allextcomps(model, current.time)
+    coal.wait.times <- calc.coal.wait.times(model, current.time)
     # calculate total migration rate across all compartments at a given time
     mig.rate <- calc.migration.rates(model)
     # transmission times
@@ -22,6 +22,9 @@ inner.tree <- function(model, eventlog) {
         next.time <- min(transm.times)
         current.time <- next.time
         next
+      } else {
+        # no coalescence possible, but migration events are possible
+        
       }
     }
     
