@@ -9,7 +9,7 @@ inner.tree <- function(model, eventlog) {
     # calculate waiting times for coalescent events for each compartment with 2 or more lineages
     coal.wait.times <- calc.coal.wait.times(model, current.time)
     # calculate total migration rate across all compartments at a given time
-    mig.rate <- calc.migration.rates(model)
+    mig.rate <- calc.migration.rates(model, current.time)
     # transmission times
     transm.times <- eventlog$get.events('transmission')$time
     # record number of transmission events already included in simulation at this current.time
