@@ -11,13 +11,13 @@ CompartmentTypes:
         - time: 0
         - popn: 1                      # at t=0, infection starts at popn size of 1
       piece2:
-        - time: 5
+        - time: 0.75
         - popn: 50
       piece3:
-        - time: 10
+        - time: 1.50
         - popn: 100
       piece4:
-        - time: 15
+        - time: 2.25
         - popn: 150
 LineageType:
   'virus':
@@ -28,6 +28,6 @@ Compartments:
     replicates: 2  
 Lineages:
   'I':
-    sampling.time: (0,0,0)             
+    sampling.time: (0.2,0,0)             
     location: I
     replicates: 3                      # implied to be per-host

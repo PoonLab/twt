@@ -7,6 +7,7 @@ wait.time <- function(k, alpha, beta){
 calc.coal.wait.times <- function(model, current.time){
   # draw waiting times for all compartments that have two or more extant lineages
   # @param model = MODEL object
+  # @param current.time = current time of the simulation of inner tree
   # @return waiting.times = vector of waiting times
   comps <- model$get.compartments()
   compnames <- model$get.names(comps)
