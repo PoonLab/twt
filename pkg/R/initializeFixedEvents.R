@@ -150,8 +150,8 @@ generate.transmission.events <- function(model, eventlog) {
     }
   }
 
-  
-  current.time <- 0.0
+  # the start time of the simulation is the where at least 2 sampled infected compartments are active
+  current.time <- as.numeric(time.bands[order(time.bands)[2]])
   
   while (length(comps) > 1) {
     # draw all possible recipients that has a max sampling time less than or equal to the current.time (NAs are excluded)
