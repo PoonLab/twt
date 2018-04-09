@@ -150,7 +150,7 @@ generate.transmission.events <- function(model, eventlog) {
     }
   }
 
-  # the start time of the simulation is the where at least 2 sampled infected compartments are active
+  # the start time of the simulation is the time where at least 2 sampled infected compartments are active
   current.time <- as.numeric(time.bands[order(time.bands)[2]])
   
   while (length(comps) > 1) {

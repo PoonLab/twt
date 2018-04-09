@@ -8,8 +8,13 @@ CompartmentTypes:
     bottleneck.size: 1                            # assume a single virus enters an uninfected cell
     popn.growth.dynamics:                         # no replication in blood 
       piece1:
-        - time: 0
-        - popn: 1                                    # at t=0, infection starts at popn size of 1
+        - startTime: 0
+        - startPopn: 1
+        - endTime: 20
+        - endPopn: 300
+      piece2:
+        - startTime: 20
+        - startPopn: 300
   'cell':
     unsampled: 5
     susceptible: 30                               
@@ -18,17 +23,23 @@ CompartmentTypes:
     bottleneck.size: undefined                    # assume no migration to infected cells
     popn.growth.dynamics:                         # extinction of lineages cannot be sampled, is expressed by coalescent rate
       piece1:
-        - time: 0
-        - popn: 1                                    # at t=0, infection starts at popn size of 1
+        - startTime: 0
+        - startPopn: 1
+        - endTime: 0.75
+        - endPopn: 45
       piece2:
-        - time: 0.75
-        - popn: 50
+        - startTime: 0.75
+        - startPopn: 50
+        - endTime: 1.5
+        - endPopn: 85
       piece3:
-        - time: 1.5
-        - popn: 100
+        - startTime: 1.5
+        - startPopn: 100
+        - endTime: 2.25
+        - endPopn: 125
       piece4:
-        - time: 2.25
-        - popn: 150
+        - startTime: 2.25                         # assumed that piece with no end time goes onwards to infinity at constant population
+        - startPopn: 150
 Compartments:
   'blood':
     type: blood                                   # reference to CompartmentType object

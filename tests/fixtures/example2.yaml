@@ -8,8 +8,13 @@ CompartmentTypes:
     bottleneck.size: 1                 # bottleneck size when transmission event occurs
     popn.growth.dynamics:
       piece1:
-        - time: 5
-        - popn: 10                    
+        - startTime: 0
+        - startPopn: 1
+        - endTime: 5
+        - endPopn: 20
+      piece2:
+        - startTime: 5
+        - startPopn: 10
 Compartments:
   'I':
     type: host                         # CompartmentType 

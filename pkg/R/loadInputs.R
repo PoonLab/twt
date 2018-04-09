@@ -225,48 +225,66 @@ MODEL <- R6Class("MODEL",
         # slope = slope of the piece 
         # intercept = y-intercept of the piece
       mat <- matrix(nrow=length(pieces), 
-                    ncol=4, 
-                    dimnames=list(1:length(pieces), c('time', 'popn', 'slope', 'intercept')))
+                    ncol=6, 
+                    dimnames=list(1:length(pieces), c('startTime', 'startPopn', 'endTime', 'endPopn', 'slope', 'intercept')))
       for (x in seq_along(pieces)) {
-        if ('time' %in% names(unlist(pieces[[x]])) == F) {
-          stop ('Parameter "time" not defined for piece "', names(pieces)[[x]], '".')
+        if ('startTime' %in% names(unlist(pieces[[x]])) == F) {
+          stop ('Parameter "startTime" not defined for piece "', names(pieces)[[x]], '".')
+        } else {
+          mat[x,1] <- unlist(pieces[[x]])['startTime']
         }
-        if ('popn' %in% names(unlist(pieces[[x]])) == F) {
-          stop ('Parameter "popn" not defined for piece "', names(pieces)[[x]], '".')
+        
+        if ('startPopn' %in% names(unlist(pieces[[x]])) == F) {
+          stop ('Parameter "startPopn" not defined for piece "', names(pieces)[[x]], '".')
+        } else {
+          mat[x,2] <- unlist(pieces[[x]])['startPopn']
         }
-        mat[x,1] <- unlist(pieces[[x]])['time']
-        mat[x,2] <- unlist(pieces[[x]])['popn']
+        
+        if ('endTime' %in% names(unlist(pieces[[x]])) == F) {
+          mat[x,3] <- NA                                            # for the final piece with `inf` time, assumed that population stays constant from startPopn
+          mat[x,4] <- unlist(pieces[[x]])['startPopn']
+        } else {
+          mat[x,3] <- unlist(pieces[[x]])['endTime']
+          if ('endPopn' %in% names(unlist(pieces[[x]])) == F) {
+            stop ('Parameter "endPopn" not defined for piece "', names(pieces)[[x]], '".')
+          } else {
+            mat[x,4] <- unlist(pieces[[x]])['endPopn']
+          }
+        }
+        
       }
       
       # checks for the following:
       
-      # if no piece with time t=0
-      if ( length(which(mat[,'time'] == 0)) == 0 ) {
-        # originally was going to insert a row at time 0, but then we don't know population size at this time
-        stop ('There must be one linear piece in the population growth 
-              dynamics functions with a start time of zero (forward in time).')
-      }
-      
       # only one piece must have a start time of zero
-      if ( length(which(mat[,'time'] == 0)) > 1 ) {
+      if ( length(which(mat[,'startTime'] == 0)) != 1 ) {
         stop ('One and only one linear piece in the population growth 
-              dynamics functions is allowed to have a start time of zero (forward in time).')
+              dynamics functions must have a start time of zero (forward in time).')
+      }
+      if ( length(which(is.na(mat[,'endTime']))) != 1 ) {
+        stop ('One and only one linear piece in the population growth
+              dynamics functions must have an end time of infinity (forward in time).
+              The rest of the pieces must have attr `endTime` specified for each piece.')
       }
       # all times must be of mode numeric
-      if (is.numeric(mat[,'time']) == FALSE) {
-        stop ('All linear pieces must have times in mode `numeric`.')
+      if ( is.numeric(mat[,'startTime']) == F || is.numeric(mat[,'endTime']) == F ) {
+        stop ('All linear pieces must have start and end times in mode `numeric`.')
       }
       # all times must be unique
-      if (length(unique(mat[,'time'])) < length(mat[,'time'])) {
-        stop ('All linear pieces must have unique times.')
+      if ( length(unique(mat[,'startTime'])) < length(mat[,'startTime']) ) {
+        stop ('All linear pieces must have unique start times.')
+      }
+      # start and end times of middle pieces must be continuous (with no gaps or overlaps)
+      if ( length(intersect(mat[,'startTime'], mat[,'endTime'])) != (nrow(mat)-1) ) {
+        stop ('There are time gaps and/or overlapping times within the population growth dynamics pieces.')
       }
       
       # order pieces sequentially based on times (in order to calculate slopes)
       if (nrow(mat) == 1) {
-        mat <- as.matrix(t(mat[order(mat[,'time']), ]))
+        mat <- as.matrix(t(mat[order(mat[,'startTime']), ]))
         rownames(mat) <- c(1:length(nrow(mat)))
       } else {
-        mat <- mat[order(mat[,'time']), ]
+        mat <- mat[order(mat[,'startTime']), ]
       }
       
       for (x in 1:nrow(mat)) {
@@ -276,9 +294,9 @@ MODEL <- R6Class("MODEL",
           # size as the final piece's, with a slope of 0
           slope <- 0
         } else {
-          slope <- (mat[x+1, 'popn'] - mat[x, 'popn']) / (mat[x+1, 'time'] - mat[x, 'time'])
+          slope <- (mat[x, 'endPopn'] - mat[x, 'startPopn']) / (mat[x, 'endTime'] - mat[x, 'startTime'])
         }
-        yInt <- mat[x, 'popn'] - slope * mat[x, 'time']
+        yInt <- mat[x, 'startPopn'] - slope * mat[x, 'startTime']
         mat[x, 'slope'] <- slope
         mat[x, 'intercept'] <- yInt
       }
