@@ -58,10 +58,12 @@ test.remove.pair <- function() {
 
 test.get.types <- function(){
   result <- test$get.types() # retrieves CompartmentType objects in a list
-  expected.popn.growth.dynamics <- cbind("time"=c(0.00,0.75,1.50,2.25), 
-                                         "popn"=c(1,50,100,150), 
-                                         "slope"=c((50-1)/(0.75-0.00),(100-50)/(1.50-0.75),(150-100)/(2.25-1.50),0), 
-                                         "intercept"=c(1,50-(100-50)/(1.50-0.75)*0.75,100-(150-100)/(2.25-1.50)*1.50,150))
+  expected.popn.growth.dynamics <- cbind("startTime"=c(0.00,0.75,1.50,2.25), 
+                                         "startPopn"=c(1,50,100,150), 
+                                         "endTime"=c(0.75,1.50,2.25,NA), 
+                                         "endPopn"=c(45,85,125,150), 
+                                         "slope"=c((45-1)/(0.75-0.00),(85-50)/(1.50-0.75),(125-100)/(2.25-1.50),0), 
+                                         "intercept"=c(1,50-(85-50)/(1.50-0.75)*0.75,100-(125-100)/(2.25-1.50)*1.50,150))
   rownames(expected.popn.growth.dynamics) <- 1:4
   
   checkEquals('host', result[[1]]$get.name())
