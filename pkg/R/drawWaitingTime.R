@@ -40,7 +40,7 @@ calc.coal.wait.times <- function(model, current.time){
     compname <- comp$get.name()
     popn.growth <- comp$get.type()$get.popn.growth.dynamics()             # retrieve popn.growth.dynamics for this compartment
     delta.t = overall.t <- comp$get.branching.time() - current.time       # delta time = compartment infection time - current simulation time
-    piece.rows <- which(popn.growth[,'time'] < delta.t)
+    piece.rows <- which(popn.growth[,'startTime'] < delta.t)
     if (length(piece.rows) == 1) {
       pieces <- as.matrix(t(popn.growth[piece.rows, ]))                   # obtain all the pieces of the popn.growth.dynamics that are valid for current simulation time
       rownames(pieces) <- 1
@@ -56,8 +56,8 @@ calc.coal.wait.times <- function(model, current.time){
       delta.t <- delta.t - wait
       
       # if waiting time exceeds the start time of the piece, move delta.t to the start time (end time of the previous piece)
-      if (delta.t < piece['time']){
-        delta.t <- piece['time']
+      if (delta.t < piece['startTime']){
+        delta.t <- piece['startTime']
         if (delta.t == 0) {
           waiting.times <- c(waiting.times, overall.t)                    # wait time 'maxed out', add total waiting time from current time
           names(waiting.times)[[length(waiting.times)]] <- compname       # associate waiting times w/ their compartment name
