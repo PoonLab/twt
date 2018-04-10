@@ -16,48 +16,55 @@ inner.tree <- function(model, eventlog) {
     num.transm.occurred <- length(transm.times <= current.time)
     
     if (length(coal.wait.times) == 0) {
+      # calculate a waiting time to the next migration event
+      mig.time <- rexp(n=1, rate=mig.rate)
       if (mig.rate == 0) {
         # if no coalescence or migration events possible at this point in time
         # move up to the earliest transmission event in the EventLogger
-        next.time <- min(transm.times)
-        current.time <- next.time
+        current.time <- min(transm.times)
         next
       } else {
         # no coalescence possible, but migration events are possible
-        
+        new.time <- mig.time
       }
+    } else {
+      # retrieve the minimum waiting time of the calculated coalescent event waiting times
+      coal.time <- min(coal.wait.times)
+      # take minimum waiting time
+      new.time <- min(mig.time, coal.time)
     }
     
-    # retrieve the minimum waiting time of the calculated coalescent event waiting times
-    coal.time <- min(coal.wait.times)
-    # calculate a waiting time to the next migration event
-    mig.time <- rexp(n=1, rate=mig.rate)
-    
-    # take minimum waiting time
-    new.time <- min(mig.time, coal.time)
+    # checks for if the minimum waiting time is not exceeded by other fixed events:
     
     if (length(transm.times <= new.time) > num.transm.occurred) {
       # if minimum waiting time exceeds a transmission event not previously included 
       # (in the count of transmission events that have been recorded to have occurred)
-      # update the current time to add the waiting time and start again
-      
+      # update the current time to the earlier transmission time (coalesc. time) and start again
       all.new.transm <- which(transm.times <= new.time)
-      new.time <- transm.times[length(all.new.transm)]
+      current.time <- transm.times[length(all.new.transm)]
+      next
       
     } else if (length(model$get.extant_lineages(new.time)) > num.extant) {
       # OR other lineage(s) become(s) extant before the waiting time
       # update the current time to add the waiting time and start again
-      
-      new.time <- new.time + current.time
+      current.time <- current.time + new.time
+      next
       
     } else {
+      # checks have been made, move forward with generating a migration or coalescent event with the new time
+      if (new.time == mig.time) {
+        # next event is a migration event; now draw source and recipient
+        recipient <- sample(extant.lineages, 1)
+        
+        recipient$set.location(s_name)
+      } else {
+        # next event is a coalescent event; now choose a 'bin'
+        
+      }
       
-      
+      current.time <- current.time + new.time
       
     }
-    
-     current.time <- new.time
-     
     
     
   }

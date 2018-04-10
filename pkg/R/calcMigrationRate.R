@@ -4,12 +4,12 @@ calc.migration.rates <- function(model, current.time) {
   # @param model = MODEL object
   # @param current.time = current time given from the simulation of the inner tree
   # @result = total rate of ANY mgiration event occurring from the list of extant lineages
-  # retrieve all lineages that are currently extant
-  extant.lineages <- model$get.extant_lineages(current.time)
-  possibleSourceTypes <- list() # list of different types of source compartment that each lineage could possibly have migrated from 
   
-  # for each lineage
+  extant.lineages <- model$get.extant_lineages(current.time)    # retrieve all lineages that are currently extant
+  possibleSourceTypes <- list()                                 # list of different types of source compartment that each lineage could possibly have migrated from 
+  
   for (x in extant.lineages) {
+    # for each lineage, retrieve possible types the lineage's compartment type can receive a transmission from
     recipientType <- x$get.location()$get.type()$get.name()
     recipientRates <- sapply(model$get.types(), function(a) {
       if (length(a$get.migration.rates()) == 0) {
@@ -19,8 +19,8 @@ calc.migration.rates <- function(model, current.time) {
         else { a$get.migration.rate(recipientType) }
       } 
     })
-    # eliminate those with a migration rate of 0
-    recipientRates[sapply(recipientRates, is.null)] <- NULL    # remove source -> recipient pairs w/ migration rates of 0
+    # eliminate those source -> recipient pairs with migration rates of 0
+    recipientRates[sapply(recipientRates, is.null)] <- NULL
     
     if (length(recipientRates) == 0) {
       # means that this lineage will never be a recipient in a migration event
@@ -42,7 +42,7 @@ calc.migration.rates <- function(model, current.time) {
       recipientTypes <- names(b$get.migration.rates())
       sapply(recipientTypes, function(c) {
         # for each resulting migration rate, multiply the rate by the number of source -> recipient pair types
-        # rate = ?
+        # rate = rate for now, assume no variation across compartments of the same Type
         pairRate <- b$get.migration.rate(c)
         
         qualified.r <- which(names(possibleSourceTypes) == c)
