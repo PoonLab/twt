@@ -95,20 +95,34 @@ generate.transmission.events <- function(model, eventlog) {
   compnames <- model$get.names(comps)
   source.popn <- c(comps, model$get.unsampled.hosts())
   source.popn.names <- model$get.names(source.popn)
+  types <- model$get.types()
   
-  # for each CompartmentType:
   indiv.types <- sapply(unlist(comps), function(a){a$get.type()$get.name()})
-  popn.totals <- lapply(model$get.types(), function(x) {
-    # 1. enumerate active compartments, including unsampled infected hosts (U) at time t=0
-    U <- x$get.unsampled()
-    A <- length(which(indiv.types == x$get.name()))  # number of active sampled compartments at t=0
+  popn.totals <- matrix(nrow=length(types),
+                        ncol=3,
+                        dimnames=list(names(types), c('U', 'A', 'S')))
+  popn.rates <- matrix(nrow=length(types),             # source types
+                       ncol=length(types),             # recipient types
+                       dimnames=list(names(types), names(types)))
+  
+  for (x in types) {                                   # for each CompartmentType:
+    U <- x$get.unsampled()                             # 1. store number of unsampled infected hosts (U) at time t=0
+    A <- length(which(indiv.types == x$get.name()))    # 2. store number of active sampled compartments (A) at time t=0
+    S <- x$get.susceptible()                           # 3. store number of susceptibles (S) at time t=0
+    popn.totals[x$get.name(),] <- c(U,A,S)
     
-    # 2. enumerate number of susceptibles (S) at time t=0
-    S <- x$get.susceptible()
+    for (y in names(types)) {
+      rate <- x$get.branching.rate(y)                  # store instrinsic transmission rates for all typeA -> typeB pairs
+      popn.rates[x$get.name(), y] <- rate
+    }
+  }
+
   
-    data.frame(U=U, A=A, S=S)
-  })
+  t_events <- data.frame(time=numeric(), r_type=character(), s_type=character())
   
+  while (sum(popn.totals[,'A']) > 1) {
+    
+  }
   
   # record max sampling times of lineages for each Compartment
   lineage.locations <- sapply(model$get.lineages(), function(x) {x$get.location()$get.name()})
