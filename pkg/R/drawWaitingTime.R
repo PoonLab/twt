@@ -1,4 +1,5 @@
 # draw waiting time for one piece of population growth dynamics
+# inverse cumulative function (Romero-Severson et al., 2017)
 wait.time <- function(k, alpha, beta){
   u <- runif(1, 0, 1)
   (1-(1-u)^(beta/choose(k,2)))*alpha/beta
