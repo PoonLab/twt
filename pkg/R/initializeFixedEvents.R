@@ -121,6 +121,8 @@ generate.transmission.events <- function(model, eventlog) {
   t_events <- data.frame(time=numeric(), r_type=character(), s_type=character())
   
   while (sum(popn.totals[,'A']) > 1) {
+    # filter population to determine which of these active compartments can be a recipient
+    # based on if all possible intrinsic rates are 0, and the max sampling times of the active compartments
     
   }
   
