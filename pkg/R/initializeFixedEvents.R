@@ -96,6 +96,7 @@ generate.transmission.events <- function(model, eventlog) {
   source.popn <- c(comps, model$get.unsampled.hosts())
   source.popn.names <- model$get.names(source.popn)
   types <- model$get.types()
+  typenames <- model$get.names(types)
   
   indiv.types <- sapply(unlist(comps), function(a){a$get.type()$get.name()})
   popn.totals <- matrix(nrow=length(types),
@@ -116,21 +117,13 @@ generate.transmission.events <- function(model, eventlog) {
       popn.rates[x$get.name(), y] <- rate
     }
   }
-
   
-  t_events <- data.frame(time=numeric(), r_type=character(), s_type=character())
-  
-  while (sum(popn.totals[,'A']) > 1) {
-    # filter population to determine which of these active compartments can be a recipient
-    # based on if all possible intrinsic rates are 0, and the max sampling times of the active compartments
-    
-  }
   
   # record max sampling times of lineages for each Compartment
   lineage.locations <- sapply(model$get.lineages(), function(x) {x$get.location()$get.name()})
   possibleSourceTypes <- list()  # list of different types of source that each recipient could possibly receive a transmission from
   time.bands <- vector()         # vector of maximum sampling times for each Compartment
-
+  
   for (comp in source.popn) {
     # for loop generates a comprehensive dictionary of all possibilities of a source with a given recipient Compartment
     # filtered first within the for loop to remove all source -> recipient pairs with branching rates of 0
@@ -165,34 +158,32 @@ generate.transmission.events <- function(model, eventlog) {
       names(possibleSourceTypes)[[length(possibleSourceTypes)]] <- recipientType
     }
   }
-
+  
+  
+  t_events <- data.frame(time=numeric(), r_type=character(), s_type=character())
+  
   # the start time of the simulation is the time where at least 2 sampled infected compartments are active
   current.time <- as.numeric(time.bands[order(time.bands)[2]])
   
-  while (length(comps) > 1) {
-    # draw all possible recipients that has a max sampling time less than or equal to the current.time (NAs are excluded)
+  while (sum(popn.totals[,'A']) > 1) {
+    # filter population to determine which of these active compartments can be a recipient
+    # based on if all possible intrinsic rates are 0, and the max sampling times of the active compartments
     qualified.sampled.recipients <- which(time.bands <= current.time)
-    if (length(qualified.sampled.recipients) < 1) {
-      stop ('There must be at least one Compartment containing a Lineage with a max sampling time of t=0.')
-    }
     
     # retrieve transmission types from dictionary of possibleSourceTypes for each qualified sampled recipient
     possibleTransmissions <- possibleSourceTypes[ qualified.sampled.recipients ]
     
     # calc transmission rates among all source-recipient pairings of CompartmentTypes
-    indiv.rates.n.quantities <- sapply(model$get.types(), function(x) {
-      sourceType <- x$get.name()
-      recipientTypes <- names(x$get.branching.rates())
-      sapply(recipientTypes, function(y) {
-        # rate = B(Us+Is)(Sr+1)
-        pairRate <- x$get.branching.rate(y) * (popn.totals[[y]]$S + 1) * (popn.totals[[sourceType]]$A + popn.totals[[sourceType]]$U)  
+    indiv.rates <- sapply(typenames, function(x) {
+      sapply(typenames, function(y) {
+        pairRate <- popn.rates[x,y] * (popn.totals[y,'S'] + 1) * (popn.totals[x,'A'] + popn.totals[x,'U'])
         
         qualified.r <- which(names(possibleTransmissions) == y)
-        if (length(qualified.r) == 0) {
+        if (length(qualified.r) ==0) {
           nPairs <- 0
         } else {
           qualified.sr <- which(sapply(qualified.r, function(z) {
-            sourceType %in% possibleTransmissions[z]
+            x %in% possibleTransmissions[z]
           }))
           if (length(qualified.sr) == 0) {
             nPairs <- 0
@@ -204,10 +195,9 @@ generate.transmission.events <- function(model, eventlog) {
         pairRate * nPairs
       })
     })
-    
-    # total rate of ANY transmission event occurring is the weighted sum of these rates in the dictionary
-    total.rate <- sum(indiv.rates.n.quantities)
-    
+      
+    # total rate of ANY transmission event occurring is the weightes sum of these rates in the dictionary
+    total.rate <- sum(indiv.rates)
     # sample waiting time & update the current time to the new upper bound in time (waiting time)
     waiting.time <- current.time + rexp(n=1, rate=total.rate)
     current.time <- waiting.time
@@ -255,14 +245,14 @@ generate.transmission.events <- function(model, eventlog) {
       eventlog$add.event('transmission', current.time, obj1='NA', r_name, s_name)
       
       # update all counts
-      popn.totals[[r_type]]$S <- popn.totals[[r_type]]$S + 1
-      popn.totals[[r_type]]$A <- popn.totals[[r_type]]$A - 1
+      popn.totals[r_type,'S'] <- popn.totals[r_type,'S'] + 1
+      popn.totals[r_type,'A'] <- length(comps)
     }
   }
   
   eventlog
 }
-
+  
 
 
 .to.transmission.tree <- function(eventlog) {
