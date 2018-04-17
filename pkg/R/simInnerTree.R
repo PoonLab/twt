@@ -4,6 +4,9 @@ inner.tree <- function(model, eventlog) {
   current.time <- 0.0
   extant.lineages <- model$get.extant_lineages(current.time)
   num.extant <- length(extant.lineages)
+  if (num.extant == 0) {
+    stop ('There must be at least one lineage sampled at time t=0.')
+  }
   
   while (length(extant.lineages) > 1) {
     # calculate waiting times for coalescent events for each compartment with 2 or more lineages
@@ -53,13 +56,17 @@ inner.tree <- function(model, eventlog) {
     } else {
       # checks have been made, move forward with generating a migration or coalescent event with the new time
       if (new.time == mig.time) {
-        # next event is a migration event; now draw source and recipient
-        recipient <- sample(extant.lineages, 1)
+        # next event is a migration event; now draw migrated lineage, and source and recipient compartments
+        migrating.lineage <- sample(extant.lineages, 1)              # draw a lineage to be migrated
+        l_name <- migrating.lineage$get.name()                       # lineage name
+        r_name <- migrating.lineage$get.location()                   # recipient compartment lineage migrated to (forward time)
+        s_name <- sample()$get.name()                                # source compartment lineage migrated from (forward time)
         
-        recipient$set.location(s_name)
+        migrating.lineage$set.location(s_name)
+        eventlog$add.event('migration', next.time, l_name, r_name, s_name)
       } else {
         # next event is a coalescent event; now choose a 'bin'
-        
+        eventlog$add.event('coalescent', next.time, obj1, obj2, obj3)
       }
       
       current.time <- current.time + new.time
