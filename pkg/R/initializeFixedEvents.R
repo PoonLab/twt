@@ -45,7 +45,7 @@ init.fixed.samplings <- function(model) {
     }
     
     branching.time <- phy$edge.length[x]
-    e$add.event('transmission', branching.time, obj1=NA, recipientLabel, sourceLabel)
+    e$add.event('transmission', branching.time, NA, NA, recipientLabel, sourceLabel)
   })
   
   e
@@ -76,7 +76,7 @@ init.branching.events <- function(model, eventlog) {
     }
 
     # add transmission event to EventLogger object
-    eventlog$add.event('transmission',  branching.time, lineage, x$get.name(), source)
+    eventlog$add.event('transmission',  branching.time, lineage, NA, x$get.name(), source)
   })
   
   eventlog
@@ -242,7 +242,7 @@ generate.transmission.events <- function(model, eventlog) {
       recipient$set.branching.time(current.time)
       
       # add transmission event to EventLogger object
-      eventlog$add.event('transmission', current.time, obj1='NA', r_name, s_name)
+      eventlog$add.event('transmission', current.time, NA, NA, r_name, s_name)
       
       # update all counts
       popn.totals[r_type,'S'] <- popn.totals[r_type,'S'] + 1

@@ -57,16 +57,38 @@ inner.tree <- function(model, eventlog) {
       # checks have been made, move forward with generating a migration or coalescent event with the new time
       if (new.time == mig.time) {
         # next event is a migration event; now draw migrated lineage, and source and recipient compartments
+        
         migrating.lineage <- sample(extant.lineages, 1)              # draw a lineage to be migrated
         l_name <- migrating.lineage$get.name()                       # lineage name
         r_name <- migrating.lineage$get.location()                   # recipient compartment lineage migrated to (forward time)
         s_name <- sample()$get.name()                                # source compartment lineage migrated from (forward time)
         
         migrating.lineage$set.location(s_name)
+        
+        # add migration event to EventLogger
         eventlog$add.event('migration', next.time, l_name, r_name, s_name)
+        
       } else {
-        # next event is a coalescent event; now choose a 'bin'
-        eventlog$add.event('coalescent', next.time, obj1, obj2, obj3)
+        # next event is a coalescent event; now choose a 'bin' from compartment with next.time
+        
+        coal.comp.name <- names(coal.time)   # name of the compartment with the min coal wait time
+        coal.comp.lineages <- sapply(extant.lineages, function(x){
+          if (x$get.location()$get.name() == coal.comp.name) {x$get.name()}
+          else {NULL}
+        })
+        lineages.to.coalesce <- sample(coal.comp.lineages, 2)
+        
+        # create a new ancestral lineage
+        ancestral.lineage <- Lineage$new(name = paste(lineages.to.coalesce, sep=';'),
+                                         sampling.time = next.time,
+                                         location = coal.comp.name)
+        model$add.lineage(ancestral.lineage)
+        
+        # remove pairs containing coalesced lineages from list of pair choices
+        # add pairs with new ancestral lineage into list of pair choices
+        
+        # add coalescent event to EventLogger
+        eventlog$add.event('coalescent', next.time, lineages.to.coalesce[1], lineages.to.coalesce[2], ancestral.lineage$get.name(), coal.comp.name)
       }
       
       current.time <- current.time + new.time

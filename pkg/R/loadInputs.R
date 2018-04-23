@@ -65,6 +65,11 @@ MODEL <- R6Class("MODEL",
       # when Lineages reach a tranmission bottleneck, forcing coalescence
       pair <- sort(c(L1, L2))
       private$choices[[paste(pair[1], pair[2], sep=',')]] <- NULL
+    }, 
+    
+    add.lineage = function(ancestral.lineage) {
+      # at a coalescent event, an ancestral lineage must be created
+      private$lineages[[length(private$lineages)+1]] <- ancestral.lineage
     }
     
   ),
