@@ -1,6 +1,7 @@
 # inner-tree simulation
 inner.tree <- function(model, eventlog) {
   # collect extant lineages at time t=0
+  transm.events <- eventlog$get.events('transmission')
   current.time <- 0.0
   extant.lineages <- model$get.extant_lineages(current.time)
   num.extant <- length(extant.lineages)
@@ -14,7 +15,7 @@ inner.tree <- function(model, eventlog) {
     # calculate total migration rate across all compartments at a given time
     mig.rate <- calc.migration.rates(model, current.time)
     # transmission times
-    transm.times <- eventlog$get.events('transmission')$time
+    transm.times <- transm.events$time
     # record number of transmission events already included in simulation at this current.time
     num.transm.occurred <- length(transm.times <= current.time)
     
@@ -42,19 +43,25 @@ inner.tree <- function(model, eventlog) {
     if (length(transm.times <= new.time) > num.transm.occurred) {
       # if minimum waiting time exceeds a transmission event not previously included 
       # (in the count of transmission events that have been recorded to have occurred)
-      # update the current time to the earlier transmission time (coalesc. time) and start again
+      # update the current time to the earlier transmission time (coalesc. time) of all newly included transmission events and start again
+      # call bottleneck function to mass coalesce lineages in (first) new transmission event newly included
+      
       all.new.transm <- which(transm.times <= new.time)
-      current.time <- transm.times[length(all.new.transm)]
+      current.time <- min(setdiff( transm.times[all.new.transm], transm.times )) 
+      comp.2.bottle <- transm.events[which(transm.times == current.time),]$compartment1
+      generate.bottleneck(model, eventlog, comp.2.bottle, current.time)
       next
       
     } else if (length(model$get.extant_lineages(new.time)) > num.extant) {
       # OR other lineage(s) become(s) extant before the waiting time
       # update the current time to add the waiting time and start again
+      
       current.time <- current.time + new.time
       next
       
     } else {
       # checks have been made, move forward with generating a migration or coalescent event with the new time
+      
       if (new.time == mig.time) {
         # next event is a migration event; now draw migrated lineage, and source and recipient compartments
         
@@ -97,4 +104,27 @@ inner.tree <- function(model, eventlog) {
     
     
   }
+}
+
+
+
+
+generate.bottleneck <- function(model, eventlog, compartment.name, current.time) {
+  # function coalesces lineages currently extant in given Compartment to the given Compartment's bottleneck size
+  # bottleneck size of Compartment is user determined by CompartmentType
+  # @param model = MODEL object
+  # @param eventlog = EventLogger object
+  # @param compartment.name = name of a unique Compartment object
+  # @param current.time = time of simulation current to this function call
+  # @return
+  
+  bottleneck.size <-
+  extant.lineages <- model$get.extant_lineages(current.time) # the reason not passing extant.lineages directly is b/c could have additional extant lineages updated alongside current.time
+  comp.lineages <- sapply(extant.lineages, function(x) {
+    if (x$get.location()$get.name() == compartment.name) {x$get.name()}
+    else {NULL}
+  })
+  
+  while (length(comp.lineages) > bottleneck.size)
+  
 }
