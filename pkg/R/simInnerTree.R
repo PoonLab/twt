@@ -117,6 +117,25 @@ inner.tree <- function(model, eventlog) {
 
 
 
+remove.lineage.pairs <- function(model, lineage) {
+  # this function removes lineage pairs in MODEL obj attr `choices`: list of lineage pair choices to coalesce
+  # extract all the pairs
+  model$get.pairs()
+  # narrow down to only the compartment with lineage of interest
+  # narrow down to only ones with given lineage in the name
+  # remove those pairs from list attr `choices`
+}
+
+
+
+add.lineage.pairs <- function(model, lineage) {
+  # this function adds lineage pairs in MODEL obj attr `choices`: list of lineage pair choices to coalesce
+  # find other lineages in this location
+  # generate pairs with this new lineage and other lineages
+}
+
+
+
 
 generate.bottleneck <- function(model, eventlog, comp, current.time) {
   # function coalesces lineages currently extant in given Compartment to the given Compartment's bottleneck size
@@ -146,7 +165,7 @@ generate.bottleneck <- function(model, eventlog, comp, current.time) {
     # remove pairs containing coalesced lineages from list of pair choices
     # add pairs with new ancestral lineage into list of pair choices
     
-    eventlog$add.event('coalescent', current.time, lienages.to.coalesce[1], lineages.to.coalesce[2], ancestral.lineage$get.name(), comp$get.name())
+    eventlog$add.event('coalescent', current.time, lineages.to.coalesce[1], lineages.to.coalesce[2], ancestral.lineage$get.name(), comp$get.name())
   }
   
 }
