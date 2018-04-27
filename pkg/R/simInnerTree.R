@@ -101,7 +101,17 @@ inner.tree <- function(model, eventlog) {
         model$add.lineage(ancestral.lineage)
         
         # remove pairs containing coalesced lineages from list of pair choices
+        lin.objs <- sapply(lineages.to.coalesce, function(x) {
+          sapply(extant.lineages, function(a) {
+            if (a$get.name() == x) {a}
+            else {NULL}
+          })
+        })
+        remove.lineage.pairs(model, lin.objs[1])
+        remove.lineage.pairs(model, lin.objs[2])
+        
         # add pairs with new ancestral lineage into list of pair choices
+        add.lineage.pairs(model, ancestral.lineage)
         
         # add coalescent event to EventLogger
         eventlog$add.event('coalescent', next.time, lineages.to.coalesce[1], lineages.to.coalesce[2], ancestral.lineage$get.name(), coal.comp.name)
@@ -119,19 +129,48 @@ inner.tree <- function(model, eventlog) {
 
 remove.lineage.pairs <- function(model, lineage) {
   # this function removes lineage pairs in MODEL obj attr `choices`: list of lineage pair choices to coalesce
+  # @param model = MODEL object, one per simulation
+  # @param lineage = Lineage object, to be removed from list of lineage pair choices
+  
   # extract all the pairs
-  model$get.pairs()
+  current.pairs <- model$get.pairs()
+  
   # narrow down to only the compartment with lineage of interest
+  compname <- lineage$get.location()$get.name()
+  comp.lineage.pairs <- sapply(current.pairs, function(x) {
+    if (x == compname) {names(x)}
+    else {NULL}
+  })
+  
   # narrow down to only ones with given lineage in the name
-  # remove those pairs from list attr `choices`
+  sapply(comp.lineage.pairs, function(y) {
+    # split each pair of names and look for the lineage name
+    split.names <- unlist(strsplit(y, '\\,'))
+    if (lineage$get.name() %in% split.names) {
+      # remove this pair of names from list attr `choices`
+      model$remove.pair(split.names[1], split.names[2])
+    }
+  })
 }
 
 
 
 add.lineage.pairs <- function(model, lineage) {
   # this function adds lineage pairs in MODEL obj attr `choices`: list of lineage pair choices to coalesce
-  # find other lineages in this location
+  # @param model = MODEL object
+  # @param lineage = Lineage object to be added to list of lineage pair choices
+  
+  host.comp <- lineage$get.location()$get.name()
+  # find other lineages in this (host.comp) location
+  other.lineages <- sapply(model$get.lineages(), function(x) {
+    if (x$get.location()$get.name() == host.comp) {x$get.name()}
+    else{NULL}
+  })
+                             
   # generate pairs with this new lineage and other lineages
+  sapply(other.lineages, function(y) {
+    model$add.pair(lineage$get.name(), y, host.comp)
+  })
 }
 
 
@@ -163,7 +202,17 @@ generate.bottleneck <- function(model, eventlog, comp, current.time) {
     model$add.lineage(ancestral.lineage)
     
     # remove pairs containing coalesced lineages from list of pair choices
+    lin.objs <- sapply(lineages.to.coalesce, function(x) {
+      sapply(extant.lineages, function(a) {
+        if (a$get.name() == x) {a}
+        else {NULL}
+      })
+    })
+    remove.lineage.pairs(model, lin.objs[1])
+    remove.lineage.pairs(model, lin.objs[2])
+   
     # add pairs with new ancestral lineage into list of pair choices
+    add.lineage.pairs(model, ancestral.lineage)
     
     eventlog$add.event('coalescent', current.time, lineages.to.coalesce[1], lineages.to.coalesce[2], ancestral.lineage$get.name(), comp$get.name())
   }
