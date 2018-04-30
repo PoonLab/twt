@@ -61,12 +61,16 @@ inner.tree <- function(model, eventlog) {
       comp.2.bottle <- model$get.compartments()[[which(compnames == compname.2.bottle)]]
       
       survivor.lineages <- generate.bottleneck(model, eventlog, comp.2.bottle, current.time)
-      
-      new.comp.location <- model$get.compartments()[[which(compnames == transm.event$compartment2)]]
+      new.comp.location <- transm.event$compartment2
       
       # for each of the survivor lineages, the compartment needs to update its location to the source of the transmission event
-      # the transmission event's `lineage` column can now be updated to included the names of the 'survivors'
+      survivor.names <- sapply(survivor.lineages, function(x) {
+        x$set.location(model$get.compartments(), new.comp.location)
+        x$get.name()
+      })
       
+      # the transmission event's `lineage` column can now be updated to included the names of the 'survivors'
+      eventlog$modify.event(transm.event$time, survivor.names)
       
       next
       
@@ -88,7 +92,7 @@ inner.tree <- function(model, eventlog) {
         r_name <- migrating.lineage$get.location()                   # recipient compartment lineage migrated to (forward time)
         s_name <- sample()$get.name()                                # source compartment lineage migrated from (forward time)
         
-        migrating.lineage$set.location(s_name)
+        migrating.lineage$set.location(model$get.compartments(), s_name)
         
         # add migration event to EventLogger
         eventlog$add.event('migration', next.time, l_name, r_name, s_name)

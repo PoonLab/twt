@@ -238,6 +238,15 @@ EventLogger <- R6Class("EventLogger",
                                                              compartment1=character(),
                                                              compartment2=character()
                                                             )
+    },
+    
+    
+    modify.event = function(transmission.time, lineages) {
+      transmission.events <- self$get.events('transmission')
+      index <- which(transmission.events$time == transmission.time)
+      rowname <- rownames(transmission.events)[index]
+      eventlog.index <- which(rownames(self$get.all.events()) == rowname)
+      private$events[eventlog.index, 'lineage1'] <- lineages
     }
     
   ),
