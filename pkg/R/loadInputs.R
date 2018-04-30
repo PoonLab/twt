@@ -70,6 +70,12 @@ MODEL <- R6Class("MODEL",
     add.lineage = function(ancestral.lineage) {
       # at a coalescent event, an ancestral lineage must be created
       private$lineages[[length(private$lineages)+1]] <- ancestral.lineage
+    },
+    
+    remove.lineage = function(lineage) {
+      # at a coalescent event, lineages that coalesce must be removed
+      lin.index <- which(sapply(private$lineages, function(x){x$get.name() == lineage$get.name()}))
+      private$lineages[[lin.index]] <- NULL
     }
     
   ),
