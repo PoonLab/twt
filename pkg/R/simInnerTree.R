@@ -92,6 +92,8 @@ inner.tree <- function(model, eventlog) {
         r_name <- migrating.lineage$get.location()                   # recipient compartment lineage migrated to (forward time)
         s_name <- sample()$get.name()                                # source compartment lineage migrated from (forward time)
         
+        # issue 32, if migration of lineages from US individual not already included in outer tree, have to graft another branch to the outer tree
+        
         migrating.lineage$set.location(model$get.compartments(), s_name)
         
         # add migration event to EventLogger

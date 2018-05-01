@@ -207,48 +207,63 @@ generate.transmission.events <- function(model, eventlog) {
       # re-start the filtering to include new qualified sampled infected recipients
       next
     } else {
-      # determine source and recipient by relative transmission rate sums by type
-      # sample individual recipient compartment within Types, uniformly distributed
-      r_name <- sample(names(qualified.sampled.recipients), 1)
-      r_ind_s_popn <- which(source.popn.names == r_name)
-      r_ind_comps <- which(compnames == r_name)
+      # randomly choose a source and recipient pair, uniformly distributed
+      ind <- sample(1:length(possibleTransmissions), 1)
+      r_type <- names(possibleTransmissions)[[ind]]
+      s_type <- sample(possibleTransmissions[[ind]], 1)
       
-      recipient <- comps[[ r_ind_comps ]]
-      r_type <- recipient$get.type()$get.name()
+      # store the time, and the source and recipient types of transmission
+      t_events <- rbind(t_events, list(time=current.time, r_type=r_type, s_type=s_type), stringsAsFactors=F)
       
-      # remove recipient from relevant lists
-      comps[[ r_ind_comps ]] <- NULL
-      compnames <- compnames[-r_ind_comps]
-      source.popn[[ r_ind_s_popn ]] <- NULL
-      source.popn.names <- source.popn.names[-r_ind_s_popn]
-      time.bands <- time.bands[ -which(names(time.bands) == r_name) ]
+      # remove r_type w/ all it's possible source types from list `possibleTransmissions` (this Infected can no longer be a recipient)
+      possibleTransmissions[[ind]] <- NULL
       
-      # sample individual source compartment within Types, uniformly distributed
-      source <- sample(source.popn, 1)[[1]]
-      s_name <- source$get.name()
-      
-      # if source is a us_comp, now holds a sampled lineage we care about 
-      s_ind_timebands <- which(names(time.bands) == s_name)
-      if (is.na(time.bands[s_ind_timebands])) {
-        # update "max sampling time" of particular us_comp from NA to current.time
-        time.bands[s_ind_timebands] <- current.time
-        # add us_comp source to list of comps (can now be a recipient)
-        comps[[length(comps)+1]] <- source
-        compnames[[length(compnames)+1]] <- s_name
-      }
-      
-      # update recipient object `source` attr and `branching.time` attr
-      recipient$set.source(source)
-      recipient$set.branching.time(current.time)
-      
-      # add transmission event to EventLogger object
-      eventlog$add.event('transmission', current.time, NA, NA, r_name, s_name)
-      
-      # update all counts
-      popn.totals[r_type,'S'] <- popn.totals[r_type,'S'] + 1
-      popn.totals[r_type,'A'] <- length(comps)
+      # update counts of total population
+      popn.totals[r_type, 'A'] <- popn.totals[r_type, 'A']   # TODO: what if an unsampled infected is the r_type?
+      popn.totals[r_type, 'S'] <- popn.totals[r_type, 'S'] + 1
     }
   }
+  
+  # # determine source and recipient by relative transmission rate sums by type
+  # # sample individual recipient compartment within Types, uniformly distributed
+  # r_name <- sample(names(qualified.sampled.recipients), 1)
+  # r_ind_s_popn <- which(source.popn.names == r_name)
+  # r_ind_comps <- which(compnames == r_name)
+  # 
+  # recipient <- comps[[ r_ind_comps ]]
+  # r_type <- recipient$get.type()$get.name()
+  # 
+  # # remove recipient from relevant lists
+  # comps[[ r_ind_comps ]] <- NULL
+  # compnames <- compnames[-r_ind_comps]
+  # source.popn[[ r_ind_s_popn ]] <- NULL
+  # source.popn.names <- source.popn.names[-r_ind_s_popn]
+  # time.bands <- time.bands[ -which(names(time.bands) == r_name) ]
+  # 
+  # # sample individual source compartment within Types, uniformly distributed
+  # source <- sample(source.popn, 1)[[1]]
+  # s_name <- source$get.name()
+  # 
+  # # if source is a us_comp, now holds a sampled lineage we care about 
+  # s_ind_timebands <- which(names(time.bands) == s_name)
+  # if (is.na(time.bands[s_ind_timebands])) {
+  #   # update "max sampling time" of particular us_comp from NA to current.time
+  #   time.bands[s_ind_timebands] <- current.time
+  #   # add us_comp source to list of comps (can now be a recipient)
+  #   comps[[length(comps)+1]] <- source
+  #   compnames[[length(compnames)+1]] <- s_name
+  # }
+  # 
+  # # update recipient object `source` attr and `branching.time` attr
+  # recipient$set.source(source)
+  # recipient$set.branching.time(current.time)
+  # 
+  # # add transmission event to EventLogger object
+  # eventlog$add.event('transmission', current.time, NA, NA, r_name, s_name)
+  # 
+  # # update all counts
+  # popn.totals[r_type,'S'] <- popn.totals[r_type,'S'] + 1
+  # popn.totals[r_type,'A'] <- length(comps)
   
   eventlog
 }
