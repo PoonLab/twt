@@ -100,20 +100,19 @@ generate.transmission.events <- function(model, eventlog) {
   
   indiv.types <- sapply(unlist(comps), function(a){a$get.type()$get.name()})
   popn.totals <- matrix(nrow=length(types),
-                        ncol=3,
-                        dimnames=list(names(types), c('U', 'A', 'S')))
-  popn.rates <- matrix(nrow=length(types),             # source types
-                       ncol=length(types),             # recipient types
+                        ncol=2,
+                        dimnames=list(names(types), c('I', 'S')))
+  popn.rates <- matrix(nrow=length(types),                                # source types
+                       ncol=length(types),                                # recipient types
                        dimnames=list(names(types), names(types)))
   
-  for (x in types) {                                   # for each CompartmentType:
-    U <- x$get.unsampled()                             # 1. store number of unsampled infected hosts (U) at time t=0
-    A <- length(which(indiv.types == x$get.name()))    # 2. store number of active sampled compartments (A) at time t=0
-    S <- x$get.susceptible()                           # 3. store number of susceptibles (S) at time t=0
-    popn.totals[x$get.name(),] <- c(U,A,S)
+  for (x in types) {                                                      # for each CompartmentType:
+    I <- length(which(indiv.types == x$get.name())) + x$get.unsampled()   # 2. store number of active sampled compartments AND unsampled infected hosts at time t=0 (I)
+    S <- x$get.susceptible()                                              # 3. store number of susceptibles at time t=0 (I)
+    popn.totals[x$get.name(),] <- c(I,S)
     
     for (y in names(types)) {
-      rate <- x$get.branching.rate(y)                  # store instrinsic transmission rates for all typeA -> typeB pairs
+      rate <- x$get.branching.rate(y)                                     # store instrinsic transmission rates for all typeA -> typeB pairs
       popn.rates[x$get.name(), y] <- rate
     }
   }
@@ -165,7 +164,7 @@ generate.transmission.events <- function(model, eventlog) {
   # the start time of the simulation is the time where at least 2 sampled infected compartments are active
   current.time <- as.numeric(time.bands[order(time.bands)[2]])
   
-  while (sum(popn.totals[,'A']) > 1) {
+  while (sum(popn.totals[,'I']) > 1) {
     # filter population to determine which of these active compartments can be a recipient
     # based on if all possible intrinsic rates are 0, and the max sampling times of the active compartments
     qualified.sampled.recipients <- which(time.bands <= current.time)
@@ -176,7 +175,7 @@ generate.transmission.events <- function(model, eventlog) {
     # calc transmission rates among all source-recipient pairings of CompartmentTypes
     indiv.rates <- sapply(typenames, function(x) {
       sapply(typenames, function(y) {
-        pairRate <- popn.rates[x,y] * (popn.totals[y,'S'] + 1) * (popn.totals[x,'A'] + popn.totals[x,'U'])
+        pairRate <- popn.rates[x,y] * (popn.totals[y,'S'] + 1) * (popn.totals[x,'I'])
         
         qualified.r <- which(names(possibleTransmissions) == y)
         if (length(qualified.r) ==0) {
@@ -219,51 +218,79 @@ generate.transmission.events <- function(model, eventlog) {
       possibleTransmissions[[ind]] <- NULL
       
       # update counts of total population
-      popn.totals[r_type, 'A'] <- popn.totals[r_type, 'A']   # TODO: what if an unsampled infected is the r_type?
+      popn.totals[r_type, 'I'] <- popn.totals[r_type, 'I'] - 1
       popn.totals[r_type, 'S'] <- popn.totals[r_type, 'S'] + 1
     }
   }
   
-  # # determine source and recipient by relative transmission rate sums by type
-  # # sample individual recipient compartment within Types, uniformly distributed
-  # r_name <- sample(names(qualified.sampled.recipients), 1)
-  # r_ind_s_popn <- which(source.popn.names == r_name)
-  # r_ind_comps <- which(compnames == r_name)
-  # 
-  # recipient <- comps[[ r_ind_comps ]]
-  # r_type <- recipient$get.type()$get.name()
-  # 
-  # # remove recipient from relevant lists
-  # comps[[ r_ind_comps ]] <- NULL
-  # compnames <- compnames[-r_ind_comps]
-  # source.popn[[ r_ind_s_popn ]] <- NULL
-  # source.popn.names <- source.popn.names[-r_ind_s_popn]
-  # time.bands <- time.bands[ -which(names(time.bands) == r_name) ]
-  # 
-  # # sample individual source compartment within Types, uniformly distributed
-  # source <- sample(source.popn, 1)[[1]]
-  # s_name <- source$get.name()
-  # 
-  # # if source is a us_comp, now holds a sampled lineage we care about 
-  # s_ind_timebands <- which(names(time.bands) == s_name)
-  # if (is.na(time.bands[s_ind_timebands])) {
-  #   # update "max sampling time" of particular us_comp from NA to current.time
-  #   time.bands[s_ind_timebands] <- current.time
-  #   # add us_comp source to list of comps (can now be a recipient)
-  #   comps[[length(comps)+1]] <- source
-  #   compnames[[length(compnames)+1]] <- s_name
-  # }
-  # 
-  # # update recipient object `source` attr and `branching.time` attr
-  # recipient$set.source(source)
-  # recipient$set.branching.time(current.time)
-  # 
-  # # add transmission event to EventLogger object
+  
+  # after transmission times are generated/stored in df `t_events`, now have to assign source and recipient compartments to each
+  numActive <- length(comps)
+  maxAttempts <- 20           # maximum number of times we attempt to match s-r pairs to transmission times before throwing an error
+  while (numActive > 1) {
+    # randomly pick recipient from population `comps`, uniformly distributed
+    r_name <- sample(compnames, 1)
+    r_ind_comps <- which(compnames == r_name)
+    r_ind_s_popn <- which(source.popn.names == r_name)
+    
+    recipient <- comps[[r_ind_comps]]
+    r_type <- recipient$get.type()$get.name()
+    r_max_sample_time <- time.bands[ which(names(time.bands) == r_name) ]
+    
+    # remove recipient from relevant lists 
+    comps[[ r_ind_comps ]] <- NULL
+    compnames <- compnames[-r_ind_comps]
+    source.popn[[ r_ind_s_popn ]] <- NULL
+    source.popn.names <- source.popn.names[-r_ind_s_popn]
+    # time.bands <- time.bands[ -which(names(time.bands) == r_name) ]
+    
+    # randomly pick source
+    s_name <- sample(source.popn.names, 1)
+    s_ind_s_popn <- which(source.popn.names == s_name)
+    
+    source <- source.popn[[s_ind_s_popn]]
+    s_type <- source$get.type()$get.name()
+    
+    # if source is a us_comp, now holds a sampled lineage we care about (promote us_comp)
+    s_ind_timebands <- which(names(time.bands) == s_name)
+    if (is.na(time.bands[s_ind_timebands])) {
+      # update "max sampling time" of this particular us_comp from NA to `current.time`
+      time.bands[s_ind_timebands] <- current.time
+      # add us_comp to list `comps` (once first a source, can now be a recipient)
+      comps[[length(comps)+1]] <- source
+      compnames[[length(compsnames)+1]] <- s_name
+    }
+    
+    
+    # update recipient object `source` attr and `branching.time` attr
+    recipient$set.source(source)
+    recipient$set.branching.time(current.time)
+    
+    # filter transmission times from data frame `t_events`
+       #* r_type and s_type columns match recipient and source's types respectively
+       #* earlier back in time than recipient compartment's time band (larger cumulative time)
+    possible.t.times.indices <- which(t_events$r_type == r_type
+                                   && t_events$s_type == s_types
+                                   && t_events$type > r_max_sample_time)
+    if (length(possible.t.times.indices) == 0 ) {
+      # if NO possible transmission times (taken randomly away by some other pair of compartments) RESTART the simulation w/ the same set of transmission times
+      
+    } else {
+      # randomly pick one of the filtered transmission times
+      chosen.t.time.ind <- sample(possible.t.times.indices, 1)
+      t.time <- t_events[chosen.t.time.ind,]$time
+    }
+    
+    # add transmission event to a holder compartment
+    # remove row with chosen transmission time from df `t_events`
+    
+    # update number of active compartments (excludes recipients, includes promoted us_comps)
+    numActive <- length(comps)
+  }
+  
+  # if matching up source-recipient pairs to transmission times are successful
+  # # add transmission events to EventLogger object
   # eventlog$add.event('transmission', current.time, NA, NA, r_name, s_name)
-  # 
-  # # update all counts
-  # popn.totals[r_type,'S'] <- popn.totals[r_type,'S'] + 1
-  # popn.totals[r_type,'A'] <- length(comps)
   
   eventlog
 }
