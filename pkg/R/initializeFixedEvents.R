@@ -225,8 +225,17 @@ generate.transmission.events <- function(model, eventlog) {
   
   
   # after transmission times are generated/stored in df `t_events`, now have to assign source and recipient compartments to each
+  holdingEvents <- data.frame(event.type=character(),
+                              time=numeric(),
+                              lineage1=character(),
+                              lineage2=character(),
+                              compartment1=character(),
+                              compartment2=character()
+                              )
+  t_events_copy <- t_events
   numActive <- length(comps)
   maxAttempts <- 20           # maximum number of times we attempt to match s-r pairs to transmission times before throwing an error
+  
   while (numActive > 1) {
     # randomly pick recipient from population `comps`, uniformly distributed
     r_name <- sample(compnames, 1)
@@ -269,29 +278,54 @@ generate.transmission.events <- function(model, eventlog) {
     # filter transmission times from data frame `t_events`
        #* r_type and s_type columns match recipient and source's types respectively
        #* earlier back in time than recipient compartment's time band (larger cumulative time)
-    possible.t.times.indices <- which(t_events$r_type == r_type
-                                   && t_events$s_type == s_types
-                                   && t_events$type > r_max_sample_time)
+    possible.t.times.indices <- which(t_events_copy$r_type == r_type
+                                   && t_events_copy$s_type == s_types
+                                   && t_events_copy$type > r_max_sample_time)
     if (length(possible.t.times.indices) == 0 ) {
-      # if NO possible transmission times (taken randomly away by some other pair of compartments) RESTART the simulation w/ the same set of transmission times
+      # if NO possible transmission times (couls have been stochastically taken away by some other pair(s) of compartments) 
+      # RESTART the simulation w/ the same set of transmission times
       
+      holdingEvents <- data.frame(event.type=character(),
+                                  time=numeric(),
+                                  lineage1=character(),
+                                  lineage2=character(),
+                                  compartment1=character(),
+                                  compartment2=character()
+                                  )
+      comps <- model$get.compartments()           
+      compnames <- model$get.names(comps)
+      source.popn <- c(comps, model$get.unsampled.hosts())
+      source.popn.names <- model$get.names(source.popn)
+      t_events_copy <- t_events
+      
+      maxAttempts <- maxAttempts - 1
+      if (maxAttempts == 0) {
+        stop('Cannot resolve outer transmission tree. Please increase the number of unsampled infected individuals.')  # but for which Compartment Type?
+      }
     } else {
       # randomly pick one of the filtered transmission times
       chosen.t.time.ind <- sample(possible.t.times.indices, 1)
-      t.time <- t_events[chosen.t.time.ind,]$time
+      t.time <- t_events_copy[chosen.t.time.ind,]$time
+      
+      # add transmission event to a holder compartment
+      holdEvents <- rbind(holdingEvents, list(event.type='transmission', time=t.time, lineage1=NA, lineage2=NA, compartment1=r_name, compartment2=s_name), stringsAsFactors=F)
+      
+      # remove row with chosen transmission time from df `t_events`
+      t_events_copy <- t_events_copy[-chosen.t.time.ind, ]
     }
-    
-    # add transmission event to a holder compartment
-    # remove row with chosen transmission time from df `t_events`
     
     # update number of active compartments (excludes recipients, includes promoted us_comps)
     numActive <- length(comps)
   }
   
   # if matching up source-recipient pairs to transmission times are successful
-  # # add transmission events to EventLogger object
-  # eventlog$add.event('transmission', current.time, NA, NA, r_name, s_name)
-  
+  # add transmission events to EventLogger object
+  sapply(1:nrow(holdingEvents), function(x) {
+    event <- holdingEvents[1,] 
+    # eventlog$add.event('transmission', current.time, NA, NA, r_name, s_name)
+    eventlog$add.event(event[[1]], event[[2]], event[[3]], event[[4]], event[[5]], event[[6]])
+  })
+
   eventlog
 }
   
