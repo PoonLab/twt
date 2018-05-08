@@ -260,27 +260,12 @@ generate.transmission.events <- function(model, eventlog) {
     source <- source.popn[[s_ind_s_popn]]
     s_type <- source$get.type()$get.name()
     
-    # if source is a us_comp, now holds a sampled lineage we care about (promote us_comp)
-    s_ind_timebands <- which(names(time.bands) == s_name)
-    if (is.na(time.bands[s_ind_timebands])) {
-      # update "max sampling time" of this particular us_comp from NA to `current.time`
-      time.bands[s_ind_timebands] <- current.time
-      # add us_comp to list `comps` (once first a source, can now be a recipient)
-      comps[[length(comps)+1]] <- source
-      compnames[[length(compsnames)+1]] <- s_name
-    }
-    
-    
-    # update recipient object `source` attr and `branching.time` attr
-    recipient$set.source(source)
-    recipient$set.branching.time(current.time)
-    
     # filter transmission times from data frame `t_events`
        #* r_type and s_type columns match recipient and source's types respectively
        #* earlier back in time than recipient compartment's time band (larger cumulative time)
-    possible.t.times.indices <- which(t_events_copy$r_type == r_type
-                                   && t_events_copy$s_type == s_types
-                                   && t_events_copy$type > r_max_sample_time)
+    possible.t.times.indices <- union(union(which(t_events_copy$r_type == r_type),
+                                which(t_events_copy$s_type == s_type)),
+                                which(t_events_copy$time > r_max_sample_time))
     if (length(possible.t.times.indices) == 0 ) {
       # if NO possible transmission times (couls have been stochastically taken away by some other pair(s) of compartments) 
       # RESTART the simulation w/ the same set of transmission times
@@ -308,7 +293,21 @@ generate.transmission.events <- function(model, eventlog) {
       t.time <- t_events_copy[chosen.t.time.ind,]$time
       
       # add transmission event to a holder compartment
-      holdEvents <- rbind(holdingEvents, list(event.type='transmission', time=t.time, lineage1=NA, lineage2=NA, compartment1=r_name, compartment2=s_name), stringsAsFactors=F)
+      holdingEvents <- rbind(holdingEvents, list(event.type='transmission', time=t.time, lineage1=NA, lineage2=NA, compartment1=r_name, compartment2=s_name), stringsAsFactors=F)
+      
+      # if source is a us_comp, now holds a sampled lineage we care about (promote us_comp)
+      s_ind_timebands <- which(names(time.bands) == s_name)
+      if (is.na(time.bands[s_ind_timebands])) {
+        # update "max sampling time" of this particular us_comp from NA to chosen transmission time
+        time.bands[s_ind_timebands] <- t.time
+        # add us_comp to list `comps` (once first a source, can now be a recipient)
+        comps[[length(comps)+1]] <- source
+        compnames[[length(compnames)+1]] <- s_name
+      }
+      
+      # update recipient object `source` attr and `branching.time` attr
+      recipient$set.source(source)
+      recipient$set.branching.time(t.time)
       
       # remove row with chosen transmission time from df `t_events`
       t_events_copy <- t_events_copy[-chosen.t.time.ind, ]
@@ -321,7 +320,7 @@ generate.transmission.events <- function(model, eventlog) {
   # if matching up source-recipient pairs to transmission times are successful
   # add transmission events to EventLogger object
   sapply(1:nrow(holdingEvents), function(x) {
-    event <- holdingEvents[1,] 
+    event <- holdingEvents[x,] 
     # eventlog$add.event('transmission', current.time, NA, NA, r_name, s_name)
     eventlog$add.event(event[[1]], event[[2]], event[[3]], event[[4]], event[[5]], event[[6]])
   })
