@@ -1,7 +1,12 @@
 # inner-tree simulation
 inner.tree <- function(model, eventlog) {
+  
+  comps <- model$get.compartments()
+  compnames <- model$get.names(comps)
+  source.popn <- c(comps, model$get.unsampled.hosts())
+  source.popn.names <- model$get.names(source.popn)
+  
   # collect extant lineages at time t=0
-  compnames <- model$get.names(model$get.compartments())
   transm.events <- eventlog$get.events('transmission')
   current.time <- 0.0
   extant.lineages <- model$get.extant_lineages(current.time)
@@ -58,14 +63,14 @@ inner.tree <- function(model, eventlog) {
       
       transm.event <- transm.events[which(transm.times == current.time),]
       compname.2.bottle <- transm.event$compartment1
-      comp.2.bottle <- model$get.compartments()[[which(compnames == compname.2.bottle)]]
+      comp.2.bottle <- comps[[which(compnames == compname.2.bottle)]]
       
       survivor.lineages <- generate.bottleneck(model, eventlog, comp.2.bottle, current.time)
       new.comp.location <- transm.event$compartment2
       
       # for each of the survivor lineages, the compartment needs to update its location to the source of the transmission event
       survivor.names <- sapply(survivor.lineages, function(x) {
-        x$set.location(model$get.compartments(), new.comp.location)
+        x$set.location(comps, new.comp.location)
         x$get.name()
       })
       
@@ -89,15 +94,24 @@ inner.tree <- function(model, eventlog) {
         
         migrating.lineage <- sample(extant.lineages, 1)              # draw a lineage to be migrated
         l_name <- migrating.lineage$get.name()                       # lineage name
-        r_name <- migrating.lineage$get.location()                   # recipient compartment lineage migrated to (forward time)
-        s_name <- sample()$get.name()                                # source compartment lineage migrated from (forward time)
+        r_comp_name <- migrating.lineage$get.location()              # recipient compartment Lineage migrated to (forward time)
+        
+        r_ind <- which(source.popn.names == r_comp_name)
+        filtered.source.popn <- source.popn[-r_ind]                  # exclude r_comp; TODO: exclude any source comp currently w/ only one lineage?
+        s_comp <- sample(filtered.source.popn, 1)                    # source compartment Lineage migrated from (forward time)
+        s_name <- s_comp$get.name()
         
         # issue 32, if migration of lineages from US individual not already included in outer tree, have to graft another branch to the outer tree
-        
-        migrating.lineage$set.location(model$get.compartments(), s_name)
+        outer.tree.events <- eventlog$get.events('transmission')
+        outer.tree.comps <- union(outer.tree.events$compartment1, outer.tree.events$compartment2)
+        if (s_name %in% outer.tree.comps == F) {
+          eventlog$add.event('transmission', NA, l_name, NA, r_comp_name, s_comp_name)         # coming back later to populate transmission time
+        }
+          
+        migrating.lineage$set.location(comps, s_name)
         
         # add migration event to EventLogger
-        eventlog$add.event('migration', next.time, l_name, r_name, s_name)
+        eventlog$add.event('migration', next.time, l_name, NA, r_comp_name, s_comp_name)
         
       } else {
         # next event is a coalescent event; now choose a 'bin' from compartment with next.time
