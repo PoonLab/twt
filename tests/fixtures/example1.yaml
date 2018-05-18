@@ -9,6 +9,11 @@ CompartmentTypes:
     branching.rates: (host=0.2)     # only one CompartmentType, in this case represents transmission rates
     migration.rates: ()             # assume no migration
     bottleneck.size: 1              # bottleneck size when transmission event occurs
+    wait.time.distr:                # distribution of waiting time between infection time and first sampling time of a Compartment
+      distr: 'norm'
+      hyperparameters:
+        - mean: 2.0
+        - sd: 0.5
     popn.growth.dynamics:
       piece1:
         - startTime: 0

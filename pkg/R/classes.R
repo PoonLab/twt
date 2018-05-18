@@ -6,7 +6,8 @@ CompartmentType  <- R6Class("CompartmentType",
     initialize = function(name=NA, unsampled = NA,
                           susceptible=NA, branching.rates=NA,
                           effective.size=NA, bottleneck.size=NA,
-                          migration.rates=NA, popn.growth.dynamics=NA) {
+                          migration.rates=NA, wait.time.distr=NA,
+                          popn.growth.dynamics=NA) {
       private$name <- name
       private$unsampled <- unsampled
       private$susceptible <- susceptible
@@ -14,6 +15,7 @@ CompartmentType  <- R6Class("CompartmentType",
       private$effective.size <- effective.size
       private$bottleneck.size <- bottleneck.size
       private$migration.rates <- migration.rates               # named vector of migration rates of different Compartments
+      private$wait.time.distr <- wait.time.distr
       private$popn.growth.dynamics <- popn.growth.dynamics
     },
     
@@ -49,6 +51,10 @@ CompartmentType  <- R6Class("CompartmentType",
       private$migration.rates[[name.type]]
     },
     
+    get.wait.time.distr = function() {
+      private$wait.time.distr
+    },
+    
     get.popn.growth.dynamics = function() {
       private$popn.growth.dynamics
     }
@@ -62,6 +68,7 @@ CompartmentType  <- R6Class("CompartmentType",
     effective.size = NULL,
     bottleneck.size = NULL,
     migration.rates = NULL,
+    wait.time.distr = NULL,
     popn.growth.dynamics = NULL
   )
 )
@@ -72,11 +79,12 @@ CompartmentType  <- R6Class("CompartmentType",
 # Compartment
 Compartment <- R6Class("Compartment",
   public = list(
-    initialize = function(name=NA, type=NA, source=NA, branching.time=NA) {
+    initialize = function(name=NA, type=NA, source=NA, branching.time=NA, unsampled=FALSE) {
       private$name <- name
       private$type <- type
       private$source <- source
       private$branching.time <- branching.time
+      private$unsampled <- unsampled                   # attr req later when identifying new US Comps to be promoted in mig events
     },
     
     get.name = function() {
@@ -105,6 +113,10 @@ Compartment <- R6Class("Compartment",
     
     set.branching.time = function(new.branching.time) {
       private$branching.time <- new.branching.time
+    },
+    
+    is.unsampled = function() {
+      private$unsampled
     }
   
   ),
@@ -112,7 +124,8 @@ Compartment <- R6Class("Compartment",
     name = NULL,
     type = NULL,          # reference to CompartmentType object
     source = NULL,
-    branching.time = NULL
+    branching.time = NULL,
+    unsampled = NULL
   )
 )
 

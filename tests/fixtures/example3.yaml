@@ -6,6 +6,11 @@ CompartmentTypes:
     branching.rates: (blood=0.0, cell=0.05)       # infection of a cell (transmission rate from blood -> cell)
     migration.rates: (blood=0.0, cell=0.0)        
     bottleneck.size: 1                            # assume a single virus enters an uninfected cell
+    wait.time.distr:                              # distribution of waiting time between infection time and first sampling time of a Compartment
+      distr: 'norm'
+      hyperparameters:
+        - mean: 2.0
+        - sd: 0.5
     popn.growth.dynamics:                         # no replication in blood 
       piece1:
         - startTime: 0
@@ -21,6 +26,11 @@ CompartmentTypes:
     branching.rates: (blood=0.0, cell=0.0)        # assume no direct cell-to-cell transmission
     migration.rates: (blood=0.01, cell=0.0)       # migration rate from cell -> blood is release of virus particles back into blood
     bottleneck.size: undefined                    # assume no migration to infected cells
+    waitTime:                                     # distribution of waiting time between infection time and first sampling time of a Compartment
+      dist: 'norm'
+      hyperparameters:
+        - mean: 2.0
+        - sd: 0.5
     popn.growth.dynamics:                         # extinction of lineages cannot be sampled, is expressed by coalescent rate
       piece1:
         - startTime: 0

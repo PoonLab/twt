@@ -100,12 +100,21 @@ MODEL <- R6Class("MODEL",
       # unsampled host & susceptible populations 
       unlist(sapply(names(settings$CompartmentTypes), function(x) {
         params <- settings$CompartmentTypes[[x]]
+        
+        # generate wait time distribution between Compartment infection time and its first sampling time
+        # code below is based directly from Poonlab/Kaphi/pkg/R/smcConfig.R
+        sublist <- params$wait.time.distr
+        rng.call <- paste('r', sublist$dist, '(n=1,', sep='')
+        args <- sapply(sublist[['hyperparameters']], function(x) paste(names(x), x, sep='='))
+        rng.call <- paste(rng.call, paste(args, collapse=','), ')', sep='')
+        
         x <- CompartmentType$new(name = x,
                                  unsampled = params$unsampled,
                                  susceptible = params$susceptible,
                                  branching.rates = eval(parse(text=paste('list', params$branching.rates))),
                                  migration.rates = eval(parse(text=paste('list', params$migration.rates))),
                                  bottleneck.size = params$bottleneck.size,
+                                 wait.time.distr = rng.call,
                                  popn.growth.dynamics = private$init.popn.growth.dynamics(params$popn.growth.dynamics)
         )
       }))
@@ -120,7 +129,8 @@ MODEL <- R6Class("MODEL",
           nBlanks <- x$get.unsampled()
           sapply(1:nBlanks, function(blank) {
             Compartment$new(name = paste0('US_', x$get.name(), '_', blank),
-                            type = x)
+                            type = x,
+                            unsampled = TRUE)
           })
       }))
     },
