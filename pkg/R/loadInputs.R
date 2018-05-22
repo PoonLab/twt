@@ -104,7 +104,7 @@ MODEL <- R6Class("MODEL",
         # generate wait time distribution between Compartment infection time and its first sampling time
         # code below is based directly from Poonlab/Kaphi/pkg/R/smcConfig.R
         sublist <- params$wait.time.distr
-        rng.call <- paste('r', sublist$dist, '(n=1,', sep='')
+        rng.call <- paste('d', sublist$dist, '(x,', sep='')
         args <- sapply(sublist[['hyperparameters']], function(x) paste(names(x), x, sep='='))
         rng.call <- paste(rng.call, paste(args, collapse=','), ')', sep='')
         
