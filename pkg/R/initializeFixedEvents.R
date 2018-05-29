@@ -93,6 +93,8 @@ generate.transmission.events <- function(model, eventlog) {
   
   comps <- model$get.compartments()           
   compnames <- model$get.names(comps)
+  source.popn <- c(comps, model$get.unsampled.hosts())
+  source.popn.names <- model$get.names(source.popn)
   types <- model$get.types()
   typenames <- model$get.names(types)
   
@@ -223,43 +225,18 @@ generate.transmission.events <- function(model, eventlog) {
     }
   }
   
-  
-  
-  time.bands.no.na <- time.bands[!is.na(time.bands)]           # unsampled infected removed, done later since they choose transmission times uniformly distributed anyways
-  t_events_copy <- t_events
-  while(length(time.bands.no.na) > 1) {
-    # pick Compartment with earliest sampling time (furthest back in time)
-    earliest.time <- max(time.bands.no.na, na.rm=T)
-    # group all Compartments with the same sampling time together
-    recipients.names <- names(time.bands.no.na)[which(time.bands.no.na==earliest.time)]
+
     
-    recipients.inds <- sapply(recipients.names, function(x) which(compnames == x))
-    recipients <- comps[recipients.inds]
+  sapply(types, function(x) {
+    r.indices <- which( sapply(source.popn, function(y) y$get.type()$get.name() == x$get.name()) )
+    r.comps <- source.popn[r.indices]
+    initial.samplings <- time.bands[ which(names(time.bands) %in% source.popn.names[r.indices]) ]
     
-    # FIXME: needs to work for each separate CompartmentType
-    comp_type <- recipients[[1]]$get.type()
-    # retrieve transmission times with a recipient type eqyal to the general CompartmentType of `recipients`
-    possibleTimes <- t_events_copy$time[ which(t_events_copy$r_type == comp_type$get.name()) ]
-    # weight each transmission time according tot he `wait.time.distr` provided for thie CompartmentType
-    weights <- sapply(possibleTimes, function(x) eval(parse(text=comp_type$get.wait.time.distr())) )
+    r.events <- t_events[ which(t_events$r_type == x), ]
     
-    sampledTimes <- sample(possibleTimes, size=length(recipients), prob=weights, replace=F)
-    
-    # now assign `sampledTimes` to `recipients`, uniformly distributed
-    for (x in recipients) {
-      ind <- sample.int(length(sampledTimes), 1)
-      t.time <- sampledTimes[ind]
-      x$set.branching.time(t.time)
-      
-      # remove transmission time from sampledTimes
-      sampledTimes <- sampledTimes[-ind]
-      # remove transmission event from t_events_copy
-      t_events_copy <- t_events_copy[ -which(t_events_copy$time == t.time), ]
-    }
-    
-    time.bands.no.na <- time.bands.no.na[ - which(time.bands.no.na==earliest.time) ] 
-  }
-  
+    assign.transmission.times(r.comps, r.events, initial.samplings, x)
+  })
+
   
   
   # after transmission times are matched with sampled infected Compartments as recipients, now have to assign source Compartments
@@ -274,11 +251,11 @@ generate.transmission.events <- function(model, eventlog) {
     
     # if recipient unsampled, randomly assign branching time from remaining transmission times, uniformly distributed
     if (recipient$is.unsampled()) {
-      ind <- sample.int(length(t_events_copy), 1)        # remaining transmission times still stored in `t_events_copy`
-      r_branch_time <- t_events_copy$time[ind]
+      ind <- sample.int(length(t_events), 1)        # remaining transmission times still stored in `t_events`
+      r_branch_time <- t_events$time[ind]
       
       recipient$set.branching.time(r_branch_time)
-      t_events_copy <- t_events_copy[ -ind, ]            # remove time and update `t_events_copy`
+      t_events <- t_events[ -ind, ]            # remove time and update `t_events`
       
     } else {
       r_branch_time <- recipient$get.branching.time()    # stored previously if was a sampled infected Compartment (based on given `wait.time.distr`)
@@ -323,7 +300,7 @@ generate.transmission.events <- function(model, eventlog) {
     recipient$set.branching.time(t.time)
     
     # remove row with chosen transmission time from df `t_events`
-    t_events_copy <- t_events_copy[-chosen.t.time.ind, ]
+    t_events <- t_events[-chosen.t.time.ind, ]
     
     
     # update number of active compartments (excludes recipients, includes promoted us_comps)
@@ -331,8 +308,57 @@ generate.transmission.events <- function(model, eventlog) {
   }
 
   eventlog
-  # TODO: may need to also transfer over `t_events_copy` for remaining transmission event times for migration later (issue #33)
+  # TODO: may need to also transfer over `t_events` for remaining transmission event times for migration later (issue #33)
 }
+
+
+
+assign.transmission.times <- function(compartments, eventsList, initialSamplings, compartmentType) {
+  # this function is to be applied to each specific CompartmentType
+  # for sampled infected compartments, based off of Type-specific eventsList and Type-specific waiting time distribution
+  # for unsampled infected compartments, based off of Type-specific eventsList and uniform transmission time distribution
+  
+  i.times <- initialSamplings[!is.na(initialSamplings)]                     # separate sampled infected comps from 
+  u.times <- initialSamplings[is.na(initialSamplings)]                      # unsampled infected comps
+  
+  while(length(i.times) > 1) {
+    earliest.time <- max(i.times, na.rm=T)                                  # pick Compartment with earliest sampling time (furthest back in time)
+    recipients.names <- names(i.times)[which(i.times==earliest.time)]       # group all Compartments with the same sampling time together
+    
+    recipients.inds <- sapply(recipients.names, function(x) which(compnames == x))
+    recipients <- comps[recipients.inds]
+    
+    # retrieve transmission times with a recipient type equal to the general CompartmentType of `recipients`
+    # weight each transmission time according to the `wait.time.distr` provided for this CompartmentType
+    possibleTimes <- eventsList$time[ which(eventsList$r_type == compartmentType$get.name()) ]
+    weights <- sapply(possibleTimes, function(x) eval(parse(text=compartmentType$get.wait.time.distr())) )
+    
+    sampledTimes <- sample(possibleTimes, size=length(recipients), prob=weights, replace=F)
+    
+    # now assign `sampledTimes` to `recipients`, uniformly distributed
+    for (x in recipients) {
+      ind <- sample.int(length(sampledTimes), 1)
+      t.time <- sampledTimes[ind]
+      x$set.branching.time(t.time)
+      
+      sampledTimes <- sampledTimes[-ind]                                     # remove transmission time from sampledTimes
+      eventsList <- eventsList[ -which(eventsList$time == t.time), ]         # remove transmission event from eventsList
+    }
+    
+    i.times <- i.times[ - which(i.times==earliest.time) ] 
+  }
+  
+  # for unsampled infected recipients, randomly assign remaining transmission times, uniformly distributed
+  sapply(u.times, function(x) {
+    ind <- sample.int(length(eventsList), 1)
+    t.time <- eventsList[ind, 'time']
+    x$set.branching.time(t.time)
+    
+    eventsList <- eventsList[-ind,]
+  })
+  
+}
+
   
 
 
