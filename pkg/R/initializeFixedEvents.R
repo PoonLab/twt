@@ -234,12 +234,16 @@ generate.transmission.events <- function(model, eventlog) {
     
     r.events <- t_events[ which(t_events$r_type == x), ]
     
-    assign.transmission.times(r.comps, r.events, initial.samplings, x)
+    .assign.transmission.times(r.comps, r.events, initial.samplings, x)
   })
 
   
   
-  # after transmission times are matched with sampled infected Compartments as recipients, now have to assign source Compartments
+  # after transmission times are matched with infected Compartments as recipients, now have to assign source Compartments
+  # order infection times from most recent to furthest back in time
+  # `source.popn` can be updated efficiently starting at the largest `source.popn` initally, then cut down little by little each time
+  # also note that each transmission time is associated with an event, which determines what TYPE the source is, just not which in particular
+  # will most likely need to separate source populations into lists that are as many as the number of distinct Types in the model
   numActive <- length(comps)
   while (numActive > 1) {
     # randomly pick recipient from population `comps`, uniformly distributed
@@ -313,7 +317,7 @@ generate.transmission.events <- function(model, eventlog) {
 
 
 
-assign.transmission.times <- function(compartments, eventsList, initialSamplings, compartmentType) {
+.assign.transmission.times <- function(compartments, eventsList, initialSamplings, compartmentType) {
   # this function is to be applied to each specific CompartmentType
   # for sampled infected compartments, based off of Type-specific eventsList and Type-specific waiting time distribution
   # for unsampled infected compartments, based off of Type-specific eventsList and uniform transmission time distribution
@@ -350,7 +354,7 @@ assign.transmission.times <- function(compartments, eventsList, initialSamplings
   
   # for unsampled infected recipients, randomly assign remaining transmission times, uniformly distributed
   sapply(u.times, function(x) {
-    ind <- sample.int(length(eventsList), 1)
+    ind <- sample(nrow(eventsList), 1)
     t.time <- eventsList[ind, 'time']
     x$set.branching.time(t.time)
     
