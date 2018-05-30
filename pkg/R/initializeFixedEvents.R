@@ -240,80 +240,64 @@ generate.transmission.events <- function(model, eventlog) {
   
   
   # after transmission times are matched with infected Compartments as recipients, now have to assign source Compartments
-  # order infection times from most recent to furthest back in time
-  # `source.popn` can be updated efficiently starting at the largest `source.popn` initally, then cut down little by little each time
-  # also note that each transmission time is associated with an event, which determines what TYPE the source is, just not which in particular
-  # will most likely need to separate source populations into lists that are as many as the number of distinct Types in the model
+  # note that each matched transmission time is associated with an event, which determines what TYPE the source is, just not which in particular
+  # will need to separate source populations into lists that are as many as the number of distinct Types in the model
+  source.popns = source.popns.names <- setNames(vector(length(types), mode="list"), typenames)
+  for (x in names(source.popns)) {
+    s.pop.by.type <- sapply(source.popn, function(y) if (y$get.type()$get.name() == x) y)
+    s.pop.by.type.names <- sapply(s.pop.by.type, function(z) z$get.name())
+    source.popns[[x]] <- s.pop.by.type
+    source.popns.names[[x]] <- s.pop.by.type.names
+  }
   numActive <- length(comps)
   while (numActive > 1) {
-    # randomly pick recipient from population `comps`, uniformly distributed
-    r_name <- sample(compnames, 1)
-    r_ind_comps <- which(compnames == r_name)
+    # order infection times from most recent to furthest back in time
+    comps <- comps[ order(sapply(comps, function(x) x$get.branching.time())) ]
     
-    recipient <- comps[[r_ind_comps]]
+    # start at first recipient (will give largest `source.popn`)
+    # `source.popns` can be updated efficiently starting at the largest `source.popns` initially, then cut down little by little each time
+    recipient <- comps[[1]]
+    r_name <- recipient$get.name()
+    r_ind_comps <- which(compnames == r_name)
     r_type <- recipient$get.type()$get.name()
     
-    # if recipient unsampled, randomly assign branching time from remaining transmission times, uniformly distributed
-    if (recipient$is.unsampled()) {
-      ind <- sample.int(length(t_events), 1)        # remaining transmission times still stored in `t_events`
-      r_branch_time <- t_events$time[ind]
-      
-      recipient$set.branching.time(r_branch_time)
-      t_events <- t_events[ -ind, ]            # remove time and update `t_events`
-      
-    } else {
-      r_branch_time <- recipient$get.branching.time()    # stored previously if was a sampled infected Compartment (based on given `wait.time.distr`)
-    }
-    
-    # remove recipient from relevant lists
+    # remove chosen recipient from relevant lists
     comps[[ r_ind_comps ]] <- NULL
     compnames <- compnames[-r_ind_comps]
+    ind_source_popn <- which(source.popns.names[[r_type]] == r_name)
+    source.popns[[r_type]][[ind_source_popn]] <- NULL
+    source.popns.names <- source.popns.names[[r_type]][-ind_source_popn]
 
     
-    # for each recipient Compartment, need to generate unique list of all possible sources
-    # note how this list is based off of the `s_type` recorded in the event associated with the transmission time in master copy `t_events`
-    # also based off of a source must have an infection time earlier than the recipients infection times (for sampled infected Compartments)
-    # unsampled infected Compartments are a free for all; they can be a source at any time
+    # list of possible sources is based off of the `s_type` recorded in the event associated with the transmission time in master copy `t_events`
+    s_type <- t_events[ which(t_events$time == recipient$get.branching.time()), 's_type']
+    list.sources <- source.popns.names[[s_type]]
     
-    #r_ind_s_popn <- which(source.popn.names == r_name)
+    s_ind_s_popn <- sample.int(length(list.sources), 1)
+    s_name <- list.sources[s_ind_s_popn]
+    source <- source.popns[[s_type]][[s_ind_s_popn]]
+
     
-    #s_name <- sample(source.popn.names, 1)
-    #s_ind_s_popn <- which(source.popn.names == s_name)
-    
-    
-    #source <- source.popn[[s_ind_s_popn]]
-    #s_type <- source$get.type()$get.name()
-    
-    
-    
-    eventlog$add.event(event.type='transmission', time=r_branch.time, lineage1=NA, lineage2=NA, compartment1=r_name, compartment2=s_name))
+    eventlog$add.event(event.type='transmission', time=recipient$get.branching.time(), lineage1=NA, lineage2=NA, compartment1=r_name, compartment2=s_name))
    
-   
+
     # if source is an unsampled infected Compartment, now holds a sampled lineage we care about (promote us_comp)
-    s_ind_timebands <- which(names(time.bands) == s_name)
-    if (is.na(time.bands[s_ind_timebands])) {
-      # update "max sampling time" of this particular us_comp from NA to chosen transmission time
-      time.bands[s_ind_timebands] <- t.time
+    if (source$is.unsampled()) {
       # add us_comp to list `comps` (once first a source, can now be a recipient)
       comps[[length(comps)+1]] <- source
       compnames[[length(compnames)+1]] <- s_name
     }
     
-    # update recipient object `source` attr and `branching.time` attr
+    # update recipient object `source` attr
     recipient$set.source(source)
-    recipient$set.branching.time(t.time)
-    
-    # remove row with chosen transmission time from df `t_events`
-    t_events <- t_events[-chosen.t.time.ind, ]
-    
     
     # update number of active compartments (excludes recipients, includes promoted us_comps)
     numActive <- length(comps)
   }
 
   eventlog
-  # TODO: may need to also transfer over `t_events` for remaining transmission event times for migration later (issue #33)
 }
+
 
 
 
