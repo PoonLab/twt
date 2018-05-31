@@ -247,17 +247,18 @@ generate.transmission.events <- function(model, eventlog) {
   # note that each matched transmission time is associated with an event, which determines what TYPE the source is, just not which in particular
   # will need to separate source populations into lists that are as many as the number of distinct Types in the model
   source.popns = source.popns.names <- setNames(vector(length(types), mode="list"), typenames)
-  for (x in names(source.popns)) {
+  for (x in 1:length(names(source.popns))) {
+    specific.type <- names(source.popns)[x]
     s.pop.by.type <- sapply(source.popn, function(y) {
-      if (y$get.type()$get.name() == x) {
+      if (y$get.type()$get.name() == specific.type) {
         if (is.na(y$get.branching.time())) {y}    # root no branching time
         else if (y$get.branching.time() > comps[[1]]$get.branching.time()) {y}
       } 
     })
     s.pop.by.type[sapply(s.pop.by.type, is.null)] <- NULL    # cleanup
     s.pop.by.type.names <- sapply(s.pop.by.type, function(z) z$get.name())
-    source.popns[[x]] <- s.pop.by.type
-    source.popns.names[[x]] <- s.pop.by.type.names
+    source.popns[[specific.type]] <- s.pop.by.type
+    source.popns.names[[specific.type]] <- s.pop.by.type.names
   }
   
   numActive <- length(comps)
@@ -275,21 +276,28 @@ generate.transmission.events <- function(model, eventlog) {
     ind_source_popn <- which(source.popns.names[[r_type]] == r_name)
     if (length(ind_source_popn) != 0) {
       source.popns[[r_type]][[ind_source_popn]] <- NULL
-      source.popns.names <- source.popns.names[[r_type]][-ind_source_popn]
+      source.popns.names[[r_type]] <- source.popns.names[[r_type]][-ind_source_popn]
     }
     
     # list of possible sources is based off of the `s_type` recorded in the event associated with the transmission time in master copy `t_events`
-    s_type <- t_events[ which(t_events$time == recipient$get.branching.time()), 's_type']
-    list.sources <- source.popns.names[[s_type]]
+    if (is.na(recipient$get.branching.time())) {
+      s_name <- NA
+      eventlog$add.event('transmission', recipient$get.branching.time(),NA, NA, r_name, s_name)
+      break
+      
+    } else {
+      s_type <- t_events[ which(t_events$time == recipient$get.branching.time()), 's_type']
+      list.sources <- source.popns.names[[s_type]]
+      
+      s_ind_s_popn <- sample.int(length(list.sources), 1)
+      s_name <- list.sources[s_ind_s_popn]
+      source <- source.popns[[s_type]][[s_ind_s_popn]]
+      
+      eventlog$add.event('transmission', recipient$get.branching.time(),NA, NA, r_name, s_name)
+    }
     
-    s_ind_s_popn <- sample.int(length(list.sources), 1)
-    s_name <- list.sources[s_ind_s_popn]
-    source <- source.popns[[s_type]][[s_ind_s_popn]]
-
     
-    eventlog$add.event('transmission', recipient$get.branching.time(),NA, NA, r_name, s_name)
-   
-
+    
     # if source is an unsampled infected Compartment, now holds a sampled lineage we care about (promote us_comp)
     if (source$is.unsampled()) {
       # add us_comp to list `comps` (once first a source, can now be a recipient)
@@ -324,8 +332,8 @@ generate.transmission.events <- function(model, eventlog) {
     earliest.time <- max(i.times, na.rm=T)                                  # pick Compartment with earliest sampling time (furthest back in time)
     recipients.names <- names(i.times)[which(i.times==earliest.time)]       # group all Compartments with the same sampling time together
     
-    recipients.inds <- sapply(recipients.names, function(x) which(compnames == x))
-    recipients <- comps[recipients.inds]
+    recipients.inds <- sapply(recipients.names, function(x) which(compartments.names == x))
+    recipients <- compartments[recipients.inds]
     
     # retrieve transmission times with a recipient type equal to the general CompartmentType of `recipients`
     # weight each transmission time according to the `wait.time.distr` provided for this CompartmentType
