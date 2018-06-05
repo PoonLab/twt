@@ -98,20 +98,22 @@ generate.transmission.events <- function(model, eventlog) {
   
   types <- model$get.types()
   indiv.types <- sapply(unlist(comps), function(a){a$get.type()$get.name()})
-  storage <- .calc.popn.totals.rates(types, indiv.types)
   
+  # record population totals and transmission rates for all Types
+  storage <- .calc.popn.totals.rates(types, indiv.types)
   popn.totals <- storage$totals
   popn.rates <- storage$rates
-  
   
   # record max sampling times of lineages for each Compartment
   storage <- .store.initial.samplings(sources, types, model$get.lineages())
   possible.source.types <- storage$s.types
   time.bands <- storage$initial.times
   
+  # generate transmission events based on population dynamics and Compartments' initial sampling times
   t_events <- .calc.transmission.events(popn.totals, popn.rates, time.bands, possible.source.types)
   
   sapply(types, function(x) {
+    # for each Type, assign transmission times to all infected compartments
     r.indices <- which( sapply(sources, function(y) y$get.type()$get.name() == x$get.name()) )
     r.comps <- sources[r.indices]
     r.init.samplings <- time.bands[ which(names(time.bands) %in% sources.names[r.indices]) ]
@@ -125,9 +127,10 @@ generate.transmission.events <- function(model, eventlog) {
   # order infection times from most recent to furthest back in time
   comps <- comps[ order(sapply(comps, function(x) x$get.branching.time())) ] 
   
-  # note that each matched transmission time is associated with an event, which determines what TYPE the source is, just not which in particular
-  # will need to separate source populations into lists that are as many as the number of distinct Types in the model
+  # each assigned transmission time is associated with an event, which determines what TYPE its source is, just not which Compartment in particular
+  
   source.popns = source.popns.names <- setNames(vector(length(types), mode="list"), names(types))
+  # separate source populations into lists that are as many as the number of distinct Types in the model
   for (x in 1:length(names(source.popns))) {
     specific.type <- names(source.popns)[x]
     s.pop.by.type <- sapply(sources, function(y) {
@@ -142,26 +145,26 @@ generate.transmission.events <- function(model, eventlog) {
     source.popns.names[[specific.type]] <- s.pop.by.type.names
   }
   
+  # assign source compartments for all sampled infected and promoted unsampled infected Compartments
   numActive <- length(comps)
   while (numActive > 1) {
-  
-    # start at first recipient (will give largest list of `sources`) --> for efficiency
-    r_ind_comps <- 1                                        
+    r_ind_comps <- 1                            # first recipient == most recent infection time == largest list of `sources` --> efficiency                             
     recipient <- comps[[r_ind_comps]]
     r_name <- recipient$get.name()
     r_type <- recipient$get.type()$get.name()
     
-    # remove chosen recipient from relevant lists
+    # remove chosen recipient from relevant lists (`comps` and possibly `source.popns`)
     comps[[ r_ind_comps ]] <- NULL
     compnames <- compnames[-r_ind_comps]
     ind_source_popn <- which(source.popns.names[[r_type]] == r_name)
-    if (length(ind_source_popn) != 0) {
+    if (length(ind_source_popn) != 0) {         # TRUE for all iterations except initial iteration case (bc starting recipient already removed)
       source.popns[[r_type]][[ind_source_popn]] <- NULL
       source.popns.names[[r_type]] <- source.popns.names[[r_type]][-ind_source_popn]
     }
     
     # list of possible sources is based off of the `s_type` recorded in the event associated with the transmission time in master copy `t_events`
     if (is.na(recipient$get.branching.time())) {
+      # root case, "final" resolved transmission event (aka first recorded transmission, furthest back in time)
       s_name <- NA
       eventlog$add.event('transmission', recipient$get.branching.time(),NA, NA, r_name, s_name)
       break
@@ -170,6 +173,7 @@ generate.transmission.events <- function(model, eventlog) {
       s_type <- t_events[ which(t_events$time == recipient$get.branching.time()), 's_type']
       list.sources <- source.popns.names[[s_type]]
       
+      # select source from a list of sources previously separated by Type
       s_ind_s_popn <- sample.int(length(list.sources), 1)
       s_name <- list.sources[s_ind_s_popn]
       source <- source.popns[[s_type]][[s_ind_s_popn]]
@@ -235,15 +239,14 @@ generate.transmission.events <- function(model, eventlog) {
   # @return list of possible Types of `source` and list of first Lineage sampling times for each Compartment
   
   possibleSourceTypes <- list()  # list of different types of source that each recipient could possibly receive a transmission from
-  time.bands <- vector()         # vector of maximum sampling times for each Compartment
+  time.bands <- vector()         # vector of initial (earliest) sampling times for each Compartment
   
   lineage.locations <- sapply(lineages, function(x) {x$get.location()$get.name()})
   
-  for (infected in infected) {
-    # for loop generates a comprehensive dictionary of all possibilities of a source with a given recipient Compartment
-    # filtered first within the for loop to remove all source -> recipient pairs with branching rates of 0
-    # filtered again at while loop to skip unsampled compartments as potential recipients unless they were first a source
-    recipientType <- infected$get.type()$get.name()
+  for (i in infected) {
+    # generates a comprehensive dictionary of all possibilities of a source Type with a given recipient Compartment
+    # filtered to remove all source -> recipient pairs with branching rates of 0
+    recipientType <- i$get.type()$get.name()
     recipientRates <- sapply(types, function(a) {
       if (a$get.branching.rate(recipientType) == 0) { NULL } 
       else { a$get.branching.rate(recipientType) }
@@ -251,24 +254,28 @@ generate.transmission.events <- function(model, eventlog) {
     recipientRates[sapply(recipientRates, is.null)] <- NULL      # remove source -> recipient pairs w/ branching rates of 0
     
     if (length(recipientRates) == 0) {
-      # means that this compartment will never be a recipient (ie. example3.yaml 'blood' compartment)
+      # this compartment will never be a recipient (ie. example3.yaml 'blood' compartment)
       next
+      
     } else {
-      # check if infected is a us_comp (us_comps have no sampled lineages native to their compartment)
-      infected.native.lineages <- which(lineage.locations == infected$get.name())
-      if (length(infected.native.lineages) == 0) {
+      # check if `i` is a us_comp (us_comps have no sampled lineages native to their compartment)
+      i.native.lineages <- which(lineage.locations == i$get.name())
+      if (length(i.native.lineages) == 0) {
         # us_comp is not allowed to be a recipient without first being a source
-        # placeholder 'NA' to be filtered out later in while loop
-        single.infected.sampling.times <- NA   
+        # placeholder 'NA' to be filtered out later in main while loop
+        single.i.sampling.times <- NA   
       } else {
-        single.infected.lineages <- lineages[ infected.native.lineages ]
-        single.infected.sampling.times <- sapply(single.infected.lineages, function(b) {
+        single.i.lineages <- lineages[ i.native.lineages ]
+        single.i.sampling.times <- sapply(single.i.lineages, function(b) {
           b$get.sampling.time()
         })
       }
       
-      time.bands <- c(time.bands, max(single.infected.sampling.times))
-      names(time.bands) <- c(names(time.bands)[nzchar(x=names(time.bands))], infected$get.name())
+      # store initial sampling time for this recipient Compartment
+      time.bands <- c(time.bands, max(single.i.sampling.times))
+      names(time.bands) <- c(names(time.bands)[nzchar(x=names(time.bands))], i$get.name())
+      
+      # store all possible source Types for this recipient Compartment
       possibleSourceTypes <- c(possibleSourceTypes, list(names(recipientRates)))
       names(possibleSourceTypes)[[length(possibleSourceTypes)]] <- recipientType
     }
