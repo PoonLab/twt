@@ -76,6 +76,16 @@ MODEL <- R6Class("MODEL",
       # at a coalescent event, lineages that coalesce must be removed
       lin.index <- which(sapply(private$lineages, function(x){x$get.name() == lineage$get.name()}))
       private$lineages[[lin.index]] <- NULL
+    },
+    
+    get.node.ident = function() {
+      # returns unique identity for internal nodes (inner tree sim, ancestral lineages)
+      private$node.ident
+    },
+    
+    update.node.ident = function() {
+      # generates new unique identity for next `$get.node.ident()` call (inner tree sim, internal ancestral lineages)
+      private$node.ident <- private$node.ident + 1
     }
     
   ),
@@ -91,8 +101,9 @@ MODEL <- R6Class("MODEL",
     
     locations = NULL,         
     choices = NULL,
+    node.ident = NULL,              # used in simulation of inner tree for generating unique idents for internal nodes of ancestral lineages
     
-
+    
     load.types = function(settings) {
       ## function creates CompartmentType objects
       ## within each CompartmentType, there are distinct compartments with: 
