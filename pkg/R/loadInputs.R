@@ -101,7 +101,7 @@ MODEL <- R6Class("MODEL",
     
     locations = NULL,         
     choices = NULL,
-    node.ident = NULL,              # used in simulation of inner tree for generating unique idents for internal nodes of ancestral lineages
+    node.ident = 1,              # used in simulation of inner tree for generating unique idents for internal nodes of ancestral lineages
     
     
     load.types = function(settings) {
@@ -138,11 +138,13 @@ MODEL <- R6Class("MODEL",
       ## stored in lists for each section within a CompartmentType object
       unlist(sapply(private$types, function(x) {
           nBlanks <- x$get.unsampled()
-          sapply(1:nBlanks, function(blank) {
-            Compartment$new(name = paste0('US_', x$get.name(), '_', blank),
-                            type = x,
-                            unsampled = TRUE)
-          })
+          if (nBlanks > 1) {
+            sapply(1:nBlanks, function(blank) {
+              Compartment$new(name = paste0('US_', x$get.name(), '_', blank),
+                              type = x,
+                              unsampled = TRUE)
+            })
+          }
       }))
     },
     

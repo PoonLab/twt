@@ -1,7 +1,7 @@
 # draft proposal for specification of within-host coalescent process
 CompartmentTypes:
   'blood':                                        # assume only one blood (plasma) compartment 
-    unsampled: 20
+    unsampled: 0
     susceptible: 50                               # blood no transmission to blood - transmission is to uninfected cell
     branching.rates: (blood=0.0, cell=0.05)       # infection of a cell (transmission rate from blood -> cell)
     migration.rates: (blood=0.0, cell=0.0)        
@@ -20,16 +20,15 @@ CompartmentTypes:
         - startTime: 20
         - startPopn: 300
   'cell':
-    unsampled: 5
+    unsampled: 20
     susceptible: 30                               
     branching.rates: (blood=0.0, cell=0.0)        # assume no direct cell-to-cell transmission
     migration.rates: (blood=0.01, cell=0.0)       # migration rate from cell -> blood is release of virus particles back into blood
     bottleneck.size: undefined                    # assume no migration to infected cells
-    waitTime:                                     # distribution of waiting time between infection time and first sampling time of a Compartment
-      dist: 'norm'
+    wait.time.distr:                                     # distribution of waiting time between infection time and first sampling time of a Compartment
+      distr: 'exp'
       hyperparameters:
-        - mean: 2.0
-        - sd: 0.5
+        - rate: 20
     popn.growth.dynamics:                         # extinction of lineages cannot be sampled, is expressed by coalescent rate
       piece1:
         - startTime: 0

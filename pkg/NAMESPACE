@@ -8,7 +8,7 @@ export(MODEL)
 export(init.fixed.samplings)
 export(.to.eventlog)
 export(init.branching.events)
-export(generate.transmission.events)
+export(sim.outer.tree)
 export(.to.transmission.tree)
 
 export(calc.migration.rates)

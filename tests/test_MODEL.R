@@ -4,7 +4,7 @@ setwd('~/git/treeswithintrees')
 settings <- yaml.load_file('tests/fixtures/example2.yaml')
 test <- MODEL$new(settings)
 e <- EventLogger$new()
-e <- generate.transmission.events(test, e)
+e <- sim.outer.tree(test, e)
 transm.tree <- .to.transmission.tree(e)
 
 

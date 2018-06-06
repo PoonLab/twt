@@ -1,5 +1,5 @@
 # inner-tree simulation
-inner.tree <- function(model, eventlog) {
+sim.inner.tree <- function(model, eventlog) {
   
   comps <- model$get.compartments()
   compnames <- model$get.names(comps)

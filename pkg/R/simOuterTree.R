@@ -85,7 +85,7 @@ init.branching.events <- function(model, eventlog) {
 
 
 # Case 3: no host tree provided, transmission events need to be generated
-generate.transmission.events <- function(model, eventlog) {
+sim.outer.tree <- function(model, eventlog) {
   # simulate transmission events and fix them to the timeline of lineage sampled events
   # @param model = MODEL object
   # @param eventlog = EventLogger object
@@ -119,7 +119,12 @@ generate.transmission.events <- function(model, eventlog) {
     r.init.samplings <- time.bands[ which(names(time.bands) %in% sources.names[r.indices]) ]
     r.events <- t_events[ which(t_events$r_type == x$get.name()), ]
     
-    .assign.transmission.times(r.comps, r.events, r.init.samplings, x)
+    if (nrow(r.events) != 0) {            # no transmission events for case of ie. blood compartment
+      .assign.transmission.times(r.comps, r.events, r.init.samplings, x)
+    } else {
+      sapply(r.comps, function(x) x$set.branching.time(NA))
+    }
+    
   })
 
   
@@ -288,7 +293,7 @@ generate.transmission.events <- function(model, eventlog) {
 
 
 .calc.transmission.events <- function(popn.totals, popn.rates, init.samplings, possible.sources) {
-  # creates transmission events only, based on population dynamics of the MODEL
+  # generates transmission events only, based on population dynamics of the MODEL
   # @param popn.totals = totals at time `t=0` of susceptible and infected specific to each CompartmentType
   # @param popn.rates = rates of transmission between different CompartmentTypes
   # @param init.samplings = list of first sampling times for each Compartment
@@ -389,17 +394,23 @@ generate.transmission.events <- function(model, eventlog) {
     possibleTimes <- events$time[ which(events$r_type == type$get.name()) ]
     weights <- sapply(possibleTimes, function(x) eval(parse(text=type$get.wait.time.distr())) )
     
-    sampledTimes <- sample(possibleTimes, size=length(recipients), prob=weights, replace=F)
+    if (length(possibleTimes) < length(recipients)) {  # for case where one of these recipients will be labeled as the root node (ie. no unsampled hosts)
+      sampledTimes <- sample(possibleTimes, size=length(recipients)-1, prob=weights, replace=F)
+    } else {
+      sampledTimes <- sample(possibleTimes, size=length(recipients), prob=weights, replace=F)
+    }
     
-    for (x in recipients) {
+    for (x in 1:length(sampledTimes)) {
       # now assign `sampledTimes` to `recipients`, uniformly distributed
-      ind <- sample.int(length(sampledTimes), 1)
-      t.time <- sampledTimes[ind]
-      x$set.branching.time(t.time)
+      ind <- sample.int(length(recipients), 1)
+      t.time <- sampledTimes[x]
+      recipients[[ind]]$set.branching.time(t.time)
       
-      sampledTimes <- sampledTimes[-ind]                                     # remove transmission time from sampledTimes
+      recipients <- recipients[-ind]
       events <- events[ -which(events$time == t.time), ]                     # remove transmission event from events
     }
+    
+    if (length(recipients) != 0) sapply(recipients, function(x) x$set.branching.time(NA))
     
     i.times <- i.times[ -which(i.times==earliest.time) ] 
   }
