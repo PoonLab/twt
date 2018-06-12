@@ -91,6 +91,8 @@ sim.outer.tree <- function(model, eventlog) {
   # @param eventlog = EventLogger object
   # @return eventlog = EventLogger object populated with generated transmission events
   
+  ptm <- proc.time()   # benchmark start time
+  
   comps <- model$get.compartments()           
   compnames <- model$get.names(comps)
   sources <- c(comps, model$get.unsampled.hosts())
@@ -126,7 +128,11 @@ sim.outer.tree <- function(model, eventlog) {
     }
     
   })
-
+  
+  
+  mark1 <- proc.time() - ptm            # benchmark 1 (generation of transmission events)
+  cat("GTE:", round(mark1[['elapsed']],5), "s\n")
+  ptm1 <- proc.time()
   
   # after transmission times are matched with infected Compartments as recipients, now have to assign source Compartments
   # order infection times from most recent to furthest back in time
@@ -200,7 +206,13 @@ sim.outer.tree <- function(model, eventlog) {
     comps <- comps[ order(sapply(comps, function(x) x$get.branching.time())) ]
     numActive <- length(comps)
   }
-
+  
+  
+  mark2 <- proc.time() - ptm1               # benchmark 2 (assignment of sources)
+  cat("AST:", round(mark2[['elapsed']],5), "s\n")
+  total <- proc.time() - ptm
+  cat("Total:", round(total[['elapsed']],5), "s\n")
+    
   eventlog
 }
 
@@ -313,8 +325,8 @@ sim.outer.tree <- function(model, eventlog) {
     possible.transm <- possible.sources[ qualified.sampled.recipients ]
     
     # calc transmission rates among all source-recipient pairings of CompartmentTypes
-    indiv.rates <- sapply(names(types), function(x) {
-      sapply(names(types), function(y) {
+    indiv.rates <- sapply(rownames(popn.totals), function(x) {
+      sapply(rownames(popn.totals), function(y) {
         pairRate <- popn.rates[x,y] * (popn.totals[y,'S'] + 1) * (popn.totals[x,'I'])
         
         qualified.r <- which(names(possible.transm) == y)
