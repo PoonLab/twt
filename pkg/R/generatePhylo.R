@@ -5,6 +5,7 @@
   
   t_events <- eventlog$get.events('transmission')
   root <- unlist(setdiff(t_events$compartment2, t_events$compartment1))
+  internals <- unlist(intersect(t_events$compartment1, t_events$compartment2))
   tips <- unlist(setdiff(t_events$compartment1, t_events$compartment2))
   
   storage <- data.frame()
@@ -61,21 +62,26 @@
     if (source %in% storage$compartment2) {        # if a source in earlier recorded event(s) as a source
       storage.indices <- storage[which(storage$compartment2 == source), ]
       earlier.times <- which(sapply(1:nrow(storage.indices), function(y) storage[y,]$time > t_events[x,]$time ) == T)
-      later.times <- storage.indices[-earlier.times, ]
+      later.times <- setdiff(1:nrow(storage.indices), earlier.times)
       
-      closest.earlier.time <- min(sapply(earlier.times, function(z) storage[z,]$time ))
-      cet.ind <- which(sapply(earlier.times, function(z) storage[z,]$time) == closest.earlier.time)
-      in.between.time <- closest.earlier.time - t_events[x,]$time
-      edge[edge.count,] <- as.numeric(c(storage.indices[cet.ind,]$r.ind, source.ind))
-      edge.length[edge.count] <- in.between.time
-      edge.count <- edge.count + 1
+      if (length(earlier.times) > 0) {
+        closest.earlier.time <- min(sapply(earlier.times, function(z) storage[z,]$time ))
+        cet.ind <- which(sapply(earlier.times, function(z) storage[z,]$time) == closest.earlier.time)
+        in.between.time <- closest.earlier.time - t_events[x,]$time
+        edge[edge.count,] <- as.numeric(c(storage.indices[cet.ind,]$r.ind, source.ind))
+        edge.length[edge.count] <- in.between.time
+        edge.count <- edge.count + 1
+      }
+     
+      if (length(later.times) > 0) {
+        closest.later.time <- max(sapply(later.times, function(z) storage[z,]$time ))
+        clt.ind <- which(sapply(later.times, function(z) storage[z,]$time) == closest.later.time)
+        modify.time <- t_events[x,]$time - closest.later.time
+        edge.to.modify <- which(edge[,2] == clt.ind)
+        edge[edge.to.modify,] <- as.numeric(c(source.ind, clt.ind))
+        edge.length[edge.to.modify] <- modify.time
+      }
       
-      closest.later.time <- max(sapply(later.times, function(z) storage[z,]$time ))
-      clt.ind <- which(sapply(later.times, function(z) storage[z,]$time) == closest.later.time)
-      modify.time <- t_events[x,]$time - closest.later.time
-      edge.to.modify <- which(edge[,2] == clt.ind)
-      edge[edge.to.modify,] <- as.numeric(c(source.ind, clt.ind))
-      edge.length[edge.to.modify] <- modify.time
     }
     
     if (recipient %in% storage$compartment2) {        # if a recipient in an earlier recorded event as source(s)
@@ -87,9 +93,20 @@
       }
     }
     
+    # if a tip, arbitrarily assign an edge length (general cut off)
+    # should either go onwards for the whole extent of Compartment's life, or until the infection is cleared
+    # TODO: possible insertion point to incorporate compartment going extinct or entering recovery compartment
+    if (recipient %in% tips) {
+      edge[edge.count,] <- as.numeric(c(source.ind, recipient.ind))
+      edge.length[edge.count] <- 1        # arbitrary edge length
+      edge.count <- edge.count + 1
+    }
+    
     store.event <- c(t_events[x,], r.ind=recipient.ind, s.ind=source.ind)
     storage <- rbind(storage, store.event, stringsAsFactors=F) 
   }
+  
+  # as a final step, add the singleton nodes for each internal node
   
   phy <- list(tip.label=tip.label, Nnode=Nnode, edge.length=as.numeric(edge.length), edge=edge, node.label=node.label[!is.na(node.label)])
   attr(phy, 'class') <- 'phylo'
