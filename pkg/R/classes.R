@@ -329,13 +329,14 @@ EventLogger <- R6Class("EventLogger",
       }
       
       # beginning of function generate.events()
-      rootEvents <- events[ which(events$compartment2 == root), ] 
+      rootEvents <- events[ which(events$compartment2 == root), ]
+      maxRootTime <- max(rootEvents$time)
       for (x in 1:nrow(rootEvents)) {
         parentEvent <- rootEvents[x,]
         # traverse descendants
         generate.indiv.event(as.character(parentEvent['compartment1']), as.numeric(parentEvent['time']))
         # root's individualt delta t from when it was infected to when it made its first transmission is 'undefined'
-        parentEvent['time'] <- 0      # 0 or 1 by convention (see treeswithintrees closed issue #29)
+        parentEvent['time'] <- maxRootTime - parentEvent['time']      # 0 or 1 by convention (see treeswithintrees closed issue #29)
         private$events.noncumul <- rbind(private$events.noncumul, parentEvent, stringsAsFactors=F)
       }
      
