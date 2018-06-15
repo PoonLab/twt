@@ -19,7 +19,7 @@
   
   # initialize index assignment numbers
   tip.no <- 1
-  root.no <- length(tips) + 1
+  root.no <- length(c(tips, internals, root)) + 1
   node.no <- root.no + 1
   edge.count <- 1
   
@@ -45,6 +45,14 @@
     if (x == root.event.ind) {
       source.ind <- root.no
       node.label[source.ind] <- source
+    } else if (source %in% node.label) {
+      if (source %in% storage$compartment2) {
+        source.ind <- node.no
+        node.label[source.ind] <- source
+        node.no <- node.no + 1
+      } else {
+        source.ind <- which(node.label == source)
+      }
     } else {
       source.ind <- node.no
       node.label[source.ind] <- source
@@ -106,7 +114,21 @@
     storage <- rbind(storage, store.event, stringsAsFactors=F) 
   }
   
-  # as a final step, add the singleton nodes for each internal node
+  # as a final step, add the singleton nodes for each internal node (including the root)
+  
+  for (source in c(internals, root)) {
+    s_events <- storage[which(storage$compartment2 == source),]
+    last_transmission_time <- min(s_events$time)
+    specific_event <- s_events[which(s_events$time == last_transmission_time),]
+    
+    new.tip.ind <- tip.no
+    tip.label[new.tip.ind] <- source
+    tip.no <- tip.no + 1
+    
+    edge[edge.count,] <- as.numeric(c(specific_event$s.ind, new.tip.ind))
+    edge.length[edge.count] <- 1
+    edge.count <- edge.count + 1
+  }
   
   phy <- list(tip.label=tip.label, Nnode=Nnode, edge.length=as.numeric(edge.length), edge=edge, node.label=node.label[!is.na(node.label)])
   attr(phy, 'class') <- 'phylo'
