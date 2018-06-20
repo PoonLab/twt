@@ -20,7 +20,7 @@ CompartmentTypes:
         - startTime: 20
         - startPopn: 300
   'cell':
-    unsampled: 1000
+    unsampled: 20
     susceptible: 30                               
     branching.rates: (blood=0.0, cell=0.0)        # assume no direct cell-to-cell transmission
     migration.rates: (blood=0.01, cell=0.0)       # migration rate from cell -> blood is release of virus particles back into blood

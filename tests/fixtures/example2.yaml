@@ -1,7 +1,7 @@
 # how would we encode an SI model?
 CompartmentTypes:
   'host':
-    unsampled: 1000
+    unsampled: 20
     susceptible: 1000
     branching.rates: (host=0.1)        # named vector of transmission rates to different CompartmentTypes
     migration.rates: ()                # no migration (assume no superinfection)

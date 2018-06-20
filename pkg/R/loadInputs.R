@@ -74,8 +74,8 @@ MODEL <- R6Class("MODEL",
     
     remove.lineage = function(lineage) {
       # at a coalescent event, lineages that coalesce must be removed
-      lin.index <- which(sapply(private$lineages, function(x){x$get.name() == lineage$get.name()}))
-      private$lineages[[lin.index]] <- NULL
+      lin.indices <- which(sapply(private$lineages, function(x){x$get.name() == lineage$get.name()}))
+      private$lineages <- private$lineages[-lin.indices]
     },
     
     get.node.ident = function() {

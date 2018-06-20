@@ -91,7 +91,7 @@ sim.outer.tree <- function(model, eventlog) {
   # @param eventlog = EventLogger object
   # @return eventlog = EventLogger object populated with generated transmission events
   
-  ptm <- proc.time()   # benchmark start time
+  # ptm <- proc.time()   # benchmark start time
   
   comps <- model$get.compartments()           
   compnames <- model$get.names(comps)
@@ -130,9 +130,9 @@ sim.outer.tree <- function(model, eventlog) {
   })
   
   
-  mark1 <- proc.time() - ptm            # benchmark 1 (generation of transmission events)
-  cat("GTE:", round(mark1[['elapsed']],5), "s\n")
-  ptm1 <- proc.time()
+  # mark1 <- proc.time() - ptm            # benchmark 1 (generation of transmission events)
+  # cat("GTE:", round(mark1[['elapsed']],5), "s\n")
+  # ptm1 <- proc.time()
   
   # after transmission times are matched with infected Compartments as recipients, now have to assign source Compartments
   # order infection times from most recent to furthest back in time
@@ -182,12 +182,18 @@ sim.outer.tree <- function(model, eventlog) {
       
     } else {
       s_type <- t_events[ which(t_events$time == recipient$get.branching.time()), 's_type']
-      list.sources <- source.popns.names[[s_type]]
+      # refine list of sources previously separated by Type also by earlier branching times than recipient's branching time
+      refined.list.sources <- sapply(source.popns[[s_type]], function(s) {
+        if (is.na(s$get.branching.time())) s
+        else if (s$get.branching.time() > recipient$get.branching.time()) s
+        else NULL
+      })
+      refined.list.sources[sapply(refined.list.sources, is.null)] <- NULL   # cleanup
       
       # select source from a list of sources previously separated by Type
-      s_ind_s_popn <- sample.int(length(list.sources), 1)
-      s_name <- list.sources[s_ind_s_popn]
-      source <- source.popns[[s_type]][[s_ind_s_popn]]
+      s_ind_s_popn <- sample.int(length(refined.list.sources), 1)
+      source <- refined.list.sources[[s_ind_s_popn]]
+      s_name <- source$get.name()
       
       eventlog$add.event('transmission', recipient$get.branching.time(),NA, NA, r_name, s_name)
     }
@@ -208,10 +214,10 @@ sim.outer.tree <- function(model, eventlog) {
   }
   
   
-  mark2 <- proc.time() - ptm1               # benchmark 2 (assignment of sources)
-  cat("AST:", round(mark2[['elapsed']],5), "s\n")
-  total <- proc.time() - ptm
-  cat("Total:", round(total[['elapsed']],5), "s\n")
+  # mark2 <- proc.time() - ptm1               # benchmark 2 (assignment of sources)
+  # cat("AST:", round(mark2[['elapsed']],5), "s\n")
+  # total <- proc.time() - ptm
+  # cat("Total:", round(total[['elapsed']],5), "s\n")
     
   eventlog
 }
@@ -442,4 +448,3 @@ sim.outer.tree <- function(model, eventlog) {
   }
   
 }
-
