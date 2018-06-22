@@ -26,6 +26,7 @@ sim.inner.tree <- function(model, eventlog) {
     
     if (mig.rate == 0) {
       # no migration events possible
+      mig.time <- NA
       if (length(coal.wait.times) == 0) {
         # no coalescence or migration events possible at this point in time
         # move up to the earliest transmission event in the EventLogger
@@ -66,6 +67,7 @@ sim.inner.tree <- function(model, eventlog) {
       comp.2.bottle <- inf[[which(inf.names == transm.event$compartment1)]]
       
       survivor.lineages <- generate.bottleneck(model, eventlog, comp.2.bottle, current.time)
+      sapply(survivor.lineages, function(x) model$add.lineage(x))
       new.comp.location <- transm.event$compartment2
       
       # for each of the survivor lineages, the compartment needs to update its location to the source of the transmission event
@@ -121,11 +123,13 @@ sim.inner.tree <- function(model, eventlog) {
       } else {
         # next event is a coalescent event; now choose a 'bin' from compartment with next.time
         
-        coal.comp.name <- names(coal.time)   # name of the compartment with the min coal wait time
+        coal.comp.name <- names(coal.wait.times)[which(coal.wait.times == new.time)]   # name of the compartment with the min coal wait time
+        coal.comp <- inf[[which(inf.names == coal.comp.name)]]
         coal.comp.lineages <- sapply(extant.lineages, function(x){
           if (x$get.location()$get.name() == coal.comp.name) {x}
           else {NULL}
         })
+        coal.comp.lineages[sapply(coal.comp.lineages, is.null)] <- NULL   # cleanup
         lineages.to.coalesce <- sample(coal.comp.lineages, 2)
         
         # create a new ancestral lineage
