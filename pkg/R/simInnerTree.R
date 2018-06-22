@@ -26,7 +26,7 @@ sim.inner.tree <- function(model, eventlog) {
     
     if (mig.rate == 0) {
       # no migration events possible
-      mig.time <- NA
+      mig.time <- -1
       if (length(coal.wait.times) == 0) {
         # no coalescence or migration events possible at this point in time
         # move up to the earliest transmission event in the EventLogger
@@ -131,11 +131,12 @@ sim.inner.tree <- function(model, eventlog) {
         })
         coal.comp.lineages[sapply(coal.comp.lineages, is.null)] <- NULL   # cleanup
         lineages.to.coalesce <- sample(coal.comp.lineages, 2)
+        names.coal.lineages <- sapply(lineages.to.coalesce, function(x) x$get.name())
         
         # create a new ancestral lineage
         ancestral.lineage <- Lineage$new(name = model$get.node.ident(),           # label internal nodes iteratively from 1..inf by convention
-                                         sampling.time = current.time,
-                                         location = comp)
+                                         sampling.time = (current.time + new.time),
+                                         location = coal.comp)
         model$add.lineage(ancestral.lineage)
         model$update.node.ident()
         
@@ -156,8 +157,9 @@ sim.inner.tree <- function(model, eventlog) {
       extant.lineages <- model$get.extant_lineages(current.time)
     }
     
-    
   }
+  
+  eventlog
 }
 
 
