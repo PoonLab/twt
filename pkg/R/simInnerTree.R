@@ -153,8 +153,35 @@ sim.inner.tree <- function(model, eventlog) {
       }
       
       current.time <- current.time + new.time
+      
+      
+      # issue 40: if coalescent event occurs at a transmission time, force coalescence of all other lineages at this time
+      if (length(which(transm.times <= current.time)) > num.transm.occurred) {
+        old.transm <- which(transm.times <= current.time)
+        all.new.transm <- which(transm.times <= new.time)
+        current.time <- min(setdiff( transm.times[all.new.transm], transm.times[old.transm] )) 
+        
+        transm.event <- transm.events[which(transm.times == current.time),]
+        comp.2.bottle <- inf[[which(inf.names == transm.event$compartment1)]]
+        
+        survivor.lineages <- generate.bottleneck(model, eventlog, comp.2.bottle, current.time)
+        sapply(survivor.lineages, function(x) model$add.lineage(x))
+        new.comp.location <- transm.event$compartment2
+        
+        # for each of the survivor lineages, the compartment needs to update its location to the source of the transmission event
+        survivor.names <- sapply(survivor.lineages, function(x) {
+          x$set.location(inf, new.comp.location)
+          x$get.name()
+        })
+        
+        # the transmission event's `lineage` column can now be updated to included the names of the 'survivors'
+        eventlog$modify.event(transm.event$time, survivor.names)
+      }
+      
+      
       # update extant lineages
       extant.lineages <- model$get.extant_lineages(current.time)
+      
     }
     
   }
