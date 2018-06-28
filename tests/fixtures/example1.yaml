@@ -2,10 +2,13 @@
 # Example Newick Tree:
 # ((C:1,B:1)B:2,A:3)A:1;
 # Internal node labels specify who infected whom, and branch lengths indicate the timing of transmission events and host sampling
+OriginTimes:
+  'virus':                          # origin time of `virus` epidemic
+    start: 10.0                     # note this is reverse time, cumulative
+    susceptibles:
+      - host: 1000                  # number of susceptible at the origin time of the simulation for Type `host`
 CompartmentTypes:
-  'host':
-    unsampled: 20
-    susceptible: 1000
+  'host':                           # option to have more than one host type with different parameters
     branching.rates: (host=0.2)     # only one CompartmentType, in this case represents transmission rates
     migration.rates: ()             # assume no migration
     bottleneck.size: 1              # bottleneck size when transmission event occurs
@@ -32,8 +35,7 @@ CompartmentTypes:
       piece4:
         - startTime: 2.25           # assumed that piece with no end time goes onwards to infinity at constant population
         - startPopn: 150
-  # option to have more than one host type with different parameters
-LineageType:
+LineageTypes:
   'virus':
   # no parameters for now -- this class would allow for heterogeneity in transmission dynamics among pathogens
 Compartments:

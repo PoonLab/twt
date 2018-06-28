@@ -1,8 +1,12 @@
-# draft proposal for specification of within-host coalescent process
+# draft proposal for specification of within-host coalescent process (single patient)
+OriginTimes:
+  'virus':                                        # origin time of `virus` epidemic
+    start: 10.0                                   # note this is reverse time, cumulative
+    susceptibles:
+      - blood: 1                                  # assume only one blood (plasma) compartment per patient                               
+      - cell: 30                                  # number of susceptible at the origin time of the simulation for each Type `blood` and `cell`
 CompartmentTypes:
-  'blood':                                        # assume only one blood (plasma) compartment 
-    unsampled: 0
-    susceptible: 50                               # blood no transmission to blood - transmission is to uninfected cell
+  'blood':                                        # blood no transmission to blood - transmission is to uninfected cell
     branching.rates: (blood=0.0, cell=0.05)       # infection of a cell (transmission rate from blood -> cell)
     migration.rates: (blood=0.0, cell=0.0)        
     bottleneck.size: 1                            # assume a single virus enters an uninfected cell
@@ -20,8 +24,6 @@ CompartmentTypes:
         - startTime: 20
         - startPopn: 300
   'cell':
-    unsampled: 20
-    susceptible: 30                               
     branching.rates: (blood=0.0, cell=0.0)        # assume no direct cell-to-cell transmission
     migration.rates: (blood=0.01, cell=0.0)       # migration rate from cell -> blood is release of virus particles back into blood
     bottleneck.size: undefined                    # assume no migration to infected cells
@@ -48,6 +50,8 @@ CompartmentTypes:
       piece4:
         - startTime: 2.25                         # assumed that piece with no end time goes onwards to infinity at constant population
         - startPopn: 150
+LineageTypes:
+  'virus':
 Compartments:
   'blood':
     type: blood                                   # reference to CompartmentType object
