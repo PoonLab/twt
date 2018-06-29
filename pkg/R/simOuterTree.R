@@ -95,24 +95,25 @@ sim.outer.tree <- function(model, eventlog) {
   
   comps <- model$get.compartments()           
   compnames <- model$get.names(comps)
-  sources <- c(comps, model$get.unsampled.hosts())
-  sources.names <- model$get.names(sources)
   
   types <- model$get.types()
   indiv.types <- sapply(unlist(comps), function(a){a$get.type()$get.name()})
   
   # record population totals and transmission rates for all Types
-  storage <- .calc.popn.totals.rates(types, indiv.types)
-  popn.totals <- storage$totals
-  popn.rates <- storage$rates
+  popn.totals <- model$get.origin.times()
+  popn.rates <- .calc.popn.totals.rates(types, indiv.types)
   
   # record max sampling times of lineages for each Compartment
-  storage <- .store.initial.samplings(sources, types, model$get.lineages())
-  possible.source.types <- storage$s.types
+  storage <- .store.initial.samplings(comps, types, model$get.lineages())
   time.bands <- storage$initial.times
+  possible.source.types <- storage$s.types
   
   # generate transmission events based on population dynamics and Compartments' initial sampling times
   t_events <- .calc.transmission.events(popn.totals, popn.rates, time.bands, possible.source.types)
+  
+  # unsampled infected now calculated and generated, set source population
+  sources <- c(comps, model$get.unsampled.hosts())
+  sources.names <- model$get.names(sources)
   
   sapply(types, function(x) {
     # for each Type, assign transmission times to all infected compartments
@@ -225,22 +226,20 @@ sim.outer.tree <- function(model, eventlog) {
 
 
 
-.calc.popn.totals.rates <- function(types, indiv.types) {
-  # stores population totals and rates for each CompartmentType specified by the user
+.calc.popn.rates <- function(types, indiv.types) {
+  # stores population rates for each CompartmentType specified by the user
   # @param types = all CompartmentTypes
   # @param indiv.types = list of individual Types for each Compartment
-  # @return list of population totals matrix and population transmission rates matrix
+  # @return population transmission rates matrix
   
-  popn.totals <- matrix(nrow=length(types), ncol=2,
-                        dimnames=list(names(types), c('I', 'S')))
   popn.rates <- matrix(nrow=length(types),                                # source types
                        ncol=length(types),                                # recipient types
                        dimnames=list(names(types), names(types)))
   
   for (x in types) {                                                      # for each CompartmentType:
-    I <- length(which(indiv.types == x$get.name())) + x$get.unsampled()   # 2. store number of active sampled compartments AND unsampled infected hosts at time t=0 (I)
-    S <- x$get.susceptible()                                              # 3. store number of susceptibles at time t=0 (I)
-    popn.totals[x$get.name(),] <- c(I,S)
+    # I <- length(which(indiv.types == x$get.name())) + x$get.unsampled()   # 2. store number of active sampled compartments AND unsampled infected hosts at time t=0 (I)
+    # S <- x$get.susceptible()                                              # 3. store number of susceptibles at time t=0 (I)
+    # popn.totals[x$get.name(),] <- c(I,S)
     
     for (y in names(types)) {
       rate <- x$get.branching.rate(y)                                     # store instrinsic transmission rates for all typeA -> typeB pairs
@@ -248,7 +247,7 @@ sim.outer.tree <- function(model, eventlog) {
     }
   }
   
-  list(totals=popn.totals, rates=popn.rates)
+  popn.rates
 }
 
 
@@ -261,46 +260,43 @@ sim.outer.tree <- function(model, eventlog) {
   # @param lineages = list of Lineage objects
   # @return list of possible Types of `source` and list of first Lineage sampling times for each Compartment
   
-  possibleSourceTypes <- list()  # list of different types of source that each recipient could possibly receive a transmission from
-  time.bands <- vector()         # vector of initial (earliest) sampling times for each Compartment
+  # generate dictionary of different types of source that each recipient Type could possibly receive a transmission from
+  typenames <- sapply(types, function(x) x$get.name())
+  possibleSourceTypes <- as.list(rep(NA, length(typenames)))  
+  names(possibleSourceTypes) <- typenames
+  for (t in types) {
+    rates <- t$get.branching.rates()
+    r.types <- names(rates)
+    for (r in 1:length(rates)) {
+      if (rates[r] == 0) next
+      else possibleSourceTypes[[r.types[r]]] <- t$get.name()
+    }
+  }
+  possibleSourceTypes <- possibleSourceTypes[!is.na(possibleSourceTypes)] # cleanup
+
   
+  time.bands <- vector()             # vector of initial (earliest) sampling times for each Compartment
   lineage.locations <- sapply(lineages, function(x) {x$get.location()$get.name()})
   
   for (i in infected) {
-    # generates a comprehensive dictionary of all possibilities of a source Type with a given recipient Compartment
     # filtered to remove all source -> recipient pairs with branching rates of 0
     recipientType <- i$get.type()$get.name()
-    recipientRates <- sapply(types, function(a) {
-      if (a$get.branching.rate(recipientType) == 0) { NULL } 
-      else { a$get.branching.rate(recipientType) }
-    })
-    recipientRates[sapply(recipientRates, is.null)] <- NULL      # remove source -> recipient pairs w/ branching rates of 0
     
-    if (length(recipientRates) == 0) {
-      # this compartment will never be a recipient (ie. example3.yaml 'blood' compartment)
-      next
-      
-    } else {
-      # check if `i` is a us_comp (us_comps have no sampled lineages native to their compartment)
+    if (recipientType %in% names(possibleSourceTypes)) {
       i.native.lineages <- which(lineage.locations == i$get.name())
-      if (length(i.native.lineages) == 0) {
-        # us_comp is not allowed to be a recipient without first being a source
-        # placeholder 'NA' to be filtered out later in main while loop
-        single.i.sampling.times <- NA   
-      } else {
-        single.i.lineages <- lineages[ i.native.lineages ]
-        single.i.sampling.times <- sapply(single.i.lineages, function(b) {
-          b$get.sampling.time()
-        })
-      }
+      single.i.lineages <- lineages[ i.native.lineages ]
+      single.i.sampling.times <- sapply(single.i.lineages, function(b) {
+        b$get.sampling.time()
+      })
       
       # store initial sampling time for this recipient Compartment
       time.bands <- c(time.bands, max(single.i.sampling.times))
       names(time.bands) <- c(names(time.bands)[nzchar(x=names(time.bands))], i$get.name())
       
-      # store all possible source Types for this recipient Compartment
-      possibleSourceTypes <- c(possibleSourceTypes, list(names(recipientRates)))
-      names(possibleSourceTypes)[[length(possibleSourceTypes)]] <- recipientType
+    } else {
+      # this compartment will never be a recipient (ie. example3.yaml 'blood' compartment)
+      next
+      
     }
   }
   
