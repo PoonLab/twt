@@ -2,8 +2,8 @@
 MODEL <- R6Class("MODEL",
   public = list(
     initialize = function(settings=NA) {
+      private$origin.times <- private$load.origin.times(settings)
       private$types <- private$load.types(settings)
-      private$unsampled.hosts <- private$load.unsampled.hosts()
       private$compartments <- private$load.compartments(settings)
       private$compartments <- private$set.sources()
       private$lineages <- private$load.lineages(settings)
@@ -13,6 +13,7 @@ MODEL <- R6Class("MODEL",
       private$choices <- private$init.pairs()
     },
     
+    get.origin.times = function() {private$origin.times},
     get.types = function() {private$types},
     get.unsampled.hosts = function() {private$unsampled.hosts},
     get.compartments = function() {private$compartments},
@@ -92,6 +93,7 @@ MODEL <- R6Class("MODEL",
   
   
   private = list(
+    origin.times = NULL,
     types = NULL,
     unsampled.hosts = NULL,
     compartments = NULL,
@@ -102,6 +104,27 @@ MODEL <- R6Class("MODEL",
     locations = NULL,         
     choices = NULL,
     node.ident = 1,              # used in simulation of inner tree for generating unique idents for internal nodes of ancestral lineages
+    
+    load.origin.times = function(settings) {
+      ## function loads origin times specific to each LineageType (the start time of the epidemic of one or more viruses)
+      ## @return mat = named list of number of susceptibles for each CompartmentType, specific to each virus (LineageType)
+      lin.types <- names(settings$OriginTimes)
+      comp.types <- names(settings$CompartmentTypes)
+      mat <- matrix(nrow=length(lin.types),
+                    ncol=length(comp.types) + 1, 
+                    dimnames=list(lin.types, c('start',comp.types)) )
+      for (x in lin.types) {
+        params <- settings$OriginTimes[[x]]
+        mat[x,'start'] <- params$start
+        for (s in 1:length(comp.types)) {
+          typename <- comp.types[s]
+          mat[x,typename] <- params$susceptibles[[s]][[typename]]
+        }
+      }
+       
+      mat
+    },
+    
     
     
     load.types = function(settings) {
@@ -120,31 +143,12 @@ MODEL <- R6Class("MODEL",
         rng.call <- paste(rng.call, paste(args, collapse=','), ')', sep='')
         
         x <- CompartmentType$new(name = x,
-                                 unsampled = params$unsampled,
-                                 susceptible = params$susceptible,
                                  branching.rates = eval(parse(text=paste('list', params$branching.rates))),
                                  migration.rates = eval(parse(text=paste('list', params$migration.rates))),
                                  bottleneck.size = params$bottleneck.size,
                                  wait.time.distr = rng.call,
                                  popn.growth.dynamics = private$init.popn.growth.dynamics(params$popn.growth.dynamics)
         )
-      }))
-    },
-    
-    
-    
-    load.unsampled.hosts = function() {
-      ## function creates "blank" Compartment objects for Unsampled Hosts (US) 
-      ## stored in lists for each section within a CompartmentType object
-      unlist(sapply(private$types, function(x) {
-          nBlanks <- x$get.unsampled()
-          if (nBlanks > 1) {
-            sapply(1:nBlanks, function(blank) {
-              Compartment$new(name = paste0('US_', x$get.name(), '_', blank),
-                              type = x,
-                              unsampled = TRUE)
-            })
-          }
       }))
     },
     
