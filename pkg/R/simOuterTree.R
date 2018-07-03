@@ -101,7 +101,7 @@ sim.outer.tree <- function(model, eventlog) {
   
   # record population totals and transmission rates for all Types
   popn.totals <- model$get.origin.times()
-  popn.rates <- .calc.popn.totals.rates(types, indiv.types)
+  popn.rates <- .calc.popn.rates(types, indiv.types)
   
   # record max sampling times of lineages for each Compartment
   storage <- .store.initial.samplings(comps, types, model$get.lineages())
@@ -311,70 +311,89 @@ sim.outer.tree <- function(model, eventlog) {
   # @param popn.totals = totals at time `t=0` of susceptible and infected specific to each CompartmentType
   # @param popn.rates = rates of transmission between different CompartmentTypes
   # @param init.samplings = list of first sampling times for each Compartment
-  # @param possible.sources = list of possible Sources that a Type can receive a transmission from 
+  # @param possible.sources = list of possible Sources that each recipient Type can receive a transmission from 
   # @return t_events = data frame of transmission events, each made up of: time, recipient Type, and source Type 
   
-  # the start time of the simulation is the time where at least 2 sampled infected compartments are active
-  current.time <- as.numeric(init.samplings[order(init.samplings)[2]])
   t_events <- data.frame(time=numeric(), r_type=character(), s_type=character())
   
-  while (sum(popn.totals[,'I']) > 1) {
-    # filter population to determine which of these active compartments can be a recipient
-    # based on if all possible intrinsic rates are 0, and the max sampling times of the active compartments
-    qualified.sampled.recipients <- which(init.samplings <= current.time)
+  for (v in 1:nrow(popn.totals)) {
     
-    # retrieve transmission types from dictionary of possible.sources for each qualified sampled recipient
-    possible.transm <- possible.sources[ qualified.sampled.recipients ]
+    v.name <- rownames(popn.totals)[v]
+    virus <- popn.totals[v,]
+    current.time <- as.numeric(virus['start'])          # current time starts at user given time for each epidemic
     
-    # calc transmission rates among all source-recipient pairings of CompartmentTypes
-    indiv.rates <- sapply(rownames(popn.totals), function(x) {
-      sapply(rownames(popn.totals), function(y) {
-        pairRate <- popn.rates[x,y] * (popn.totals[y,'S'] + 1) * (popn.totals[x,'I'])
+    # check sampling times with epidemic start time
+    if (any(init.samplings > current.time)) {
+      stop ('Not possible to have Compartment initial sampling time(s) precede the start time of the "', v.name, '" epidemic. Please set the start time of the epidemic further back in time.')
+    }
+    
+    while (current.time > min(init.samplings)) {
+      # calc transmission rates among all source-recipient pairings of CompartmentTypes
+      indiv.rates <- sapply(names(virus)[-1], function(x) {
         
-        qualified.r <- which(names(possible.transm) == y)
-        if (length(qualified.r) ==0) {
-          nPairs <- 0
-        } else {
-          qualified.sr <- which(sapply(qualified.r, function(z) {
-            x %in% possible.transm[z]
-          }))
-          if (length(qualified.sr) == 0) {
+        pairRate <- 
+      })
+    }
+    
+    while (sum(popn.totals[,'I']) > 1) {
+      # filter population to determine which of these active compartments can be a recipient
+      # based on if all possible intrinsic rates are 0, and the max sampling times of the active compartments
+      qualified.sampled.recipients <- which(init.samplings <= current.time)
+      
+      # retrieve transmission types from dictionary of possible.sources for each qualified sampled recipient
+      possible.transm <- possible.sources[ qualified.sampled.recipients ]
+      
+      # calc transmission rates among all source-recipient pairings of CompartmentTypes
+      indiv.rates <- sapply(rownames(popn.totals), function(x) {
+        sapply(rownames(popn.totals), function(y) {
+          pairRate <- popn.rates[x,y] * (popn.totals[y,'S'] + 1) * (popn.totals[x,'I'])
+          
+          qualified.r <- which(names(possible.transm) == y)
+          if (length(qualified.r) ==0) {
             nPairs <- 0
           } else {
-            nPairs <- length(qualified.sr)                   # the number of pairs that have this transmission type
+            qualified.sr <- which(sapply(qualified.r, function(z) {
+              x %in% possible.transm[z]
+            }))
+            if (length(qualified.sr) == 0) {
+              nPairs <- 0
+            } else {
+              nPairs <- length(qualified.sr)                   # the number of pairs that have this transmission type
+            }
           }
-        }
-        
-        pairRate * nPairs
+          
+          pairRate * nPairs
+        })
       })
-    })
-    
-    # total rate of ANY transmission event occurring is the weightes sum of these rates in the dictionary
-    total.rate <- sum(indiv.rates)
-    # sample waiting time & update the current time to the new upper bound in time (waiting time)
-    waiting.time <- current.time + rexp(n=1, rate=total.rate)
-    current.time <- waiting.time
-    
-    if (length(which(init.samplings <= current.time)) > length(qualified.sampled.recipients)) {
-      # check if the waiting time exceeds any sampling time within the sampled compartments previously not qualifying as a recipient
-      # re-start the filtering to include new qualified sampled infected recipients
-      next
-    } else {
-      # randomly choose a source and recipient pair, uniformly distributed
-      ind <- sample(1:length(possible.transm), 1)
-      r_type <- names(possible.transm)[[ind]]
-      s_type <- sample(possible.transm[[ind]], 1)
       
-      # store the time, and the source and recipient types of transmission
-      t_events <- rbind(t_events, list(time=current.time, r_type=r_type, s_type=s_type), stringsAsFactors=F)
+      # total rate of ANY transmission event occurring is the weightes sum of these rates in the dictionary
+      total.rate <- sum(indiv.rates)
+      # sample waiting time & update the current time to the new upper bound in time (waiting time)
+      waiting.time <- current.time + rexp(n=1, rate=total.rate)
+      current.time <- waiting.time
       
-      # remove r_type w/ all it's possible source types from list `possible.transm` (this Infected can no longer be a recipient)
-      possible.transm[[ind]] <- NULL
-      
-      # update counts of total population
-      popn.totals[r_type, 'I'] <- popn.totals[r_type, 'I'] - 1
-      popn.totals[r_type, 'S'] <- popn.totals[r_type, 'S'] + 1
+      if (length(which(init.samplings <= current.time)) > length(qualified.sampled.recipients)) {
+        # check if the waiting time exceeds any sampling time within the sampled compartments previously not qualifying as a recipient
+        # re-start the filtering to include new qualified sampled infected recipients
+        next
+      } else {
+        # randomly choose a source and recipient pair, uniformly distributed
+        ind <- sample(1:length(possible.transm), 1)
+        r_type <- names(possible.transm)[[ind]]
+        s_type <- sample(possible.transm[[ind]], 1)
+        
+        # store the time, and the source and recipient types of transmission
+        t_events <- rbind(t_events, list(time=current.time, r_type=r_type, s_type=s_type), stringsAsFactors=F)
+        
+        # remove r_type w/ all it's possible source types from list `possible.transm` (this Infected can no longer be a recipient)
+        possible.transm[[ind]] <- NULL
+        
+        # update counts of total population
+        popn.totals[r_type, 'I'] <- popn.totals[r_type, 'I'] - 1
+        popn.totals[r_type, 'S'] <- popn.totals[r_type, 'S'] + 1
+      }
     }
+  
   }
   
   t_events
