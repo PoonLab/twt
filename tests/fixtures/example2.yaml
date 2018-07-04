@@ -3,7 +3,7 @@ OriginTimes:
   'virus':                             # origin time of `virus` epidemic
     start: 10.0                        # note this is reverse time, cumulative
     susceptibles:
-      - host: 1000                     # number of susceptible at the origin time of the simulation for Type `host`
+      - host: 100                      # number of susceptible at the origin time of the simulation for Type `host`
 CompartmentTypes:
   'host':
     branching.rates: (host=0.1)        # named vector of transmission rates to different CompartmentTypes

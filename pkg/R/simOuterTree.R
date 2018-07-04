@@ -332,10 +332,10 @@ sim.outer.tree <- function(model, eventlog) {
     while (current.time > min(init.samplings)) {
       # calculate total waiting time
       r <- sample(r.types, 1)
-      s <- sampled(possible.sources[[r]], 1)
+      s <- sample(possible.sources[[r]], 1)
       
       # total waiting time = exp(-beta * (S-1) * I)
-      rate <- popn.rates[x,y] * (virus[y]-1) * num.infected
+      rate <- popn.rates[r,s] * (virus[s]-1) * num.infected
       delta.t <- rexp(n=1, rate=rate)
       current.time <- current.time - delta.t
       
@@ -343,11 +343,20 @@ sim.outer.tree <- function(model, eventlog) {
       t_events <- rbind(t_events, list(time=current.time, r_type=r, s_type=s, v_type=v.name), stringsAsFactors=F)
       
       # update counts of total population
-      virus[y] <- virus[y] - 1
+      virus[s] <- virus[s] - 1
       num.infected <- num.infected + 1
+      
+      if (virus[s] == 0) {
+        # number of susceptibles tanked before reaching most recent Compartment sampling time 
+        # this is technically fine, but results in transmissions bunched together much further back in time
+        break
+      }
     }
   
   }
+  
+  # check if viable # of transmission times @ each unique user-given Compartment `sampling.time`
+  # if doesn't match at any point, regenerate transmission times up to max 5 attempts
   
   t_events
 }
