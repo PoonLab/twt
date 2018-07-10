@@ -111,6 +111,17 @@ sim.outer.tree <- function(model, eventlog) {
   # generate transmission events based on population dynamics and Compartments' initial sampling times
   t_events <- .calc.transmission.events(popn.totals, popn.rates, time.bands, possible.source.types)
   
+  # generate unsampled hosts
+  last.indiv <- T
+  for (t in types) {
+    num.unsampled <- length(which(t_events$r_type == t$get.name())) - length(which(indiv.types == t$get.name()))
+    model$generate.unsampled(num.unsampled, t)
+    if (last.indiv) {
+      model$generate.unsampled(1, t)
+      last.indiv <- F
+    } 
+  }
+  
   # unsampled infected now calculated and generated, set source population
   sources <- c(comps, model$get.unsampled.hosts())
   sources.names <- model$get.names(sources)
@@ -315,48 +326,64 @@ sim.outer.tree <- function(model, eventlog) {
   # @return t_events = data frame of transmission events, each made up of: time, recipient Type, and source Type 
   
   t_events <- data.frame(time=numeric(), r_type=character(), s_type=character(), v_type=character())
+  maxAttempts <- 5 
   
-  for (v in 1:nrow(popn.totals)) {
+  for (attempt in 1:maxAttempts) {
     
-    v.name <- rownames(popn.totals)[v]
-    virus <- popn.totals[v,]
-    r.types <- names(virus)[-1]
-    current.time <- as.numeric(virus['start'])          # current time starts at user given time for each epidemic
-    num.infected <- 1                                   # starting infection
+    for (v in 1:nrow(popn.totals)) {
+      
+      v.name <- rownames(popn.totals)[v]
+      virus <- popn.totals[v,]
+      r.types <- names(virus)[-1]
+      current.time <- as.numeric(virus['start'])          # current time starts at user given time for each epidemic
+      num.infected <- 1                                   # starting infection
+      
+      # check sampling times with epidemic start time
+      if (any(init.samplings > current.time)) {
+        stop ('Not possible to have Compartment initial sampling time(s) precede the start time of the "', v.name, '" epidemic. Please set the start time of the epidemic further back in time.')
+      }
+      
+      while (current.time > min(init.samplings) && all(virus != 1)) {
+        # calculate total waiting time
+        r <- sample(r.types, 1)
+        s <- sample(possible.sources[[r]], 1)
+        
+        # total waiting time = exp(-beta * (S-1) * I)
+        rate <- popn.rates[r,s] * (virus[s]-1) * num.infected
+        delta.t <- rexp(n=1, rate=rate)
+        current.time <- current.time - delta.t
+        
+        # store time, source and recipient types of transmission, and virus type
+        t_events <- rbind(t_events, list(time=current.time, r_type=r, s_type=s, v_type=v.name), stringsAsFactors=F)
+        
+        # update counts of total population
+        virus[s] <- virus[s] - 1
+        num.infected <- num.infected + 1
+        
+      }
     
-    # check sampling times with epidemic start time
-    if (any(init.samplings > current.time)) {
-      stop ('Not possible to have Compartment initial sampling time(s) precede the start time of the "', v.name, '" epidemic. Please set the start time of the epidemic further back in time.')
     }
     
-    while (current.time > min(init.samplings)) {
-      # calculate total waiting time
-      r <- sample(r.types, 1)
-      s <- sample(possible.sources[[r]], 1)
-      
-      # total waiting time = exp(-beta * (S-1) * I)
-      rate <- popn.rates[r,s] * (virus[s]-1) * num.infected
-      delta.t <- rexp(n=1, rate=rate)
-      current.time <- current.time - delta.t
-      
-      # store time, source and recipient types of transmission, and virus type
-      t_events <- rbind(t_events, list(time=current.time, r_type=r, s_type=s, v_type=v.name), stringsAsFactors=F)
-      
-      # update counts of total population
-      virus[s] <- virus[s] - 1
-      num.infected <- num.infected + 1
-      
-      if (virus[s] == 0) {
-        # number of susceptibles tanked before reaching most recent Compartment sampling time 
-        # this is technically fine, but results in transmissions bunched together much further back in time
-        break
+    # check if viable # of transmission times @ each unique user-given Compartment `sampling.time`
+    checks <- sapply(unique(init.samplings), function(x) {
+      if (length(init.samplings==x) > length(t_events$time > x)) {
+        # not enough viable transmission times at this `sampling.time`
+        # regenerate transmission times up to maxAttempts
+        FALSE
+      } else {
+        TRUE
       }
+    })
+    
+    if (any(checks) == FALSE) {
+      attempt <- attempt + 1
+    } else if (attempt > maxAttempts) {
+      stop ('Transmission times generated invalid matches to given `sampling.times` of Compartments. Please change origin time of the "', v.name, '" epidemic or modify transmission rates.')
+    } else {
+      break
     }
   
   }
-  
-  # check if viable # of transmission times @ each unique user-given Compartment `sampling.time`
-  # if doesn't match at any point, regenerate transmission times up to max 5 attempts
   
   t_events
 }

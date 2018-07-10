@@ -6,7 +6,7 @@ OriginTimes:
       - host: 100                      # number of susceptible at the origin time of the simulation for Type `host`
 CompartmentTypes:
   'host':
-    branching.rates: (host=0.1)        # named vector of transmission rates to different CompartmentTypes
+    branching.rates: (host=0.01)        # named vector of transmission rates to different CompartmentTypes
     migration.rates: ()                # no migration (assume no superinfection)
     bottleneck.size: 1                 # bottleneck size when transmission event occurs
     wait.time.distr:                   # distribution of waiting time between infection time and first sampling time of a Compartment

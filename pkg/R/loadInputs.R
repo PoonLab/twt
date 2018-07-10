@@ -87,6 +87,16 @@ MODEL <- R6Class("MODEL",
     update.node.ident = function() {
       # generates new unique identity for next `$get.node.ident()` call (inner tree sim, internal ancestral lineages)
       private$node.ident <- private$node.ident + 1
+    }, 
+    
+    generate.unsampled = function(num.unsampled, t) {
+      # function creates "blank" Compartment objects for Unsampled Hosts (US)
+      private$unsampled.hosts <- c(private$unsampled.hosts, 
+                                   unlist(sapply(1:num.unsampled, function(blank) {
+        Compartment$new(name=paste0('US_', t$get.name(), '_', blank),
+                        type=t,
+                        unsampled=TRUE)
+      }))) 
     }
     
   ),
