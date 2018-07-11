@@ -115,7 +115,9 @@ sim.outer.tree <- function(model, eventlog) {
   last.indiv <- T
   for (t in types) {
     num.unsampled <- length(which(t_events$r_type == t$get.name())) - length(which(indiv.types == t$get.name()))
-    model$generate.unsampled(num.unsampled, t)
+    if (num.unsampled > 0) {
+      model$generate.unsampled(num.unsampled, t)
+    }
     if (last.indiv) {
       model$generate.unsampled(1, t)
       last.indiv <- F
