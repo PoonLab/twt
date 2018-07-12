@@ -116,13 +116,18 @@ sim.outer.tree <- function(model, eventlog) {
   for (t in types) {
     num.unsampled <- length(which(t_events$r_type == t$get.name())) - length(which(indiv.types == t$get.name()))
     if (num.unsampled > 0) {
-      model$generate.unsampled(num.unsampled, t)
+      if (last.indiv) {
+        model$generate.unsampled(num.unsampled+1, t)
+        last.indiv <- F
+      } else {
+        model$generate.unsampled(num.unsampled, t)
+      }
     }
-    if (last.indiv) {
-      model$generate.unsampled(1, t)
-      last.indiv <- F
-    } 
   }
+  
+  # update `time.bands` to include unsampled hosts
+  time.bands <- c(time.bands, rep(NA, length(model$get.unsampled.hosts())))
+  names(time.bands) <- c(names(time.bands)[nzchar(x=names(time.bands))], model$get.names(model$get.unsampled.hosts()))
   
   # unsampled infected now calculated and generated, set source population
   sources <- c(comps, model$get.unsampled.hosts())
@@ -354,6 +359,8 @@ sim.outer.tree <- function(model, eventlog) {
         rate <- popn.rates[r,s] * (virus[s]-1) * num.infected
         delta.t <- rexp(n=1, rate=rate)
         current.time <- current.time - delta.t
+        
+        if (current.time < min(init.samplings)) { break }
         
         # store time, source and recipient types of transmission, and virus type
         t_events <- rbind(t_events, list(time=current.time, r_type=r, s_type=s, v_type=v.name), stringsAsFactors=F)
