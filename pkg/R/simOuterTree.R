@@ -155,7 +155,9 @@ sim.outer.tree <- function(model, eventlog) {
   
   # after transmission times are matched with infected Compartments as recipients, now have to assign source Compartments
   # order infection times from most recent to furthest back in time
-  comps <- comps[ order(sapply(comps, function(x) x$get.branching.time())) ] 
+  new.order <- order(sapply(comps, function(x) x$get.branching.time()))
+  comps <- comps[ new.order ]
+  compnames <- compnames[ new.order ]
   
   # each assigned transmission time is associated with an event, which determines what TYPE its source is, just not which Compartment in particular
   
@@ -195,8 +197,6 @@ sim.outer.tree <- function(model, eventlog) {
     # list of possible sources is based off of the `s_type` recorded in the event associated with the transmission time in master copy `t_events`
     if (is.na(recipient$get.branching.time())) {
       # root case, "final" resolved transmission event (aka first recorded transmission, furthest back in time)
-      s_name <- NA
-      eventlog$add.event('transmission', recipient$get.branching.time(),NA, NA, r_name, s_name)
       break
       
     } else {
@@ -218,7 +218,7 @@ sim.outer.tree <- function(model, eventlog) {
     }
     
     # if source is an unsampled infected Compartment, now holds a sampled lineage we care about (promote us_comp)
-    if (source$is.unsampled()) {
+    if (source$is.unsampled() && source$get.name() %in% compnames == FALSE) {
       # add us_comp to list `comps` (once first a source, can now be a recipient)
       comps[[length(comps)+1]] <- source
       compnames[[length(compnames)+1]] <- s_name
@@ -228,7 +228,9 @@ sim.outer.tree <- function(model, eventlog) {
     recipient$set.source(source)
     
     # update number of active compartments (excludes recipients, includes promoted us_comps)
-    comps <- comps[ order(sapply(comps, function(x) x$get.branching.time())) ]
+    new.order <- order(sapply(comps, function(x) x$get.branching.time()))
+    comps <- comps[ new.order ]
+    compnames <- compnames[ new.order ]
     numActive <- length(comps)
   }
   
