@@ -6,7 +6,7 @@ plot.EventLogger <- function(eventlog) {
 
 
 
-.to.transmission.tree <- function(eventlog) {
+.outer.tree.to.phylo <- function(eventlog) {
   # function converts the transmission events stored in an EventLogger object into a transmission tree
   # @param eventlog = EventLogger object
   # @return phy = ape::phylo object
@@ -124,3 +124,58 @@ plot.EventLogger <- function(eventlog) {
   attr(phy, 'order') <- 'cladewise'
   phy
 }
+
+
+
+
+
+.inner.tree.to.phylo <- function(eventlog, transmissions=FALSE) {
+  # function converts the coalescent events stored in the EventLogger object into an inner coalescent tree with an option to include or exclude transmission events
+  # TODO: make this functional to include migration events as well
+  # @param eventlog = EventLogger object
+  # @param transmissions = logical; if TRUE, transmission events are included, with transmission events being excluded otherwise
+  # @return phy = ape::phylo object
+  
+  if (transmissions) {
+    t_events <- eventlog$get.events('transmission')
+  } else {
+    t_events <- NULL
+  }
+  c_events <- eventlog$get.events('coalescent')         # TODO: will need to include migration events here later
+  
+  tips <- unlist(setdiff(union(c_events$lineage1, c_events$lineage2), c_events$compartment1))      # determined by which lineages are not in the ancestral (`compartment1`) column
+  root <- unlist(setdiff(c_events$compartment1, union(c_events$lineage1, c_events$lineage2)))      # determined by which lineage is not present in a coalescent event (`lineage1` and `lineage2`)
+  internals <- unlist(intersect(c_events$compartment1, union(c_events$lineage1, c_events$lineage2)))
+  
+  # initialize attributes of an ape::phylo object
+  tip.label <- vector()
+  edge.length <- vector()
+  # Nnode --> can't be determined as of yet
+  node.label <- vector()
+  # edge matrix can't be determined as of yet, so recording in a data frame
+  edge <- data.frame()
+  
+  # intialize indices to be assigned to root, tips, and internals
+  tip.no <- 1 
+  root.no <- length(tips) + 1
+  node.no <- root.no + 1
+  
+  
+  # helper function (recursive) for STEP 2
+  
+  
+  # STEP 1: start at tips and assign branch lengths
+  
+  # STEP 2a: check if parents of tips/nodes already included in `tip.label` or `edge.label` to minimize redundancy
+  
+  # STEP 2b: follow parents of tips up to root and assign branch lengths
+  
+  # STEP 3: transmission events are treated like any other internal node, save for the edge label should reflect the transmission event (ie. 'A->B')
+  
+  
+}
+
+
+
+
+

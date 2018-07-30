@@ -14,4 +14,5 @@ export(calc.migration.rates)
 export(calc.coal.wait.times)
 export(sim.inner.tree)
 
-export(.to.transmission.tree)
+export(.outer.tree.to.phylo)
+export(.inner.tree.to.phylo)
