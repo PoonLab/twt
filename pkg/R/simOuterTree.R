@@ -386,10 +386,10 @@ sim.outer.tree <- function(model, eventlog) {
       }
     })
     
-    if (any(checks) == FALSE) {
-      attempt <- attempt + 1
-    } else if (attempt > maxAttempts) {
+    if (attempt == maxAttempts && any(checks) == FALSE) {
       stop ('Transmission times generated invalid matches to given `sampling.times` of Compartments. Please change origin time of the "', v.name, '" epidemic or modify transmission rates.')
+    } else if (any(checks) == FALSE) {
+      next
     } else {
       break
     }

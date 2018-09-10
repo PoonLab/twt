@@ -141,7 +141,6 @@ MODEL <- R6Class("MODEL",
       ## function creates CompartmentType objects
       ## within each CompartmentType, there are distinct compartments with: 
       # individual transmission & migration rates
-      # unsampled host & susceptible populations 
       unlist(sapply(names(settings$CompartmentTypes), function(x) {
         params <- settings$CompartmentTypes[[x]]
         
