@@ -157,6 +157,8 @@ MODEL <- R6Class("MODEL",
                                  bottleneck.size = params$bottleneck.size,
                                  wait.time.distr = rng.call,
                                  popn.growth.dynamics = private$init.popn.growth.dynamics(params$popn.growth.dynamics)
+                                 # transmission.times parameter populated later when simulating outer tree (simOuterTree.R)
+                                 # to be used when simulating migration events in inner tree (simInnerTree.R)
         )
       }))
     },

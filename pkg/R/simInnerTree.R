@@ -104,24 +104,24 @@ sim.inner.tree <- function(model, eventlog) {
         r_comp_name <- migrating.lineage$get.location()              # recipient compartment Lineage migrated to (forward time)
         
         r_ind <- which(inf.names == r_comp_name)
-        filtered.inf <- inf[-r_ind]                  # exclude r_comp; TODO: exclude any source comp currently w/ only one lineage?
-        s_comp <- sample(filtered.inf, 1)                    # source compartment Lineage migrated from (forward time)
+        filtered.inf <- inf[-r_ind]                   # exclude r_comp; TODO: exclude any source comp currently w/ only one lineage?
+        s_comp <- sample(filtered.inf, 1)                            # source compartment Lineage migrated from (forward time)
         s_name <- s_comp$get.name()
         
         # issue 32: if migration of lineages from US individual not already included in outer tree, have to graft another branch to the outer tree
         outer.tree.events <- eventlog$get.events('transmission')
         outer.tree.comps <- union(outer.tree.events$compartment1, outer.tree.events$compartment2)
         if (s_name %in% outer.tree.comps == F) {
-          eventlog$add.event('transmission', NA, l_name, NA, r_comp_name, s_comp_name)         # coming back later to populate transmission time
+          generate.migration.graft(model, eventlog, migrating.lineage, mig.time)
         }
-          
+        
         migrating.lineage$set.location(inf, s_name)
         
         # add migration event to EventLogger
-        eventlog$add.event('migration', next.time, l_name, NA, r_comp_name, s_comp_name)
+        eventlog$add.event('migration', new.time, l_name, NA, r_comp_name, s_comp_name)
         
       } else {
-        # next event is a coalescent event; now choose a 'bin' from compartment with next.time
+        # next event is a coalescent event; now choose a 'bin' from compartment with new.time
         
         coal.comp.name <- names(coal.wait.times)[which(coal.wait.times == new.time)]   # name of the compartment with the min coal wait time
         coal.comp <- inf[[which(inf.names == coal.comp.name)]]
@@ -189,6 +189,21 @@ sim.inner.tree <- function(model, eventlog) {
   eventlog
 }
 
+
+
+generate.migration.graft <- function(model, eventlog, migrated.lineage, current.time) {
+  # function creates a migration event between a migration source with a given migrated lineage
+  # in which the migration source is an unsampled Compartment not already included in the current transmission tree
+  # result: incorporate new unsampled Compartment into MODEL
+  # new unsampled Compartment will be resolved later throughout the inner tree simulation
+  # @param model = MODEL object
+  # @param eventlog = EventLogger object
+  # @param migrated.lineage = Lineage object
+  # @param current.time = time of simulation current to this function call
+  
+  
+  eventlog$add.event('transmission', NA, l_name, NA, r_comp_name, s_comp_name)         # coming back later to populate transmission time?
+}
 
 
 

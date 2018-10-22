@@ -141,7 +141,10 @@ sim.outer.tree <- function(model, eventlog) {
     r.events <- t_events[ which(t_events$r_type == x$get.name()), ]
     
     if (nrow(r.events) != 0) {            # no transmission events for case of ie. blood compartment
-      .assign.transmission.times(r.comps, r.events, r.init.samplings, x)
+      # assigns transmission times but also returns a binary (logical) vector of which transmission times have been used
+      assigned.times <- .assign.transmission.times(r.comps, r.events, r.init.samplings, x)
+      # store this binary vector with associated transmission times into the MODEL (specific to each type)
+      
     } else {
       sapply(r.comps, function(x) x$set.branching.time(NA))
     }
@@ -413,6 +416,9 @@ sim.outer.tree <- function(model, eventlog) {
   i.times <- initial.samplings[!is.na(initial.samplings)]                     # separate sampled infected comps from 
   u.times <- initial.samplings[is.na(initial.samplings)]                      # unsampled infected comps
   
+  all.t.times <- events$time
+  names(all.t.times) <- vector(length=length(events$time))                    # labelled logical vector tracking used and unused transmission times
+  
   while (length(i.times) > 1) {
     # for sampled infected Compartments, assignments based off of Type-specific events and Type-specific waiting time distribution
     
@@ -439,7 +445,10 @@ sim.outer.tree <- function(model, eventlog) {
       t.time <- sampledTimes[x]
       recipients[[ind]]$set.branching.time(t.time)
       
-      recipients <- recipients[-ind]
+      used.t.time.ind <- which(all.t.times == t.time)
+      names(all.t.times)[used.t.time.ind] <- TRUE                            # this transmission time has been assigned, set name in logic vector to TRUE
+      
+      recipients <- recipients[-ind]                                         # remove recipient from remaining list of recipients
       events <- events[ -which(events$time == t.time), ]                     # remove transmission event from events
     }
     
@@ -458,8 +467,12 @@ sim.outer.tree <- function(model, eventlog) {
     t.time <- events[u.event, 'time']
     u.comp$set.branching.time(t.time)
     
-    u.times <- u.times[-u.ind]
-    events <- events[-u.event,]
+    used.t.time.ind <- which(all.t.times == t.time)                          # this transmission time has been assigned, set name in logic vector to TRUE
+    names(all.t.times)[used.t.time.ind] <- TRUE                             
+    
+    u.times <- u.times[-u.ind]                                               # remove used transmission time for unsampled Compartment
+    events <- events[-u.event,]                                              # remove used transmission event from events
   }
   
+  all.t.times              # returning vector of all transmission times, including times used and unused in this current assignment of transmission times
 }
