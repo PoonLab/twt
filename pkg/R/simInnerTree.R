@@ -104,21 +104,37 @@ sim.inner.tree <- function(model, eventlog) {
         r_comp_name <- migrating.lineage$get.location()              # recipient compartment Lineage migrated to (forward time)
         
         r_ind <- which(inf.names == r_comp_name)
-        filtered.inf <- inf[-r_ind]                   # exclude r_comp; TODO: exclude any source comp currently w/ only one lineage?
+        # TODO: exclude r_comp, and exclude any source comp currently w/ only one lineage (otherwise it would be considered a transmission)
+        filtered.inf <- sapply(inf[-r_ind], function(i) {length(i$get.lineages()) > 1}   
         s_comp <- sample(filtered.inf, 1)                            # source compartment Lineage migrated from (forward time)
         s_name <- s_comp$get.name()
         
         # issue 32: if migration of lineages from US individual not already included in outer tree, have to graft another branch to the outer tree
         outer.tree.events <- eventlog$get.events('transmission')
         outer.tree.comps <- union(outer.tree.events$compartment1, outer.tree.events$compartment2)
-        if (s_name %in% outer.tree.comps == F) {
-          generate.migration.graft(model, eventlog, migrating.lineage, mig.time)
+        if (s_name %in% outer.tree.comps == FALSE) {
+          # source of migration is from US individual not already included in outer tree --> sample a time from stored vector of used & unused times
+          t.times <- s_comp$get.type()$get.transmission.times()
+          
+          # sample an available time
+          avail.t.time <- sample(which(t.times[names(t.times)==T] >= mig.time), 1)
+          
+          # reset the vector to make the sampled time now unavailable
+          # TODO: MUST CHECK that the type's vector of available t.times is updated for every compartment under this Compartment Type
+          sampled.t.time.ind <- which(t.times == avail.t.time)
+          names(t.times)[sampled.t.time.ind] <- FALSE
+          master.comp.type <- which(model$get.types() == s_comp$get.type())
+          model$get.types()[[master.comp.type]]$set.transmission.times(t.times)
+          
+          # generate new transmission event for branch to be grafted onto tree
+          eventlog$add.event('transmission', avail.t.time, l_name, NA, r_comp_name, s_comp_name)
+          
         }
         
         migrating.lineage$set.location(inf, s_name)
         
         # add migration event to EventLogger
-        eventlog$add.event('migration', new.time, l_name, NA, r_comp_name, s_comp_name)
+        eventlog$add.event('migration', mig.time, l_name, NA, r_comp_name, s_comp_name)
         
       } else {
         # next event is a coalescent event; now choose a 'bin' from compartment with new.time
@@ -163,16 +179,24 @@ sim.inner.tree <- function(model, eventlog) {
         
         transm.event <- transm.events[which(transm.times == current.time),]
         comp.2.bottle <- inf[[which(inf.names == transm.event$compartment1)]]
+        new.comp.location <- transm.event$compartment2
         
         survivor.lineages <- generate.bottleneck(model, eventlog, comp.2.bottle, current.time)
         sapply(survivor.lineages, function(x) model$add.lineage(x))
-        new.comp.location <- transm.event$compartment2
+        
         
         # for each of the survivor lineages, the compartment needs to update its location to the source of the transmission event
         survivor.names <- sapply(survivor.lineages, function(x) {
           x$set.location(inf, new.comp.location)
           x$get.name()
         })
+        
+        # need to remove survivor lineages from comp.2.bottle, and add those same survivor lineages to new.comp.location
+        sapply(survivor.lineages, function(x) {
+          comp.2.bottle$remove.lineage(x)
+          new.comp.location$add.lineage(x)
+        })
+        
         
         # the transmission event's `lineage` column can now be updated to included the names of the 'survivors'
         eventlog$modify.event(transm.event$time, survivor.names)
@@ -187,22 +211,6 @@ sim.inner.tree <- function(model, eventlog) {
   }
   
   eventlog
-}
-
-
-
-generate.migration.graft <- function(model, eventlog, migrated.lineage, current.time) {
-  # function creates a migration event between a migration source with a given migrated lineage
-  # in which the migration source is an unsampled Compartment not already included in the current transmission tree
-  # result: incorporate new unsampled Compartment into MODEL
-  # new unsampled Compartment will be resolved later throughout the inner tree simulation
-  # @param model = MODEL object
-  # @param eventlog = EventLogger object
-  # @param migrated.lineage = Lineage object
-  # @param current.time = time of simulation current to this function call
-  
-  
-  eventlog$add.event('transmission', NA, l_name, NA, r_comp_name, s_comp_name)         # coming back later to populate transmission time?
 }
 
 

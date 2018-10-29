@@ -244,11 +244,14 @@ MODEL <- R6Class("MODEL",
             # set 'pointer' to Compartment object for location
             searchComps <- sapply(private$compartments, function(y){which(y$get.name() == paste0(params$location, '_', compNum))})
             locationObj <- private$compartments[[ which( searchComps == 1) ]]
-            Lineage$new(name = paste0(locationObj$get.name(),':',label,'_',obj),                          # unique identifier
+            x <- Lineage$new(name = paste0(locationObj$get.name(),':',label,'_',obj),                          # unique identifier
                         type = params$type,
                         sampling.time = sampleTimes[obj],
                         location = locationObj
             )
+            # add new Lineage to current location
+            locationObj$add.lineage(x)
+            x
           })
         })
       

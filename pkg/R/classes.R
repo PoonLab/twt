@@ -89,12 +89,13 @@ CompartmentType  <- R6Class("CompartmentType",
 # Compartment
 Compartment <- R6Class("Compartment",
   public = list(
-    initialize = function(name=NA, type=NA, source=NA, branching.time=NA, unsampled=FALSE) {
+    initialize = function(name=NA, type=NA, source=NA, branching.time=NA, unsampled=FALSE, lineages=list()) {
       private$name <- name
       private$type <- type
       private$source <- source
       private$branching.time <- branching.time
       private$unsampled <- unsampled                   # attr req later when identifying new US Comps to be promoted in mig events
+      private$lineages <- lineages
     },
     
     get.name = function() {
@@ -127,6 +128,19 @@ Compartment <- R6Class("Compartment",
     
     is.unsampled = function() {
       private$unsampled
+    },
+    
+    get.lineages = function() {
+      private$lineages
+    },
+    
+    add.lineage = function(new.lineage) {
+      private$lineages[[length(private$lineages)+1]] <- new.lineage
+    },
+    
+    remove.lineage = function(ex.lineage) {
+      ind <- which(private$lineages == ex.lineage)
+      private$lineages[[ind]] <- NULL
     }
   
   ),
@@ -135,7 +149,8 @@ Compartment <- R6Class("Compartment",
     type = NULL,          # reference to CompartmentType object
     source = NULL,
     branching.time = NULL,
-    unsampled = NULL
+    unsampled = NULL,
+    lineages = NULL
   )
 )
 
