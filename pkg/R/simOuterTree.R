@@ -117,7 +117,7 @@ sim.outer.tree <- function(model, eventlog) {
     num.unsampled <- length(which(t_events$r_type == t$get.name())) - length(which(indiv.types == t$get.name()))
     if (num.unsampled > 0) {
       if (last.indiv) {
-        model$generate.unsampled(num.unsampled+1, t)
+        model$generate.unsampled(num.unsampled+1, t)      # this is the reason why unsampled are not generated at the initialization of the MODEL object
         last.indiv <- F
       } else {
         model$generate.unsampled(num.unsampled, t)
@@ -133,12 +133,12 @@ sim.outer.tree <- function(model, eventlog) {
   sources <- c(comps, model$get.unsampled.hosts())
   sources.names <- model$get.names(sources)
   
-  sapply(types, function(x) {
-    # for each Type, assign transmission times to all infected compartments
-    r.indices <- which( sapply(sources, function(y) y$get.type()$get.name() == x$get.name()) )
+  sapply(names(possible.source.types), function(x) {
+    # for each Type that can be a recipient, assign transmission times to all of its infected compartments
+    r.indices <- which( sapply(sources, function(y) y$get.type()$get.name() == x) )
     r.comps <- sources[r.indices]
     r.init.samplings <- time.bands[ which(names(time.bands) %in% sources.names[r.indices]) ]
-    r.events <- t_events[ which(t_events$r_type == x$get.name()), ]
+    r.events <- t_events[ which(t_events$r_type == x), ]
     
     if (nrow(r.events) != 0) {            # no transmission events for case of ie. blood compartment
       # assigns transmission times but also returns a binary (logical) vector of which transmission times have been used
@@ -346,7 +346,7 @@ sim.outer.tree <- function(model, eventlog) {
       
       v.name <- rownames(popn.totals)[v]
       virus <- popn.totals[v,]
-      r.types <- names(virus)[-1]
+      r.types <- names(possible.sources)
       current.time <- as.numeric(virus['start'])          # current time starts at user given time for each epidemic
       num.infected <- 1                                   # starting infection
       
@@ -355,13 +355,13 @@ sim.outer.tree <- function(model, eventlog) {
         stop ('Not possible to have Compartment initial sampling time(s) precede the start time of the "', v.name, '" epidemic. Please set the start time of the epidemic further back in time.')
       }
       
-      while (current.time > min(init.samplings) && all(virus != 1)) {
+      while (current.time > min(init.samplings) && all(virus[2:length(virus)] != 1)) {  #&& all(virus != 1)
         # calculate total waiting time
         r <- sample(r.types, 1)
         s <- sample(possible.sources[[r]], 1)
         
         # total waiting time = exp(-beta * (S-1) * I)
-        rate <- popn.rates[r,s] * (virus[s]-1) * num.infected
+        rate <- popn.rates[s,r] * (virus[s]-1) * num.infected
         delta.t <- rexp(n=1, rate=rate)
         current.time <- current.time - delta.t
         

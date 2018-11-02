@@ -17,7 +17,7 @@ CompartmentType  <- R6Class("CompartmentType",
       private$migration.rates <- migration.rates               # named vector of migration rates of different Compartments
       private$wait.time.distr <- wait.time.distr
       private$popn.growth.dynamics <- popn.growth.dynamics
-      private$transmission.times <- transmission.times
+      private$transmission.times <- transmission.times         # populated after outer.tree.sim, tracked used and unused for migration events in inner.tree.sim
     },
     
     get.bottleneck.size = function() {
@@ -171,7 +171,7 @@ Lineage <- R6Class("Lineage",
       private$name
     },
     
-    get.type = function() {
+    get.type = function() {                                     # in the future, will be a pointer to a LineageType object
       private$type
     },
     
@@ -280,7 +280,8 @@ EventLogger <- R6Class("EventLogger",
     
     
     modify.event = function(transmission.time, lineages) {
-      transmission.events <- self$get.events('transmission')
+      # when inner tree simulation has reached a transmission event, need to fill in the lineage column w/ the lineages that are present at transmission time
+      transmission.events <- self$get.events('transmission')                 # in the case of bottleneck events, will have same time so have to isolate transmission event times
       index <- which(transmission.events$time == transmission.time)
       rowname <- rownames(transmission.events)[index]
       eventlog.index <- which(rownames(self$get.all.events()) == rowname)

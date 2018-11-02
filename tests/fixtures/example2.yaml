@@ -30,6 +30,7 @@ Compartments:
     replicates: 10
 Lineages:
   'I':
+    type: 'virus'
     sampling.time: 0             
     location: I
     replicates: 3                      # implied to be per-host

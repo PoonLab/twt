@@ -1,7 +1,7 @@
 ## test script
 require(twt)
 setwd('~/git/treeswithintrees')
-settings <- yaml.load_file('tests/fixtures/example2.yaml')
+settings <- yaml.load_file('tests/fixtures/example3.yaml')
 test <- MODEL$new(settings)
 e <- EventLogger$new()
 

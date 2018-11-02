@@ -1,3 +1,27 @@
+## these functions were extracted from MODEL class definition
+## TODO: modify function .outer.tree.to.phylo to accomodate this change
+get.leaves.names = function(e) {
+  # returns a vector of Compartment object names that are terminal nodes (only a recipient)
+  # @param e = EventLogger object
+  t_events <- e$get.events('transmission', cumulative=F)
+  setdiff(unlist(t_events$compartment1), unlist(t_events$compartment2))
+}
+
+get.nonterminals = function(e) {
+  # return an iterator over all names of internal nodes of the transmission tree
+  # @param e = EventLogger object
+  t_events <- e$get.events('transmission', cumulative=F)
+  intersect(unlist(t_events$compartment1), unlist(t_events$compartment2))
+}
+
+get.node.heights = function() {
+  # calculate node heights for all nodes of the tree
+  # annotate nodes with heights in place
+}
+
+
+
+
 plot.EventLogger <- function(eventlog) {
   # function plots the population trajectories of susceptibles and infected over time
   t_events <- eventlog$get.events('transmission')

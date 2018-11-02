@@ -9,7 +9,7 @@ sim.inner.tree <- function(model, eventlog) {
   # transmission times
   transm.times <- transm.events$time[!is.na(transm.events$time)]
   current.time <- 0.0
-  extant.lineages <- model$get.extant_lineages(current.time)
+  extant.lineages <- model$get.extant.lineages(current.time)
   num.extant <- length(extant.lineages)
   if (num.extant == 0) {
     stop ('There must be at least one lineage sampled at time t=0.')
@@ -31,7 +31,7 @@ sim.inner.tree <- function(model, eventlog) {
         # no coalescence or migration events possible at this point in time
         # move up to the earliest transmission event in the EventLogger
         current.time <- min(transm.times)
-        extant.lineages <- model$get.extant_lineages(current.time)
+        extant.lineages <- model$get.extant.lineages(current.time)
         next
       } else {
         # retrieve the minimum waiting time of the calculated coalescent event waiting times
@@ -80,17 +80,17 @@ sim.inner.tree <- function(model, eventlog) {
       eventlog$modify.event(transm.event$time, survivor.names)
       
       # update extant lineages
-      extant.lineages <- model$get.extant_lineages(current.time)
+      extant.lineages <- model$get.extant.lineages(current.time)
       
       next
       
-    } else if (length(model$get.extant_lineages(new.time)) > num.extant) {
+    } else if (length(model$get.extant.lineages(new.time)) > num.extant) {
       # OR other lineage(s) become(s) extant before the waiting time
       # update the current time to add the waiting time and start again
       
       current.time <- current.time + new.time
       # update extant lineages
-      extant.lineages <- model$get.extant_lineages(current.time)
+      extant.lineages <- model$get.extant.lineages(current.time)
       next
       
     } else {
@@ -104,8 +104,8 @@ sim.inner.tree <- function(model, eventlog) {
         r_comp_name <- migrating.lineage$get.location()              # recipient compartment Lineage migrated to (forward time)
         
         r_ind <- which(inf.names == r_comp_name)
-        # TODO: exclude r_comp, and exclude any source comp currently w/ only one lineage (otherwise it would be considered a transmission)
-        filtered.inf <- sapply(inf[-r_ind], function(i) {length(i$get.lineages()) > 1}   
+        # exclude r_comp, and exclude any source comp currently w/ only one lineage (otherwise it would be considered a transmission)
+        filtered.inf <- sapply(inf[-r_ind], function(i) {length(i$get.lineages()) > 1})   
         s_comp <- sample(filtered.inf, 1)                            # source compartment Lineage migrated from (forward time)
         s_name <- s_comp$get.name()
         
@@ -120,7 +120,7 @@ sim.inner.tree <- function(model, eventlog) {
           avail.t.time <- sample(which(t.times[names(t.times)==T] >= mig.time), 1)
           
           # reset the vector to make the sampled time now unavailable
-          # TODO: MUST CHECK that the type's vector of available t.times is updated for every compartment under this Compartment Type
+          # CONFIRMED: the type's vector of available t.times is updated for every compartment under this Compartment Type
           sampled.t.time.ind <- which(t.times == avail.t.time)
           names(t.times)[sampled.t.time.ind] <- FALSE
           master.comp.type <- which(model$get.types() == s_comp$get.type())
@@ -204,7 +204,7 @@ sim.inner.tree <- function(model, eventlog) {
       
       
       # update extant lineages
-      extant.lineages <- model$get.extant_lineages(current.time)
+      extant.lineages <- model$get.extant.lineages(current.time)
       
     }
     
@@ -225,7 +225,7 @@ generate.bottleneck <- function(model, eventlog, comp, current.time) {
   # @return comp.lineages = lineages that 'survive' the bottleneck on towards source of transmission in coalescent time
   
   bottleneck.size <- comp$get.type()$get.bottleneck.size()
-  extant.lineages <- model$get.extant_lineages(current.time) # reason to not pass extant.lineages directly is b/c there could be additional extant lineages updated alongside current.time
+  extant.lineages <- model$get.extant.lineages(current.time) # reason to not pass extant.lineages directly is b/c there could be additional extant lineages updated alongside current.time
   comp.lineages <- unlist(sapply(extant.lineages, function(x) {
     if (x$get.location()$get.name() == comp$get.name()) {x}
     else {NULL}
