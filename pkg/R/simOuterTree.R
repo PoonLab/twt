@@ -142,8 +142,9 @@ sim.outer.tree <- function(model, eventlog) {
     
     if (nrow(r.events) != 0) {            # no transmission events for case of ie. blood compartment
       # assigns transmission times but also returns a binary (logical) vector of which transmission times have been used
-      assigned.times <- .assign.transmission.times(r.comps, r.events, r.init.samplings, x)
-      # store this binary vector with associated transmission times into the MODEL (specific to each type)
+      # will store this binary vector with associated transmission times into the MODEL (specific to each type)
+      type.comp <- types[[ which(sapply(types, function(t) t$get.name() == x)) ]]
+      assigned.times <- .assign.transmission.times(r.comps, r.events, r.init.samplings, type.comp)
       
     } else {
       sapply(r.comps, function(x) x$set.branching.time(NA))
@@ -355,7 +356,7 @@ sim.outer.tree <- function(model, eventlog) {
         stop ('Not possible to have Compartment initial sampling time(s) precede the start time of the "', v.name, '" epidemic. Please set the start time of the epidemic further back in time.')
       }
       
-      while (current.time > min(init.samplings) && all(virus[2:length(virus)] != 1)) {  #&& all(virus != 1)
+      while (current.time > min(init.samplings) && all(virus[2:length(virus)] < 1)) {  #&& all(virus != 1)
         # calculate total waiting time
         r <- sample(r.types, 1)
         s <- sample(possible.sources[[r]], 1)
