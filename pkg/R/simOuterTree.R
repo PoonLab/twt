@@ -133,7 +133,7 @@ sim.outer.tree <- function(model, eventlog) {
   sources <- c(comps, model$get.unsampled.hosts())
   sources.names <- model$get.names(sources)
   
-  sapply(names(possible.source.types), function(x) {
+  sapply(names(possible.source.types), function(x) {          #names(possible.source.types) represents names of types that can be recipients
     # for each Type that can be a recipient, assign transmission times to all of its infected compartments
     r.indices <- which( sapply(sources, function(y) y$get.type()$get.name() == x) )
     r.comps <- sources[r.indices]
@@ -254,17 +254,13 @@ sim.outer.tree <- function(model, eventlog) {
   # stores population rates for each CompartmentType specified by the user
   # @param types = all CompartmentTypes
   # @param indiv.types = list of individual Types for each Compartment
-  # @return population transmission rates matrix
+  # @return popn.rates = matrix of population transmission rates for each type to type comparison
   
   popn.rates <- matrix(nrow=length(types),                                # source types
                        ncol=length(types),                                # recipient types
                        dimnames=list(names(types), names(types)))
   
-  for (x in types) {                                                      # for each CompartmentType:
-    # I <- length(which(indiv.types == x$get.name())) + x$get.unsampled()   # 2. store number of active sampled compartments AND unsampled infected hosts at time t=0 (I)
-    # S <- x$get.susceptible()                                              # 3. store number of susceptibles at time t=0 (I)
-    # popn.totals[x$get.name(),] <- c(I,S)
-    
+  for (x in types) {                                                      
     for (y in names(types)) {
       rate <- x$get.branching.rate(y)                                     # store instrinsic transmission rates for all typeA -> typeB pairs
       popn.rates[x$get.name(), y] <- rate
@@ -282,7 +278,8 @@ sim.outer.tree <- function(model, eventlog) {
   # @param infected = list of infected Compartment objects
   # @param types = list of CompartmentType objects
   # @param lineages = list of Lineage objects
-  # @return list of possible Types of `source` and list of first Lineage sampling times for each Compartment
+  # @return named list of possible Types of `source` with recipient types as names
+      # and list of first Lineage sampling times for each Compartment
   
   # generate dictionary of different types of source that each recipient Type could possibly receive a transmission from
   typenames <- sapply(types, function(x) x$get.name())
@@ -320,8 +317,8 @@ sim.outer.tree <- function(model, eventlog) {
     } else {
       # this compartment will never be a recipient (ie. example3.yaml 'blood' compartment)
       next
-      
     }
+    
   }
   
   list(s.types=possibleSourceTypes, initial.times=time.bands)
@@ -356,13 +353,13 @@ sim.outer.tree <- function(model, eventlog) {
         stop ('Not possible to have Compartment initial sampling time(s) precede the start time of the "', v.name, '" epidemic. Please set the start time of the epidemic further back in time.')
       }
       
-      while (current.time > min(init.samplings) && all(virus[2:length(virus)] < 1)) {  #&& all(virus != 1)
+      while (current.time > min(init.samplings) && all(virus[2:length(virus)] >= 1)) {  #&& all(virus != 1)
         # calculate total waiting time
         r <- sample(r.types, 1)
         s <- sample(possible.sources[[r]], 1)
         
         # total waiting time = exp(-beta * (S-1) * I)
-        rate <- popn.rates[s,r] * (virus[s]-1) * num.infected
+        rate <- popn.rates[s,r] * (virus[s]) * num.infected
         delta.t <- rexp(n=1, rate=rate)
         current.time <- current.time - delta.t
         
@@ -371,8 +368,8 @@ sim.outer.tree <- function(model, eventlog) {
         # store time, source and recipient types of transmission, and virus type
         t_events <- rbind(t_events, list(time=current.time, r_type=r, s_type=s, v_type=v.name), stringsAsFactors=F)
         
-        # update counts of total population
-        virus[s] <- virus[s] - 1
+        # update counts of total population  (number of susceptibles decrease by 1, number of infected increases by 1)
+        virus[s] <- virus[s] - 1            
         num.infected <- num.infected + 1
         
       }
@@ -420,7 +417,7 @@ sim.outer.tree <- function(model, eventlog) {
   all.t.times <- events$time
   names(all.t.times) <- vector(length=length(events$time))                    # labelled logical vector tracking used and unused transmission times
   
-  while (length(i.times) > 1) {
+  while (length(i.times) >= 1) {
     # for sampled infected Compartments, assignments based off of Type-specific events and Type-specific waiting time distribution
     
     earliest.time <- max(i.times, na.rm=T)                                    # pick Compartment with earliest sampling time (furthest back in time)
@@ -458,7 +455,7 @@ sim.outer.tree <- function(model, eventlog) {
     i.times <- i.times[ -which(i.times==earliest.time) ] 
   }
   
-  while (length(u.times) > 1) {
+  while (length(u.times) >= 1) {
     # for unsampled infected Compartments, assignments based off of Type-specific events and uniform transmission time distribution
     u.ind <- sample.int(length(u.times), 1)
     u.name <- names(u.times)[u.ind]
