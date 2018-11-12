@@ -145,10 +145,7 @@ sim.outer.tree <- function(model, eventlog) {
       # will store this binary vector with associated transmission times into the MODEL (specific to each type)
       type.comp <- types[[ which(sapply(types, function(t) t$get.name() == x)) ]]
       assigned.times <- .assign.transmission.times(r.comps, r.events, r.init.samplings, type.comp)
-      
-    } else {
-      sapply(r.comps, function(x) x$set.branching.time(NA))
-    }
+    } 
     
   })
   
@@ -159,6 +156,7 @@ sim.outer.tree <- function(model, eventlog) {
   
   # after transmission times are matched with infected Compartments as recipients, now have to assign source Compartments
   # order infection times from most recent to furthest back in time
+  comps[sapply(sapply(comps, function(x) x$get.branching.time()), is.null)] <- NULL 
   new.order <- order(sapply(comps, function(x) x$get.branching.time()))
   comps <- comps[ new.order ]
   compnames <- compnames[ new.order ]
@@ -171,7 +169,7 @@ sim.outer.tree <- function(model, eventlog) {
     specific.type <- names(source.popns)[x]
     s.pop.by.type <- sapply(sources, function(y) {
       if (y$get.type()$get.name() == specific.type) {
-        if (is.na(y$get.branching.time())) {y}    # root no branching time
+        if (is.null(y$get.branching.time())) {y}    # root no branching time
         else if (y$get.branching.time() > comps[[1]]$get.branching.time()) {y}
       } 
     })
@@ -183,7 +181,7 @@ sim.outer.tree <- function(model, eventlog) {
   
   # assign source compartments for all sampled infected and promoted unsampled infected Compartments
   numActive <- length(comps)
-  while (numActive > 1) {
+  while (numActive >= 1) {
     r_ind_comps <- 1                            # first recipient == most recent infection time == largest list of `sources` --> efficiency                             
     recipient <- comps[[r_ind_comps]]
     r_name <- recipient$get.name()
@@ -199,7 +197,7 @@ sim.outer.tree <- function(model, eventlog) {
     }
     
     # list of possible sources is based off of the `s_type` recorded in the event associated with the transmission time in master copy `t_events`
-    if (is.na(recipient$get.branching.time())) {
+    if (is.null(recipient$get.branching.time())) {
       # root case, "final" resolved transmission event (aka first recorded transmission, furthest back in time)
       break
       
@@ -207,7 +205,7 @@ sim.outer.tree <- function(model, eventlog) {
       s_type <- t_events[ which(t_events$time == recipient$get.branching.time()), 's_type']
       # refine list of sources previously separated by Type also by earlier branching times than recipient's branching time
       refined.list.sources <- sapply(source.popns[[s_type]], function(s) {
-        if (is.na(s$get.branching.time())) s
+        if (is.null(s$get.branching.time())) s
         else if (s$get.branching.time() > recipient$get.branching.time()) s
         else NULL
       })
@@ -336,7 +334,7 @@ sim.outer.tree <- function(model, eventlog) {
   # @return t_events = data frame of transmission events, each made up of: time, recipient Type, and source Type 
   
   t_events <- data.frame(time=numeric(), r_type=character(), s_type=character(), v_type=character())
-  maxAttempts <- 5 
+  maxAttempts <- 10 
   
   for (attempt in 1:maxAttempts) {
     
@@ -388,7 +386,7 @@ sim.outer.tree <- function(model, eventlog) {
     })
     
     if (attempt == maxAttempts && any(checks) == FALSE) {
-      stop ('Transmission times generated invalid matches to given `sampling.times` of Compartments. Please change origin time of the "', v.name, '" epidemic or modify transmission rates.')
+      stop ('Transmission times generated overshoots given `sampling.times` of Compartments. Some options to fix this error include: changing the origin time of the "', v.name, '" epidemic to be further back in time or increasing transmission rates.')
     } else if (any(checks) == FALSE) {
       next
     } else {
@@ -429,9 +427,13 @@ sim.outer.tree <- function(model, eventlog) {
     # retrieve transmission times with a recipient type equal to the general type of `recipients`
     # weight each transmission time according to the `wait.time.distr` provided for this type
     possibleTimes <- events$time[ which(events$r_type == type$get.name()) ]
-    weights <- sapply(possibleTimes, function(x) eval(parse(text=type$get.wait.time.distr())) )
+    densities <- sapply(possibleTimes, function(x) eval(parse(text=type$get.wait.time.distr())) )
+    total.density <- sum(densities)
+    weights <- sapply(densities, function(d) d/total.density)
     
-    if (length(possibleTimes) < length(recipients)) {  # for case where one of these recipients will be labeled as the root node (ie. no unsampled hosts)
+    if (length(possibleTimes) == 1) {
+      sampledTimes <- possibleTimes[1]
+    } else if (length(possibleTimes) < length(recipients)) {  # for case where one of these recipients will be labeled as the root node (ie. no unsampled hosts)
       sampledTimes <- sample(possibleTimes, size=length(recipients)-1, prob=weights, replace=F)
     } else {
       sampledTimes <- sample(possibleTimes, size=length(recipients), prob=weights, replace=F)
