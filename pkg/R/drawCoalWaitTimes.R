@@ -14,7 +14,7 @@ calc.coal.wait.times <- function(model, current.time){
   compnames <- model$get.names(comps)
   
   # retrieves compartments with multiple extant lineages
-  extant_comps <- unique(sapply(
+  ext.comps <- unique(sapply(
     unname(model$get.pairs()),
     function(x) {
       comps[[which(compnames == x)]]
@@ -23,7 +23,7 @@ calc.coal.wait.times <- function(model, current.time){
   
   # retrieves compartment names for extant lineages
   ext.lineages.compnames <- sapply(
-    model$get.extant_lineages(current.time),
+    model$get.extant.lineages(current.time),
     function(x) {
       x$get.location()$get.name()
     }
@@ -35,15 +35,31 @@ calc.coal.wait.times <- function(model, current.time){
     length(which(ext.lineages.compnames==x))
   }
   
-  # initialize an empty vector for waiting times
+  # calculate waiting times per Compartment
   waiting.times <- vector()
-  for (comp in extant_comps){
+  for (comp in ext.comps) {
+    
     compname <- comp$get.name()
-    popn.growth <- comp$get.type()$get.popn.growth.dynamics()             # retrieve popn.growth.dynamics for this compartment
-    delta.t = overall.t <- comp$get.branching.time() - current.time       # delta time = compartment infection time - current simulation time
+    
+    # retrieve user-specified popn.growth.dynamics for this compartment
+    # NOTE: `popn.growth.dynamics` is user-specified in FORWARD-TIME
+    # RECALL: Compartment `get.branching.time` are specified in COALESCENT (BACKWARDS) TIME
+    popn.growth <- comp$get.type()$get.popn.growth.dynamics()       
+    
+    if (is.null(comp$get.branching.time())) {
+      # infection time is unknown for the compartment that started the epidemic -- could be arbitrarily large in COALESCENT (BACKWARDS) TIME
+      # assume that initial infection time is at the maximal time before it hits the final piece (when population size becomes constant) issue #46
+      infection.time <- popn.growth[nrow(popn.growth), 'startTime']     # .Machine$integer.max
+    } else {
+      infection.time <- comp$get.branching.time()
+    }
+    
+    # delta time = compartment infection time - current simulation time
+    delta.t = overall.t <- infection.time - current.time       
     piece.rows <- which(popn.growth[,'startTime'] < delta.t)
     if (length(piece.rows) == 1) {
-      pieces <- as.matrix(t(popn.growth[piece.rows, ]))                   # obtain all the pieces of the popn.growth.dynamics that are valid for current simulation time
+      # obtain all the pieces of the popn.growth.dynamics functions that are valid for current simulation time
+      pieces <- as.matrix(t(popn.growth[piece.rows, ]))                  
       rownames(pieces) <- 1
     } else {
       pieces <- popn.growth[piece.rows, ]         
@@ -51,7 +67,9 @@ calc.coal.wait.times <- function(model, current.time){
     
     for (i in nrow(pieces):1){
       # iterate through the valid pieces of population growth dynamics to draw waiting time
-      # in forward time, start at the current piece first and work backwards to earlier pieces in the popn.growth dynamic fxns (if needed)
+      # in COALESCENT TIME, start at the current piece first (this would be the latest piece in FORWARD TIME)
+      # work backwards to earlier pieces in the popn.growth.dynamic functions if needed
+      
       piece <- pieces[i,]
       wait <- wait.time(num.ext.lineages(compname), piece['intercept'], piece['slope'])
       delta.t <- delta.t - wait
@@ -73,5 +91,6 @@ calc.coal.wait.times <- function(model, current.time){
     }
     
   }
-  return(waiting.times)
+  
+  waiting.times
 }
