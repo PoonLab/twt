@@ -5,16 +5,17 @@ CompartmentType  <- R6Class("CompartmentType",
   public = list(
     initialize = function(name=NA, unsampled = NA,
                           susceptible=NA, branching.rates=NA,
-                          effective.size=NA, bottleneck.size=NA,
-                          migration.rates=NA, wait.time.distr=NA,
+                          migration.rates=NA, bottleneck.size=NA,
+                          coalescent.rate=NA, death.rate.distr=NA, wait.time.distr=NA,
                           popn.growth.dynamics=NA, transmission.times=NA) {
       private$name <- name
       private$unsampled <- unsampled
       private$susceptible <- susceptible
       private$branching.rates <- branching.rates               # named vector of transmission rates corresponding to different Compartment objects
-      private$effective.size <- effective.size
+      private$migration.rates <- migration.rates
       private$bottleneck.size <- bottleneck.size
-      private$migration.rates <- migration.rates               # named vector of migration rates of different Compartments
+      private$coalescent.rate <- coalescent.rate               # named vector of migration rates of different Compartments
+      private$death.rate.distr <- death.rate.distr
       private$wait.time.distr <- wait.time.distr
       private$popn.growth.dynamics <- popn.growth.dynamics
       private$transmission.times <- transmission.times         # populated after outer.tree.sim, tracked used and unused for migration events in inner.tree.sim
@@ -52,6 +53,14 @@ CompartmentType  <- R6Class("CompartmentType",
       private$migration.rates[[name.type]]
     },
     
+    get.coalescent.rate = function() {
+      private$coalescent.rate
+    },
+    
+    get.death.rate.distr = function() {
+      private$death.rate.distr
+    },
+    
     get.wait.time.distr = function() {
       private$wait.time.distr
     },
@@ -74,9 +83,10 @@ CompartmentType  <- R6Class("CompartmentType",
     unsampled = NULL,
     susceptible = NULL,
     branching.rates = NULL,
-    effective.size = NULL,
-    bottleneck.size = NULL,
     migration.rates = NULL,
+    bottleneck.size = NULL,
+    coalescent.rate = NULL,
+    death.rate.distr = NULL,
     wait.time.distr = NULL,
     popn.growth.dynamics = NULL,
     transmission.times = NULL

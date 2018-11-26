@@ -146,6 +146,8 @@ MODEL <- R6Class("MODEL",
                                  branching.rates = eval(parse(text=paste('list', params$branching.rates))),
                                  migration.rates = eval(parse(text=paste('list', params$migration.rates))),
                                  bottleneck.size = params$bottleneck.size,
+                                 coalescent.rate = params$coalescent.rate,
+                                 death.rate.distr = params$death.rate.distr,
                                  wait.time.distr = rng.call,
                                  popn.growth.dynamics = private$init.popn.growth.dynamics(params$popn.growth.dynamics)
                                  # transmission.times parameter populated later when simulating outer tree (simOuterTree.R)

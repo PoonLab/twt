@@ -59,9 +59,9 @@ sim.inner.tree <- function(model, eventlog) {
       # call bottleneck function to mass coalesce lineages in (first) new transmission event newly included
       # change the location of the lineages that 'survived' the bottleneck to the source of the transmission
       
-      old.transm <- which(transm.times <= current.time)
-      all.new.transm <- which(transm.times <= new.time)
-      current.time <- min(setdiff( transm.times[all.new.transm], transm.times[old.transm] )) 
+      old.transm <- transm.times[which(transm.times <= current.time)]
+      all.new.transm <- transm.times[which(transm.times <= new.time)]
+      current.time <- min(union( all.new.transm, old.transm )) 
       
       transm.event <- transm.events[which(transm.times == current.time),]
       comp.2.bottle <- inf[[which(inf.names == transm.event$compartment1)]]
