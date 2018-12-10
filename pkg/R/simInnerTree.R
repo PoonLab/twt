@@ -38,18 +38,19 @@ sim.inner.tree <- function(model, eventlog) {
         next
       } else {
         # retrieve the minimum waiting time of the calculated coalescent event waiting times
-        new.time <- min(coal.wait.times) + current.time
+        chosen.time <- min(coal.wait.times)
       }
     } else {
       # calculate a waiting time to the next migration event
       mig.time <- rexp(n=1, rate=mig.rate)
       if (length(coal.wait.times) == 0) {
         # no coalescence events possible; accept the migration time as the new time
-        new.time <- mig.time + current.time
+        chosen.time <- mig.time
       } else {
         # take the minimum waiting time out of all coalescent wait times and migration time
-        new.time <- min(c(mig.time, coal.wait.times)) + current.time
+        chosen.time <- min(c(mig.time, coal.wait.times))
       }
+      new.time <- chosen.time + current.time
     }
     
     
@@ -68,14 +69,21 @@ sim.inner.tree <- function(model, eventlog) {
       
       transm.event <- transm.events[which(transm.times == current.time),]
       comp.2.bottle <- inf[[which(inf.names == transm.event$compartment1)]]
+      comp.2.receive <- inf[[which(inf.names == transm.event$compartment2)]]
       
-      survivor.lineages <- generate.bottleneck(model, eventlog, comp.2.bottle, current.time)
-      new.comp.location <- transm.event$compartment2
+      survivor.lineages <- generate.bottleneck(model, eventlog, comp.2.bottle, new.time)
+      new.comp.location <- comp.2.receive$get.name()
       
       # for each of the survivor lineages, the compartment needs to update its location to the source of the transmission event
       survivor.names <- sapply(survivor.lineages, function(x) {
         x$set.location(inf, new.comp.location)
         x$get.name()
+      })
+      
+      # need to remove survivor lineages from comp.2.bottle, and add those same survivor lineages to new.comp.location
+      sapply(survivor.lineages, function(x) {
+        comp.2.bottle$remove.lineage(x)
+        comp.2.receive$add.lineage(x)
       })
       
       # the transmission event's `lineage` column can now be updated to included the names of the 'survivors'
@@ -88,7 +96,7 @@ sim.inner.tree <- function(model, eventlog) {
       # OR other lineage(s) become(s) extant before the waiting time
       # update the current time to add the waiting time and start again
       
-      current.time <- current.time + new.time
+      current.time <- new.time
       extant.lineages <- model$get.extant.lineages(current.time)
       next
       
@@ -102,7 +110,7 @@ sim.inner.tree <- function(model, eventlog) {
   
       } else {
         # next event is a coalescent event; now choose a 'bin' from compartment with new.time
-        coal.comp.name <- names(coal.wait.times)[which(coal.wait.times == new.time)]   # name of the compartment with the min coal wait time
+        coal.comp.name <- names(coal.wait.times)[which(coal.wait.times == chosen.time)]   # name of the compartment with the min coal wait time
         coal.comp <- inf[[which(inf.names == coal.comp.name)]]
         coal.comp.lineages <- sapply(extant.lineages, function(x){
           if (x$get.location()$get.name() == coal.comp.name) {x}
@@ -114,22 +122,18 @@ sim.inner.tree <- function(model, eventlog) {
         
       }
       
-      current.time <- current.time + new.time
-      
-      
       # issue 40: if coalescent event occurs at a transmission time, force coalescence of all other lineages at this time
-      if (length(which(transm.times <= current.time)) > num.transm.occurred) {
-        old.transm <- which(transm.times <= current.time)
+      if (length(which(transm.times <= new.time)) > num.transm.occurred) {
+        old.transm <- transm.times[which(transm.times <= current.time)]
         all.new.transm <- which(transm.times <= new.time)
-        current.time <- min(setdiff( transm.times[all.new.transm], transm.times[old.transm] )) 
+        current.time <- min(union( all.new.transm, old.transm ))
         
         transm.event <- transm.events[which(transm.times == current.time),]
         comp.2.bottle <- inf[[which(inf.names == transm.event$compartment1)]]
-        new.comp.location <- transm.event$compartment2
+        comp.2.receive <- inf[[which(inf.names == transm.event$compartment2)]]
         
         survivor.lineages <- generate.bottleneck(model, eventlog, comp.2.bottle, current.time)
-        sapply(survivor.lineages, function(x) model$add.lineage(x))
-        
+        new.comp.location <- comp.2.receive$get.name()
         
         # for each of the survivor lineages, the compartment needs to update its location to the source of the transmission event
         survivor.names <- sapply(survivor.lineages, function(x) {
@@ -140,16 +144,15 @@ sim.inner.tree <- function(model, eventlog) {
         # need to remove survivor lineages from comp.2.bottle, and add those same survivor lineages to new.comp.location
         sapply(survivor.lineages, function(x) {
           comp.2.bottle$remove.lineage(x)
-          new.comp.location$add.lineage(x)
+          comp.2.receive$add.lineage(x)
         })
-        
         
         # the transmission event's `lineage` column can now be updated to included the names of the 'survivors'
         eventlog$modify.event(transm.event$time, survivor.names)
       }
       
-      
-      # update extant lineages
+      # update current time and extant lineages
+      current.time <- new.time
       extant.lineages <- model$get.extant.lineages(current.time)
       
     }
@@ -163,11 +166,18 @@ sim.inner.tree <- function(model, eventlog) {
 
 
 generate.migration <- function(model, eventlog, migrating.lineage, inf, inf.names, current.time) {
+  # function records a migration event with a given lineage from a source to recipient migration
+  # @param model = MODEl object
+  # @param eventlog = EventLogger object
+  # @param migrating.lineage = Lineage object; to be migrated
+  # @param inf = list of Compartment objects as potential migration sources
+  # @param inf.names = list of Compartment object names of type character (coincides with inf)
+  # @param current.time = double; time of simulation current to this function call
 
   l_name <- migrating.lineage$get.name()                       # lineage name
   r_comp <- migrating.lineage$get.location()                   # recipient compartment Lineage migrated to (forward time)
   
-  r_ind <- which(inf.names == r_comp_name)
+  r_ind <- which(inf.names == r_comp$get.name())
   # exclude r_comp, and exclude any source comp currently w/ only one lineage (otherwise it would be considered a transmission)
   filtered.inf <- sapply(inf[-r_ind], function(i) {if (length(i$get.lineages()) > 1) i})   
   s_comp <- sample(filtered.inf, 1)[[1]]                        # source compartment Lineage migrated from (forward time)
@@ -194,8 +204,15 @@ generate.migration <- function(model, eventlog, migrating.lineage, inf, inf.name
     eventlog$add.event('transmission', avail.t.time, l_name, NA, r_comp$get.name(), s_comp$get.name())
   }
   
+  # add lineage to source compartment
+  s_comp$add.lineage(migrating.lineage)
+  
+  # remove lineage from recipient compartment
+  r_comp$remove.lineage(migrating.lineage)
+  
   # set location of migrating lineage to source compartment
   migrating.lineage$set.location(inf, s_comp$get.name())
+  
   # add migration event to EventLogger
   eventlog$add.event('migration', current.time, l_name, NA, r_comp_name, s_comp_name)
 
@@ -204,6 +221,12 @@ generate.migration <- function(model, eventlog, migrating.lineage, inf, inf.name
 
 
 generate.coalescent <- function(model, eventlog, lineages.to.coalesce, coalescing.comp, current.time) {
+  # function records the coalescent of 2 given lineages currently extant in given Compartment into an ancestral lineage
+  # @param model = MODEL object
+  # @param eventlog = EventLogger object
+  # @param lineages.to.coalesce = vector of Lineage objects of length 2
+  # @param coalescing.comp = Compartment object
+  # @param current.time = double; time of simulation current to this function call
   
   names.coal.lineages <- sapply(lineages.to.coalesce, function(x) x$get.name())
   
@@ -211,14 +234,21 @@ generate.coalescent <- function(model, eventlog, lineages.to.coalesce, coalescin
   ancestral.lineage <- Lineage$new(name = model$get.node.ident(),           # label internal nodes iteratively from 1..inf by convention
                                    sampling.time = current.time,
                                    location = coalescing.comp)
+  
+  # remove lineages undergoing coalescence
+  model$remove.lineage(lineages.to.coalesce[[1]])
+  model$remove.lineage(lineages.to.coalesce[[2]])
+  coalescing.comp$remove.lineage(lineages.to.coalesce[[1]])
+  coalescing.comp$remove.lineage(lineages.to.coalesce[[2]])
+  
+  # add ancestral lineage resulting from coalescence
   model$add.lineage(ancestral.lineage)
+  coalescing.comp$add.lineage(ancestral.lineage)
   model$update.node.ident()
   
   # remove pairs containing coalesced lineages from list of pair choices
   remove.lineage.pairs(model, lineages.to.coalesce[[1]])
   remove.lineage.pairs(model, lineages.to.coalesce[[2]])
-  model$remove.lineage(lineages.to.coalesce[[1]])
-  model$remove.lineage(lineages.to.coalesce[[2]])
   
   # add pairs with new ancestral lineage into list of pair choices
   add.lineage.pairs(model, ancestral.lineage)
@@ -234,32 +264,19 @@ generate.bottleneck <- function(model, eventlog, comp, current.time) {
   # bottleneck size of Compartment is user determined by CompartmentType
   # @param model = MODEL object
   # @param eventlog = EventLogger object
-  # @param comp = unique Compartment object
-  # @param current.time = time of simulation current to this function call
+  # @param comp = Compartment object
+  # @param current.time = double; time of simulation current to this function call
   # @return comp.lineages = lineages that 'survive' the bottleneck on towards source of transmission in coalescent time
   
   bottleneck.size <- comp$get.type()$get.bottleneck.size()
-  extant.lineages <- model$get.extant.lineages(current.time) # reason to not pass extant.lineages directly is b/c there could be additional extant lineages updated alongside current.time
-  comp.lineages <- unlist(sapply(extant.lineages, function(x) {
-    if (x$get.location()$get.name() == comp$get.name()) {x}
-    else {NULL}
-  }))
   
-  while (length(comp.lineages) > bottleneck.size) {
-    lineages.to.coalesce <- sample(comp.lineages, 2)
+  while (length(comp$get.lineages()) > bottleneck.size) {
+    lineages.to.coalesce <- sample(comp$get.lineages(), 2)
     generate.coalescent(model, eventlog, lineages.to.coalesce, comp, current.time)
-    
-    # update while loop dependent condition: `comp.lineages`
-    extant.lineages <- model$get.extant.lineages(current.time)
-    comp.lineages <- unlist(sapply(extant.lineages, function(x) {
-      if (x$get.location()$get.name() == comp$get.name()) {x}
-      else {NULL}
-    }))
-    
   }
   
   # return list of lineages that 'survive' the bottleneck (coalescent time) onwards to source of transmission 
-  comp.lineages
+  comp$get.lineages()
 }
 
 

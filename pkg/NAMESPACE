@@ -16,6 +16,8 @@ export(sim.inner.tree)
 export(generate.migration)
 export(generate.coalescent)
 export(generate.bottleneck)
+export(remove.lineage.pairs)
+export(add.lineage.pairs)
 
 export(.outer.tree.to.phylo)
 export(.inner.tree.to.phylo)

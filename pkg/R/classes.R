@@ -149,8 +149,8 @@ Compartment <- R6Class("Compartment",
     },
     
     remove.lineage = function(ex.lineage) {
-      ind <- which(private$lineages == ex.lineage)
-      private$lineages[[ind]] <- NULL
+      lin.ind <- which(sapply(private$lineages, function(x){x$get.name() == ex.lineage$get.name()}))
+      private$lineages <- private$lineages[-lin.ind]
     }
   
   ),
