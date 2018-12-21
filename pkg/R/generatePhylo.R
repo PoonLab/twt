@@ -227,6 +227,11 @@ plot.EventLogger <- function(eventlog) {
   
   # convert edge dataframe into matrix
   
+  root.branch.length <- recursive.populate.branchlength(root)
+  node.label[root.no] <- root
+  Nnode <- Nnode + 1
+
+  
   phy <- list(tip.label=tip.label, Nnode=Nnode, edge.length=as.numeric(edge.length), edge=NA, node.label=node.label)
   attr(phy, 'class') <- 'phylo'
   attr(phy, 'order') <- 'cladewise'
