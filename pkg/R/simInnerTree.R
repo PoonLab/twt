@@ -71,7 +71,7 @@ sim.inner.tree <- function(model, eventlog) {
       comp.2.bottle <- inf[[which(inf.names == transm.event$compartment1)]]
       comp.2.receive <- inf[[which(inf.names == transm.event$compartment2)]]
       
-      survivor.lineages <- generate.bottleneck(model, eventlog, comp.2.bottle, new.time)
+      survivor.lineages <- generate.bottleneck(model, eventlog, comp.2.bottle, current.time)
       new.comp.location <- comp.2.receive$get.name()
       
       # for each of the survivor lineages, the compartment needs to update its location to the source of the transmission event
@@ -103,7 +103,7 @@ sim.inner.tree <- function(model, eventlog) {
     } else {
       # checks have been made, move forward with generating a migration or coalescent event with the new time
       
-      if (new.time == mig.time) {
+      if (chosen.time == mig.time) {
         # next event is a migration event; now draw migrated lineage, and source and recipient compartments
         migrating.lineage <- sample(extant.lineages, 1)[[1]]         # draw a lineage to be migrated
         generate.migration(model, eventlog, migrating.lineage, inf, inf.names, new.time)
@@ -179,42 +179,48 @@ generate.migration <- function(model, eventlog, migrating.lineage, inf, inf.name
   
   r_ind <- which(inf.names == r_comp$get.name())
   # exclude r_comp, and exclude any source comp currently w/ only one lineage (otherwise it would be considered a transmission)
-  filtered.inf <- sapply(inf[-r_ind], function(i) {if (length(i$get.lineages()) > 1) i})   
+  filtered.inf <- sapply(inf[-r_ind], function(i) {if (length(i$get.lineages()) > 1) i})
   s_comp <- sample(filtered.inf, 1)[[1]]                        # source compartment Lineage migrated from (forward time)
   
-  outer.tree.events <- eventlog$get.events('transmission')
-  outer.tree.comps <- union(outer.tree.events$compartment1, outer.tree.events$compartment2)
+  if (length(s_comp) != 0) {
+    # if this s_comp is NULL, means there are no lineages in this compartment; no migration is possible
+    # will not enter into this block, exits and moves back up a level onto next event
   
-  if (s_comp$get.name() %in% outer.tree.comps == FALSE) {
-    # issue 32: if migration of lineages from US individual not already included in outer tree, have to graft another branch to the outer tree
-    # source of migration is from US individual not already included in outer tree --> sample a time from stored vector of used & unused times
-    t.times <- s_comp$get.type()$get.transmission.times()
+    outer.tree.events <- eventlog$get.events('transmission')
+    outer.tree.comps <- union(outer.tree.events$compartment1, outer.tree.events$compartment2)
     
-    # sample an available time
-    avail.t.time <- t.times[ sample(which(t.times[names(t.times)==T] >= mig.time), 1) ]
+    if (s_comp$get.name() %in% outer.tree.comps == FALSE) {
+      # issue 32: if migration of lineages from US individual not already included in outer tree, have to graft another branch to the outer tree
+      # source of migration is from US individual not already included in outer tree --> sample a time from stored vector of used & unused times
+      t.times <- s_comp$get.type()$get.transmission.times()
+      
+      # sample an available time
+      avail.t.time <- t.times[ sample(which(t.times[names(t.times)==T] >= mig.time), 1) ]
+      
+      # reset the vector to make the sampled time now unavailable
+      # CONFIRMED: the type's vector of available t.times is updated for every compartment under this Compartment Type
+      sampled.t.time.ind <- which(t.times == avail.t.time)
+      names(t.times)[sampled.t.time.ind] <- FALSE
+      master.comp.type <- which(model$get.names(model$get.types()) == s_comp$get.type()$get.name())
+      model$get.types()[[master.comp.type]]$set.transmission.times(t.times)
+      
+      # generate new transmission event for branch to be grafted onto tree
+      eventlog$add.event('transmission', avail.t.time, l_name, NA, r_comp$get.name(), s_comp$get.name())
+    }
     
-    # reset the vector to make the sampled time now unavailable
-    # CONFIRMED: the type's vector of available t.times is updated for every compartment under this Compartment Type
-    sampled.t.time.ind <- which(t.times == avail.t.time)
-    names(t.times)[sampled.t.time.ind] <- FALSE
-    master.comp.type <- which(model$get.names(model$get.types()) == s_comp$get.type()$get.name())
-    model$get.types()[[master.comp.type]]$set.transmission.times(t.times)
+    # add lineage to source compartment
+    s_comp$add.lineage(migrating.lineage)
     
-    # generate new transmission event for branch to be grafted onto tree
-    eventlog$add.event('transmission', avail.t.time, l_name, NA, r_comp$get.name(), s_comp$get.name())
+    # remove lineage from recipient compartment
+    r_comp$remove.lineage(migrating.lineage)
+    
+    # set location of migrating lineage to source compartment
+    migrating.lineage$set.location(inf, s_comp$get.name())
+    
+    # add migration event to EventLogger
+    eventlog$add.event('migration', current.time, l_name, NA, r_comp$get.name(), s_comp$get.name())
+    
   }
-  
-  # add lineage to source compartment
-  s_comp$add.lineage(migrating.lineage)
-  
-  # remove lineage from recipient compartment
-  r_comp$remove.lineage(migrating.lineage)
-  
-  # set location of migrating lineage to source compartment
-  migrating.lineage$set.location(inf, s_comp$get.name())
-  
-  # add migration event to EventLogger
-  eventlog$add.event('migration', current.time, l_name, NA, r_comp_name, s_comp_name)
 
 }
 
@@ -292,20 +298,23 @@ remove.lineage.pairs <- function(model, lineage) {
   
   # narrow down to only the compartment with lineage of interest
   compname <- lineage$get.location()$get.name()
-  comp.lineage.pairs <- unlist(sapply(1:length(current.pairs), function(x) {
-    if (current.pairs[[x]] == compname) {names(current.pairs)[[x]]}
-    else {NULL}
-  }))
   
-  # narrow down to only ones with given lineage in the name
-  sapply(comp.lineage.pairs, function(y) {
-    # split each pair of names and look for the lineage name
-    split.names <- unlist(strsplit(y, '\\,'))
-    if (lineage$get.name() %in% split.names) {
-      # remove this pair of names from list attr `choices`
-      model$remove.pair(split.names[1], split.names[2])
-    }
-  })
+  if (length(current.pairs) != 0) {
+    comp.lineage.pairs <- unlist(sapply(1:length(current.pairs), function(x) {
+      if (current.pairs[[x]] == compname) {names(current.pairs)[[x]]}
+      else {NULL}
+    }))
+    
+    # narrow down to only ones with given lineage in the name
+    sapply(comp.lineage.pairs, function(y) {
+      # split each pair of names and look for the lineage name
+      split.names <- unlist(strsplit(y, '\\,'))
+      if (lineage$get.name() %in% split.names) {
+        # remove this pair of names from list attr `choices`
+        model$remove.pair(split.names[1], split.names[2])
+      }
+    })
+  }
 }
 
 
