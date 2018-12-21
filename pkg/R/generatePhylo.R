@@ -1,5 +1,5 @@
 ## these functions were extracted from MODEL class definition
-## TODO: modify function .outer.tree.to.phylo to accomodate this change
+## TODO: modify function .outer.tree.to.phylo to accommodate this change
 get.leaves.names = function(e) {
   # returns a vector of Compartment object names that are terminal nodes (only a recipient)
   # @param e = EventLogger object
@@ -151,54 +151,85 @@ plot.EventLogger <- function(eventlog) {
 
 
 
-
-
-.inner.tree.to.phylo <- function(eventlog, transmissions=FALSE) {
-  # function converts the coalescent events stored in the EventLogger object into an inner coalescent tree with an option to include or exclude transmission events
-  # TODO: make this functional to include migration events as well
+.inner.tree.to.phylo <- function(eventlog, fixed.samplings, transmission=FALSE) {
+  # function converts coalescent & migration events stored in the EventLogger object into an inner coalescent tree w/ option to include/exclude transmission events
   # @param eventlog = EventLogger object
-  # @param transmissions = logical; if TRUE, transmission events are included, with transmission events being excluded otherwise
+  # @param transmissions = logical; if TRUE, transmission events included, else excluded otherwise
   # @return phy = ape::phylo object
   
-  if (transmissions) {
-    t_events <- eventlog$get.events('transmission')
-  } else {
-    t_events <- NULL
-  }
-  c_events <- eventlog$get.events('coalescent')         # TODO: will need to include migration events here later
+  if (transmissions) { t_events <- eventlog$get.events('transmission')}
+  else {t_events <- NULL}
   
-  tips <- unlist(setdiff(union(c_events$lineage1, c_events$lineage2), c_events$compartment1))      # determined by which lineages are not in the ancestral (`compartment1`) column
-  root <- unlist(setdiff(c_events$compartment1, union(c_events$lineage1, c_events$lineage2)))      # determined by which lineage is not present in a coalescent event (`lineage1` and `lineage2`)
-  internals <- unlist(intersect(c_events$compartment1, union(c_events$lineage1, c_events$lineage2)))
+  c_events <- rbind(eventlog$get.events('coalescent'), eventlog$get.events('migration'))
   
   # initialize attributes of an ape::phylo object
   tip.label <- vector()
   edge.length <- vector()
-  # Nnode --> can't be determined as of yet
+  Nnode <- 0
   node.label <- vector()
-  # edge matrix can't be determined as of yet, so recording in a data frame
-  edge <- data.frame()
+  edge <- data.frame()      # eventually will convert into a static edge matrix
   
-  # intialize indices to be assigned to root, tips, and internals
-  tip.no <- 1 
+  # separate nodes into root, tips, and internals
+  root <- unlist(setdiff(c_events$compartment1, union(c_events$lineage1, c_events$lineage2)))
+  tips <- unlist(setdiff(union(c_events$lineage1, c_events$lineage2), c_events$compartment1))
+  internals <- unlist(intersect(c_events$compartment1, union(c_events$lineage1, c_events$lineage2)))
+  
+  # initialize ape::phylo indices to be assigned to root, tips, and internals
+  tip.no <- 1
   root.no <- length(tips) + 1
   node.no <- root.no + 1
   
+
+  recursive.populate.branchlength <- function(node) {
+    # postorder traversal to populate ape::phylo object
+    # visit and populate branch lengths of all children before visiting/populating itself
+    # @param node = name of a node of type character()
+    # @return branch.length = branch length of node of type numeric()
+    
+    if (node %in% tips) {
+      
+      # add node.samplingtime as branch length
+      tip.label[tip.no] <- node
+      branch.length <- fixed.samplings$tip.height[ which(fixed.samplings$tip.label == node) ]
+      ## FIXME: edge.length[tip.no] <- branch.length
+      # FIXME: add me to edge dataframe?
+      tip.no <- tip.no + 1
+      
+      # return tip's branch length (initial sampling time)
+      return (branch.length)
+
+    } else {
+      
+      eventRow <- c_events[ which(c_events$compartment1 == node), ]
+      children <- c(eventRow$lineage1, eventRow$lineage2)
+      for (child in children) {
+        child.branch.length <- recursive.populate.branchlength(child)
+        branch.length <- eventRow$time + child.branch.length
+        node.label[node.no] <- node
+        Nnode <- Nnode + 1
+        ## FIXME: edge.length[node.no] <- branch.length
+        # FIXME: add me to edge dataframe
+        node.no <- node.no + 1
+        
+        # return node's branch length
+        return (branch.length)
+      }
+
+    } 
+    
+  }
   
-  # helper function (recursive) for STEP 2
   
+  root.branch.length <- recursive.populate.branchlength(root)
+  node.label[root.no] <- root
+  Nnode <- Nnode + 1
   
-  # STEP 1: start at tips and assign branch lengths
-  
-  # STEP 2a: check if parents of tips/nodes already included in `tip.label` or `edge.label` to minimize redundancy
-  
-  # STEP 2b: follow parents of tips up to root and assign branch lengths
-  
-  # STEP 3: transmission events are treated like any other internal node, save for the edge label should reflect the transmission event (ie. 'A->B')
-  
+  phy <- list(tip.label=tip.label, Nnode=Nnode, edge.length=as.numeric(edge.length), edge=NA, node.label=node.label)
+  attr(phy, 'class') <- 'phylo'
+  attr(phy, 'order') <- 'cladewise'
+  phy
   
 }
-
 
 
 
