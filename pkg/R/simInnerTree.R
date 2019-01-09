@@ -276,13 +276,39 @@ generate.bottleneck <- function(model, eventlog, comp, current.time) {
   
   bottleneck.size <- comp$get.type()$get.bottleneck.size()
   
-  while (length(comp$get.lineages()) > bottleneck.size) {
-    lineages.to.coalesce <- sample(comp$get.lineages(), 2)
-    generate.coalescent(model, eventlog, lineages.to.coalesce, comp, current.time)
-  }
+  #while (length(comp$get.lineages()) > bottleneck.size) {
+  #  lineages.to.coalesce <- sample(comp$get.lineages(), 2)
+  #  generate.coalescent(model, eventlog, lineages.to.coalesce, comp, current.time)
+  #}
   
-  # return list of lineages that 'survive' the bottleneck (coalescent time) onwards to source of transmission 
-  comp$get.lineages()
+  # TODO: if bottleneck size > 1, randomly separate lineages into "bottleneck groups"
+  
+  # create a new ancestral lineage 
+  ancestral.lineage <- Lineage$new(name = model$get.node.ident(),           # label internal nodes iteratively from 1..inf by convention
+                                   sampling.time = current.time,
+                                   location = comp)
+  
+  # add ancestral lineage resulting from bottleneck
+  model$add.lineage(ancestral.lineage)
+  comp$add.lineage(ancestral.lineage)
+  model$update.node.ident()
+  
+  sapply(comp$get.lineages(), function(x) {
+    # remove lineages undergoing bottleneck
+    model$remove.lineage(x)
+    comp$remove.lineage(x)
+    # remove pairs containing bottleneck lineages from list of pair choices
+    remove.lineage.pairs(model, x)
+  })
+  
+  # add pairs with new ancestral lineage into list of pair choices
+  add.lineage.pairs(model, ancestral.lineage)
+  
+  bottleneck.lineages <- paste0(comp$get.lineages(), collapse=',')
+  eventlog$add.event('bottleneck', current.time, bottleneck.lineages, NA, ancestral.lineage$get.name(), comp$get.name())
+  
+  # TODO: if bottleneck size > 1, return list of lineages that 'survive' the bottleneck (coalescent time) onwards to source of transmission 
+  ancestral.lineage
 }
 
 
