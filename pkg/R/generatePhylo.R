@@ -151,7 +151,7 @@ plot.EventLogger <- function(eventlog) {
 
 
 
-.inner.tree.to.phylo <- function(eventlog, fixed.samplings, transmission=FALSE) {
+.inner.tree.to.phylo <- function(eventlog, fixed.samplings, transmissions=FALSE) {
   # function converts coalescent & migration events stored in the EventLogger object into an inner coalescent tree w/ option to include/exclude transmission events
   # @param eventlog = EventLogger object
   # @param transmissions = logical; if TRUE, transmission events included, else excluded otherwise
@@ -160,7 +160,7 @@ plot.EventLogger <- function(eventlog) {
   if (transmissions) { t_events <- eventlog$get.events('transmission')}
   else {t_events <- NULL}
   
-  c_events <- rbind(eventlog$get.events('coalescent'), eventlog$get.events('migration'))
+  c_events <- rbind(eventlog$get.events('coalescent'), eventlog$get.events('migration'), eventlog$get.events('bottleneck'))
   
   # initialize attributes of an ape::phylo object
   tip.label <- vector()

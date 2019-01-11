@@ -74,17 +74,23 @@ sim.inner.tree <- function(model, eventlog) {
       survivor.lineages <- generate.bottleneck(model, eventlog, comp.2.bottle, current.time)
       new.comp.location <- comp.2.receive$get.name()
       
-      # for each of the survivor lineages, the compartment needs to update its location to the source of the transmission event
-      survivor.names <- sapply(survivor.lineages, function(x) {
-        x$set.location(inf, new.comp.location)
-        x$get.name()
-      })
+      # TODO: if bottleneck.size > 1, for each of the survivor lineages, the compartment needs to update its location to the source of the transmission event
+      #survivor.names <- sapply(survivor.lineages, function(x) {
+      #  x$set.location(inf, new.comp.location)
+      #  x$get.name()
+      #})
       
-      # need to remove survivor lineages from comp.2.bottle, and add those same survivor lineages to new.comp.location
-      sapply(survivor.lineages, function(x) {
-        comp.2.bottle$remove.lineage(x)
-        comp.2.receive$add.lineage(x)
-      })
+      # TODO: need to remove survivor lineages from comp.2.bottle, and add those same survivor lineages to new.comp.location
+      #sapply(survivor.lineages, function(x) {
+      #  comp.2.bottle$remove.lineage(x)
+      #  comp.2.receive$add.lineage(x)
+      #})
+      
+      # QUICKFIX: only for when bottleneck.size > 1
+      survivor.lineages$set.location(inf, new.comp.location)
+      survivor.names <- survivor.lineages$get.name()
+      comp.2.bottle$remove.lineage(survivor.lineages)
+      comp.2.receive$add.lineage(survivor.lineages)
       
       # the transmission event's `lineage` column can now be updated to included the names of the 'survivors'
       eventlog$modify.event(transm.event$time, survivor.names)
@@ -282,6 +288,15 @@ generate.bottleneck <- function(model, eventlog, comp, current.time) {
   #}
   
   # TODO: if bottleneck size > 1, randomly separate lineages into "bottleneck groups"
+  bottleneck.lineages <- paste0(sapply(comp$get.lineages(), function(x) {x$get.name()}), collapse=',')
+  
+  sapply(comp$get.lineages(), function(x) {
+    # remove lineages undergoing bottleneck
+    model$remove.lineage(x)
+    comp$remove.lineage(x)
+    # remove pairs containing bottleneck lineages from list of pair choices
+    remove.lineage.pairs(model, x)
+  })
   
   # create a new ancestral lineage 
   ancestral.lineage <- Lineage$new(name = model$get.node.ident(),           # label internal nodes iteratively from 1..inf by convention
@@ -293,18 +308,9 @@ generate.bottleneck <- function(model, eventlog, comp, current.time) {
   comp$add.lineage(ancestral.lineage)
   model$update.node.ident()
   
-  sapply(comp$get.lineages(), function(x) {
-    # remove lineages undergoing bottleneck
-    model$remove.lineage(x)
-    comp$remove.lineage(x)
-    # remove pairs containing bottleneck lineages from list of pair choices
-    remove.lineage.pairs(model, x)
-  })
+  # add pairs with new ancestral lineage into list of pair choices (unnecessary for bottleneck.size of 1)
+  # add.lineage.pairs(model, ancestral.lineage)
   
-  # add pairs with new ancestral lineage into list of pair choices
-  add.lineage.pairs(model, ancestral.lineage)
-  
-  bottleneck.lineages <- paste0(comp$get.lineages(), collapse=',')
   eventlog$add.event('bottleneck', current.time, bottleneck.lineages, NA, ancestral.lineage$get.name(), comp$get.name())
   
   # TODO: if bottleneck size > 1, return list of lineages that 'survive' the bottleneck (coalescent time) onwards to source of transmission 
