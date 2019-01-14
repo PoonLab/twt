@@ -1,6 +1,12 @@
-# inner-tree simulation
+
 sim.inner.tree <- function(model, eventlog) {
+  # Simulate the migration and coalescence of pathogen lineages within hosts (compartments).
+  #
+  # @param model: R6 object from Model$new()
+  # @param eventlog: R6 EventLogger object populated by sim.outer.tree()
+  # @return EventLogger object updated with inner tree events
   
+  # vector of all infected Compartments in population at time zero (most recent)
   inf <- c(model$get.compartments(), model$get.unsampled.hosts())
   inf.names <- model$get.names(inf)
   
@@ -9,6 +15,8 @@ sim.inner.tree <- function(model, eventlog) {
   # transmission times
   transm.times <- transm.events$time[!is.na(transm.events$time)]
   current.time <- 0.0
+  
+  # vector of Lineages at time 0
   extant.lineages <- model$get.extant.lineages(current.time)
   num.extant <- length(extant.lineages)
   if (num.extant == 0) {
@@ -19,17 +27,19 @@ sim.inner.tree <- function(model, eventlog) {
   while (length(extant.lineages) > 1) {
     # if transmissions are over, then nothing to do?
     
-    
     # calculate waiting times for coalescent events for each compartment with 2 or more lineages
     coal.wait.times <- calc.coal.wait.times(model, current.time)
+    
     # calculate total migration rate across all compartments at a given time
     mig.rate <- calc.migration.rates(model, current.time)
+    
     # record number of transmission events already included in simulation at this current.time
     num.transm.occurred <- length(which(transm.times <= current.time))
     
     if (mig.rate == 0) {
       # no migration events possible
-      mig.time <- -1
+      mig.time <- -1  #FIXME: why is this here?
+      
       if (length(coal.wait.times) == 0) {
         # no coalescence or migration events possible at this point in time
         # move up to the earliest transmission event in the EventLogger
