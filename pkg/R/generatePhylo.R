@@ -151,16 +151,28 @@ plot.EventLogger <- function(eventlog) {
 
 
 
-.inner.tree.to.phylo <- function(eventlog, fixed.samplings, transmissions=FALSE) {
+.inner.tree.to.phylo <- function(eventlog, fixed.samplings, transmissions=FALSE, migrations=FALSE) {
   # function converts coalescent & migration events stored in the EventLogger object into an inner coalescent tree w/ option to include/exclude transmission events
   # @param eventlog = EventLogger object
   # @param transmissions = logical; if TRUE, transmission events included, else excluded otherwise
   # @return phy = ape::phylo object
   
-  if (transmissions) { t_events <- eventlog$get.events('transmission')}
-  else {t_events <- NULL}
+  if (transmissions) { t_events <- eventlog$get.events('transmission')
+  } else {t_events <- NULL}
   
-  c_events <- rbind(eventlog$get.events('coalescent'), eventlog$get.events('migration'), eventlog$get.events('bottleneck'))
+  # if the event being examined is a bottleneck event, must split column named "$lineage1" into the bottlenecking lineages
+  split.bottleneck.lineages <- function(lineages.names) {
+    as.vector(strsplit(lineages.names, ',', fixed=T)[[1]])
+  }
+  
+  m_events <- eventlog$get.events('migration')
+  c_events <- eventlog$get.events('coalescent')
+  b_events <- eventlog$get.events('bottleneck')
+  b_events_lineages <- sapply(1:nrow(b_events), function(x) {
+    split.bottleneck.lineages(b_events[x,]$lineage1)
+  })
+  
+  total_events <- rbind(m_events, c_events, b_events)
   
   # initialize attributes of an ape::phylo object
   tip.label <- vector()
@@ -170,14 +182,13 @@ plot.EventLogger <- function(eventlog) {
   edge <- data.frame()      # eventually will convert into a static edge matrix
   
   # separate nodes into root, tips, and internals
-  root <- unlist(setdiff(c_events$compartment1, union(c_events$lineage1, c_events$lineage2)))
-  tips <- unlist(setdiff(union(c_events$lineage1, c_events$lineage2), c_events$compartment1))
-  internals <- unlist(intersect(c_events$compartment1, union(c_events$lineage1, c_events$lineage2)))
+  root <- unlist(setdiff(c_events$compartment1, c(c_events$lineage1, c_events$lineage2, b_events_lineages)))
+  tips <- unlist(setdiff(c(c_events$lineage1, c_events$lineage2, b_events_lineages), c(c_events$compartment1, b_events$compartment1)))
+  internals <- unlist(intersect(c_events$compartment1, c(c_events$lineage1, c_events$lineage2, b_events_lineages)))
   
   # initialize ape::phylo indices to be assigned to root, tips, and internals
   tip.no <- 1
-  root.no <- length(tips) + 1
-  node.no <- root.no + 1
+  node.no <- length(tips) + 1
   
 
   recursive.populate.branchlength <- function(node) {
@@ -188,51 +199,113 @@ plot.EventLogger <- function(eventlog) {
     
     if (node %in% tips) {
       
-      # add node.samplingtime as branch length
-      tip.label[tip.no] <- node
-      branch.length <- fixed.samplings$tip.height[ which(fixed.samplings$tip.label == node) ]
-      ## FIXME: edge.length[tip.no] <- branch.length
-      # FIXME: add me to edge dataframe?
-      tip.no <- tip.no + 1
+      # add node.sampling.time as branch length
+      individual.branch.length <- fixed.samplings$tip.height[ which(fixed.samplings$tip.label == node) ]
+      tip.label[tip.no] <<- node
+      
+      tip.no <<- tip.no + 1
       
       # return tip's branch length (initial sampling time)
-      return (branch.length)
-
+      return (c(individual.branch.length, (tip.no -1)))
+      
     } else {
       
-      eventRow <- c_events[ which(c_events$compartment1 == node), ]
-      children <- c(eventRow$lineage1, eventRow$lineage2)
-      for (child in children) {
-        child.branch.length <- recursive.populate.branchlength(child)
-        branch.length <- eventRow$time + child.branch.length
-        node.label[node.no] <- node
-        Nnode <- Nnode + 1
-        ## FIXME: edge.length[node.no] <- branch.length
-        # FIXME: add me to edge dataframe
-        node.no <- node.no + 1
-        
-        # return node's branch length
-        return (branch.length)
+      eventRow <- total_events[ which(total_events$compartment1 == node), ]
+      
+      if (eventRow$event.type == 'bottleneck') {
+        children <- split.bottleneck.lineages(eventRow$lineage1)
+      } else {
+        # this is a coalescent event
+        children <- c(eventRow$lineage1, eventRow$lineage2)
       }
 
+      # record current node.no before recursive call
+      indiv.node.no <- node.no
+      
+      node.no <<- node.no + 1
+      Nnode <<- Nnode + 1
+      
+      for (child in children) {
+        
+        if (migrations) {
+          # check for migration events involving `node`; must incorporate singleton node
+          if (child %in% m_events$lineage1) {
+            
+            mig.event <- m_events[ which(m_events$lineage1 == child), ]
+            
+            mig.node.no <- node.no
+            node.no <<- node.no + 1
+            Nnode <<- Nnode + 1
+            
+            # create singleton node here
+            migration.branch.length <- eventRow$time - mig.event$time
+            
+            node.label[nrow(edge)+1] <<- node
+            edge.length[nrow(edge)+1] <<- migration.branch.length
+            cat(indiv.node.no, ' ', mig.node.no, ' ', migration.branch.length, '\n')
+            edge <<- rbind(edge, c(indiv.node.no, mig.node.no))
+
+            # continue with recursion
+            recursive.call <- recursive.populate.branchlength(child)
+            child.branch.length <- recursive.call[1]
+            child.node.no <- recursive.call[2]
+            
+            individual.branch.length <- mig.event$time - child.branch.length
+            
+            node.label[nrow(edge)+1] <<- child
+            
+            edge.length[nrow(edge)+1] <<- individual.branch.length ###
+            edge <<- rbind(edge, c(mig.node.no, child.node.no))
+            
+            return (c(eventRow$time, mig.node.no))
+            
+          } else {
+            
+            recursive.call <- recursive.populate.branchlength(child)
+            child.branch.length <- recursive.call[1]
+            child.node.no <- recursive.call[2]
+            
+            individual.branch.length <- eventRow$time - child.branch.length
+            
+            node.label[nrow(edge)+1] <<- node
+            
+            edge.length[nrow(edge)+1] <<- individual.branch.length ###
+            edge <<- rbind(edge, c(indiv.node.no, child.node.no))
+            
+          }
+          
+        } else {
+          
+          recursive.call <- recursive.populate.branchlength(child)
+          child.branch.length <- recursive.call[1]
+          child.node.no <- recursive.call[2]
+          
+          individual.branch.length <- eventRow$time - child.branch.length
+          
+          node.label[nrow(edge)+1] <<- node
+          
+          edge.length[nrow(edge)+1] <<- individual.branch.length ###
+          edge <<- rbind(edge, c(indiv.node.no, child.node.no))
+
+        }
+        
+      }
+      
+      # return node's branch length
+      return (c(eventRow$time, indiv.node.no))
+      
+      
     } 
     
   }
   
-  
-  root.branch.length <- recursive.populate.branchlength(root)
-  node.label[root.no] <- root
-  Nnode <- Nnode + 1
-  # FIXME: add me to edge dataframe
+
+  recursive.populate.branchlength(root)
   
   # convert edge dataframe into matrix
+  edge.mat <- as.matrix(edge)
   
-  root.branch.length <- recursive.populate.branchlength(root)
-  node.label[root.no] <- root
-  Nnode <- Nnode + 1
-
-  
-  phy <- list(tip.label=tip.label, Nnode=Nnode, edge.length=as.numeric(edge.length), edge=NA, node.label=node.label)
+  phy <- list(tip.label=tip.label, Nnode=Nnode, edge.length=as.numeric(edge.length), edge=edge.mat, node.label=node.label)
   attr(phy, 'class') <- 'phylo'
   attr(phy, 'order') <- 'cladewise'
   phy

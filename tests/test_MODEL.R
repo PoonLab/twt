@@ -19,3 +19,23 @@ transm.tree <- .inner.tree.to.phylo(i, fixed.samplings)
 
 tips.n.heights <- init.fixed.samplings(test)
 init.branching.events(test, e)    # applies only to example1.yaml for now, since they provide a "host tree" w/ transmission events
+
+
+for (child in children) {
+  +         recursive.call <- recursive.populate.branchlength(child)
+  +         child.branch.length <- recursive.call[1]
+  +         child.node.no <- recursive.call[2]
+  +         
+    +         individual.branch.length <- eventRow$time - child.branch.length
+    +         node.label[node.no] <<- node
+    +         
+      +         edge.length[node.no] <<- individual.branch.length
+      +         edge <<- rbind(edge, c(node.no, child.node.no))
+      +         
+        +         Nnode <<- Nnode + 1
+        +         node.no <<- node.no + 1
+        +       }
++       
+  +       # return node's branch length
+  +       return (c(eventRow$time, (node.no-1)))
++     } 
