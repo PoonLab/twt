@@ -151,6 +151,13 @@ plot.EventLogger <- function(eventlog) {
 
 
 
+plot.EventLogger <- function(EventLogger, fixed.samplings=fixed.samplings) {
+  phy <- .inner.tree.to.phylo(eventlog=eventlog, fixed.samplings=fixed.samplings)
+  plot(phy)
+}
+
+
+
 .inner.tree.to.phylo <- function(eventlog, fixed.samplings, transmissions=FALSE, migrations=FALSE) {
   # function converts coalescent & migration events stored in the EventLogger object into an inner coalescent tree w/ option to include/exclude transmission events
   # @param eventlog = EventLogger object
@@ -225,6 +232,8 @@ plot.EventLogger <- function(eventlog) {
       node.no <<- node.no + 1
       Nnode <<- Nnode + 1
       
+      final.node.no <- indiv.node.no
+      
       for (child in children) {
         
         if (migrations) {
@@ -257,7 +266,8 @@ plot.EventLogger <- function(eventlog) {
             edge.length[nrow(edge)+1] <<- individual.branch.length ###
             edge <<- rbind(edge, c(mig.node.no, child.node.no))
             
-            return (c(eventRow$time, mig.node.no))
+            #final.node.no <- mig.node.no
+            #return (c(eventRow$time, mig.node.no))
             
           } else {
             
@@ -292,7 +302,7 @@ plot.EventLogger <- function(eventlog) {
       }
       
       # return node's branch length
-      return (c(eventRow$time, indiv.node.no))
+      return (c(eventRow$time, final.node.no))
       
       
     } 
