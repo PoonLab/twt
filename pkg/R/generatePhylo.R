@@ -21,15 +21,6 @@ get.node.heights = function() {
 
 
 
-
-plot.EventLogger <- function(eventlog) {
-  # function plots the population trajectories of susceptibles and infected over time
-  t_events <- eventlog$get.events('transmission')
-  
-}
-
-
-
 .outer.tree.to.phylo <- function(eventlog) {
   # function converts the transmission events stored in an EventLogger object into a transmission tree
   # @param eventlog = EventLogger object
@@ -151,7 +142,7 @@ plot.EventLogger <- function(eventlog) {
 
 
 
-plot.EventLogger <- function(EventLogger, fixed.samplings=fixed.samplings) {
+plot.EventLogger <- function(eventlog, fixed.samplings=fixed.samplings) {
   phy <- .inner.tree.to.phylo(eventlog=eventlog, fixed.samplings=fixed.samplings)
   plot(phy)
 }
@@ -185,6 +176,7 @@ plot.EventLogger <- function(EventLogger, fixed.samplings=fixed.samplings) {
   tip.label <- vector()
   edge.length <- vector()
   Nnode <- 0
+  record.node.label <- vector()   # will keep track of node labels one-to-one with edge matrix, will pare down in function recursive.populate.node.labels()
   node.label <- vector()
   edge <- data.frame()      # eventually will convert into a static edge matrix
   
@@ -249,7 +241,7 @@ plot.EventLogger <- function(EventLogger, fixed.samplings=fixed.samplings) {
             # create singleton node here
             migration.branch.length <- eventRow$time - mig.event$time
             
-            node.label[nrow(edge)+1] <<- node
+            #node.label[nrow(edge)+1] <<- node
             edge.length[nrow(edge)+1] <<- migration.branch.length
             cat(indiv.node.no, ' ', mig.node.no, ' ', migration.branch.length, '\n')
             edge <<- rbind(edge, c(indiv.node.no, mig.node.no))
@@ -261,7 +253,7 @@ plot.EventLogger <- function(EventLogger, fixed.samplings=fixed.samplings) {
             
             individual.branch.length <- mig.event$time - child.branch.length
             
-            node.label[nrow(edge)+1] <<- child
+            record.node.label[nrow(edge)+1] <<- child
             
             edge.length[nrow(edge)+1] <<- individual.branch.length ###
             edge <<- rbind(edge, c(mig.node.no, child.node.no))
@@ -277,7 +269,7 @@ plot.EventLogger <- function(EventLogger, fixed.samplings=fixed.samplings) {
             
             individual.branch.length <- eventRow$time - child.branch.length
             
-            node.label[nrow(edge)+1] <<- node
+            record.node.label[nrow(edge)+1] <<- node
             
             edge.length[nrow(edge)+1] <<- individual.branch.length ###
             edge <<- rbind(edge, c(indiv.node.no, child.node.no))
@@ -292,7 +284,7 @@ plot.EventLogger <- function(EventLogger, fixed.samplings=fixed.samplings) {
           
           individual.branch.length <- eventRow$time - child.branch.length
           
-          node.label[nrow(edge)+1] <<- node
+          record.node.label[nrow(edge)+1] <<- node
           
           edge.length[nrow(edge)+1] <<- individual.branch.length ###
           edge <<- rbind(edge, c(indiv.node.no, child.node.no))
@@ -310,10 +302,35 @@ plot.EventLogger <- function(EventLogger, fixed.samplings=fixed.samplings) {
   }
   
 
-  recursive.populate.branchlength(root)
+  recursive.populate.node.labels <- function(node) {
+    # ape::phylo populates node labels in plot function by preorder traversal
+    # visit node, then go right, then go left
+    
+    if (node %in% 1:length(tips) == FALSE) {
+      label <- record.node.label[which(edge[,1] == node)[1]]
+      if (label %in% node.label == FALSE) {
+        # record name in node.label vector
+        node.label[length(node.label)+1] <<- label
+        
+        # access children, right first, then left
+        children <- edge[which(edge[,1] == node), 2]
+        iterating.list <- children[order(children)]
+        for (child in iterating.list) {
+          recursive.populate.node.labels(child)
+        }
+      }
+    }
+    
+    #return(node.label)
+  }
   
+  
+  recursive.populate.branchlength(root)
+
   # convert edge dataframe into matrix
-  edge.mat <- as.matrix(edge)
+  edge <- as.matrix(edge)
+  
+  recursive.populate.node.labels(length(tips)+1)
   
   phy <- list(tip.label=tip.label, Nnode=Nnode, edge.length=as.numeric(edge.length), edge=edge.mat, node.label=node.label)
   attr(phy, 'class') <- 'phylo'

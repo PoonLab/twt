@@ -21,3 +21,4 @@ export(add.lineage.pairs)
 
 export(.outer.tree.to.phylo)
 export(.inner.tree.to.phylo)
+export(plot.EventLogger)
