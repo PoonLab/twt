@@ -55,9 +55,9 @@ init.fixed.samplings <- function(model) {
 
 # Case 2 : User manually inputs a host transmission tree into YAML format under Compartments header
 init.branching.events <- function(model, eventlog) {
+  # EventLogger object initialized with list of fixed transmission events
   # @param model = MODEL object
   # @param eventlog = EventLogger object
-  # @return eventlog = EventLogger object initialized with list of fixed transmission events
 
   # if the user input includes a tree (host tree) then add transmission events
   comps <- model$get.compartments()
@@ -79,7 +79,7 @@ init.branching.events <- function(model, eventlog) {
     eventlog$add.event('transmission',  branching.time, lineage, NA, x$get.name(), source)
   })
   
-  eventlog
+  #eventlog
 }
 
 
@@ -87,9 +87,9 @@ init.branching.events <- function(model, eventlog) {
 # Case 3: no host tree provided, transmission events need to be generated
 sim.outer.tree <- function(model, eventlog) {
   # simulate transmission events and fix them to the timeline of lineage sampled events
+  # EventLogger object populated with generated transmission events
   # @param model = MODEL object
   # @param eventlog = EventLogger object
-  # @return eventlog = EventLogger object populated with generated transmission events
   
   # ptm <- proc.time()   # benchmark start time
   
@@ -242,7 +242,7 @@ sim.outer.tree <- function(model, eventlog) {
   # total <- proc.time() - ptm
   # cat("Total:", round(total[['elapsed']],5), "s\n")
     
-  eventlog
+  # eventlog
 }
 
 

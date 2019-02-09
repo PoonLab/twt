@@ -5,37 +5,15 @@ setwd('~/git/treeswithintrees')
 settings <- yaml.load_file('tests/fixtures/example4.yaml')
 test <- MODEL$new(settings)
 fixed.samplings <- init.fixed.samplings(test)
+
 e <- EventLogger$new()
+sim.outer.tree(test, e)
+sim.inner.tree(test, e)
 
-o <- sim.outer.tree(test, e)
-i <- sim.inner.tree(test, o)
+# transm.tree <- .outer.tree.to.phylo(o)
+phy <- .inner.tree.to.phylo(e, fixed.samplings)
 
-
-
-
-
-transm.tree <- .outer.tree.to.phylo(o)
-transm.tree <- .inner.tree.to.phylo(i, fixed.samplings)
-
-tips.n.heights <- init.fixed.samplings(test)
-init.branching.events(test, e)    # applies only to example1.yaml for now, since they provide a "host tree" w/ transmission events
+# tips.n.heights <- init.fixed.samplings(test)
+# init.branching.events(test, e)    # applies only to example1.yaml for now, since they provide a "host tree" w/ transmission events
 
 
-for (child in children) {
-  +         recursive.call <- recursive.populate.branchlength(child)
-  +         child.branch.length <- recursive.call[1]
-  +         child.node.no <- recursive.call[2]
-  +         
-    +         individual.branch.length <- eventRow$time - child.branch.length
-    +         node.label[node.no] <<- node
-    +         
-      +         edge.length[node.no] <<- individual.branch.length
-      +         edge <<- rbind(edge, c(node.no, child.node.no))
-      +         
-        +         Nnode <<- Nnode + 1
-        +         node.no <<- node.no + 1
-        +       }
-+       
-  +       # return node's branch length
-  +       return (c(eventRow$time, (node.no-1)))
-+     } 

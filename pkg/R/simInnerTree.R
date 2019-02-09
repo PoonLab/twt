@@ -1,10 +1,10 @@
 
 sim.inner.tree <- function(model, eventlog) {
   # Simulate the migration and coalescence of pathogen lineages within hosts (compartments).
+  # EventLogger object updated with inner tree events
   #
   # @param model: R6 object from Model$new()
   # @param eventlog: R6 EventLogger object populated by sim.outer.tree()
-  # @return EventLogger object updated with inner tree events
   
   # vector of all infected Compartments in population at time zero (most recent)
   inf <- c(model$get.compartments(), model$get.unsampled.hosts())
@@ -175,7 +175,7 @@ sim.inner.tree <- function(model, eventlog) {
     
   }
   
-  eventlog
+  #eventlog
 }
 
 

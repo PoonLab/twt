@@ -149,7 +149,7 @@ plot.EventLogger <- function(eventlog, fixed.samplings=fixed.samplings) {
 
 
 
-.inner.tree.to.phylo <- function(eventlog, fixed.samplings, transmissions=FALSE, migrations=FALSE) {
+.inner.tree.to.phylo <- function(eventlog, fixed.samplings, transmissions=FALSE, migrations=FALSE, node.labels=FALSE) {
   # function converts coalescent & migration events stored in the EventLogger object into an inner coalescent tree w/ option to include/exclude transmission events
   # @param eventlog = EventLogger object
   # @param transmissions = logical; if TRUE, transmission events included, else excluded otherwise
@@ -163,7 +163,9 @@ plot.EventLogger <- function(eventlog, fixed.samplings=fixed.samplings) {
     as.vector(strsplit(lineages.names, ',', fixed=T)[[1]])
   }
   
-  m_events <- eventlog$get.events('migration')
+  if (migrations) {m_events <- eventlog$get.events('migration')
+  } else {m_events <- NULL}
+  
   c_events <- eventlog$get.events('coalescent')
   b_events <- eventlog$get.events('bottleneck')
   b_events_lineages <- sapply(1:nrow(b_events), function(x) {
@@ -332,7 +334,13 @@ plot.EventLogger <- function(eventlog, fixed.samplings=fixed.samplings) {
   
   recursive.populate.node.labels(length(tips)+1)
   
-  phy <- list(tip.label=tip.label, Nnode=Nnode, edge.length=as.numeric(edge.length), edge=edge.mat, node.label=node.label)
+  if (node.labels) {
+    phy <- list(tip.label=tip.label, Nnode=Nnode, edge.length=as.numeric(edge.length), edge=edge, node.label=node.label)
+  } else {
+    # default behaviour: no node labels bc INDELible doesn't like them
+    phy <- list(tip.label=tip.label, Nnode=Nnode, edge.length=as.numeric(edge.length), edge=edge)
+  }
+  
   attr(phy, 'class') <- 'phylo'
   attr(phy, 'order') <- 'cladewise'
   phy

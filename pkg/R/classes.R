@@ -75,6 +75,10 @@ CompartmentType  <- R6Class("CompartmentType",
     
     set.transmission.times = function(vector.transm.times) {
       private$transmission.times <- vector.transm.times
+    },
+    
+    set.migration.rate = function(recipient.type, new.migr.rate) {
+      private$migration.rates[[recipient.type]] <- new.migr.rate
     }
     
   ),
