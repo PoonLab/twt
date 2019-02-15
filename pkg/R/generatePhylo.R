@@ -183,7 +183,7 @@ plot.EventLogger <- function(eventlog, fixed.samplings=fixed.samplings) {
   edge <- data.frame()      # eventually will convert into a static edge matrix
   
   # separate nodes into root, tips, and internals
-  root <- unlist(setdiff(c_events$compartment1, c(c_events$lineage1, c_events$lineage2, b_events_lineages)))
+  root <- unlist(setdiff(c(c_events$compartment1, b_events$compartment1), c(c_events$lineage1, c_events$lineage2, b_events_lineages)))
   tips <- unlist(setdiff(c(c_events$lineage1, c_events$lineage2, b_events_lineages), c(c_events$compartment1, b_events$compartment1)))
   internals <- unlist(intersect(c_events$compartment1, c(c_events$lineage1, c_events$lineage2, b_events_lineages)))
   
@@ -197,7 +197,7 @@ plot.EventLogger <- function(eventlog, fixed.samplings=fixed.samplings) {
     # visit and populate branch lengths of all children before visiting/populating itself
     # @param node = name of a node of type character()
     # @return branch.length = branch length of node of type numeric()
-    
+
     if (node %in% tips) {
       
       # add node.sampling.time as branch length
@@ -300,7 +300,7 @@ plot.EventLogger <- function(eventlog, fixed.samplings=fixed.samplings) {
       
       
     } 
-    
+      
   }
   
 
