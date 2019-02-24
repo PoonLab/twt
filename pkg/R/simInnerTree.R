@@ -1,22 +1,26 @@
-
 sim.inner.tree <- function(model, eventlog) {
-  # Simulate the migration and coalescence of pathogen lineages within hosts (compartments).
+  # Simulate the coalescence of pathogen lineages within hosts (compartments)
+  # AND resolve the migration events that may or may not involve sampled pathogen lineages within hosts
   # EventLogger object updated with inner tree events
   #
   # @param model: R6 object from Model$new()
-  # @param eventlog: R6 EventLogger object populated by sim.outer.tree()
+  # @param eventlog: R6 EventLogger object populated by sim.outer.tree() and sim.migrations()
   
   # vector of all infected Compartments in population at time zero (most recent)
   inf <- c(model$get.compartments(), model$get.unsampled.hosts())
   inf.names <- model$get.names(inf)
   
-  # collect extant lineages at time t=0
+  # retrieve transmission events and times
   transm.events <- eventlog$get.events('transmission')
-  # transmission times
   transm.times <- transm.events$time[!is.na(transm.events$time)]
+  
+  # retrieve migration events **to be resolved** and times
+  migration.events <- eventlog$get.migration.events()
+  migration.times <- migration.events$time
+  
   current.time <- 0.0
   
-  # vector of Lineages at time 0
+  # collect extant lineages at time t=0 and store into a vector
   extant.lineages <- model$get.extant.lineages(current.time)
   num.extant <- length(extant.lineages)
   if (num.extant == 0) {
@@ -25,43 +29,31 @@ sim.inner.tree <- function(model, eventlog) {
   
   
   while (length(extant.lineages) > 1) {
-    # if transmissions are over, then nothing to do?
     
     # calculate waiting times for coalescent events for each compartment with 2 or more lineages
     coal.wait.times <- calc.coal.wait.times(model, current.time)
     
-    # calculate total migration rate across all compartments at a given time
-    mig.rate <- calc.migration.rates(model, current.time)
-    
     # record number of transmission events already included in simulation at this current.time
     num.transm.occurred <- length(which(transm.times <= current.time))
     
-    if (mig.rate == 0) {
-      # no migration events possible
-      mig.time <- -1  #FIXME: why is this here?
+    # record number of migration events already included in simulation at this current.time
+    num.migrations.occurred <- length(which(migration.times <= current.time))
       
-      if (length(coal.wait.times) == 0) {
-        # no coalescence or migration events possible at this point in time
-        # move up to the earliest transmission event in the EventLogger
-        current.time <- min(transm.times)
-        extant.lineages <- model$get.extant.lineages(current.time)
-        next
-      } else {
-        # retrieve the minimum waiting time of the calculated coalescent event waiting times
-        chosen.time <- min(coal.wait.times)
-      }
+    if (length(coal.wait.times) == 0) {
+      # no coalescent events possible at this point in time
+      # move up to the earliest event (transmission or migration) in the EventLogger
+      
+      current.time <- min(c(transm.times, migration.times))
+      extant.lineages <- model$get.extant.lineages(current.time)
+      next
+      
     } else {
-      # calculate a waiting time to the next migration event
-      mig.time <- rexp(n=1, rate=mig.rate)
-      if (length(coal.wait.times) == 0) {
-        # no coalescence events possible; accept the migration time as the new time
-        chosen.time <- mig.time
-      } else {
-        # take the minimum waiting time out of all coalescent wait times and migration time
-        chosen.time <- min(c(mig.time, coal.wait.times))
-      }
-      new.time <- chosen.time + current.time
+      # retrieve the minimum waiting time of the calculated coalescent event waiting times
+      chosen.time <- min(coal.wait.times)
+      
     }
+  
+    new.time <- chosen.time + current.time
     
     
     # check to see if the minimum waiting time is not exceeded by other fixed events:
@@ -96,7 +88,7 @@ sim.inner.tree <- function(model, eventlog) {
       #  comp.2.receive$add.lineage(x)
       #})
       
-      # QUICKFIX: only for when bottleneck.size > 1
+      # FIXME: only works for when bottleneck.size > 1
       survivor.lineages$set.location(inf, new.comp.location)
       survivor.names <- survivor.lineages$get.name()
       comp.2.bottle$remove.lineage(survivor.lineages)
@@ -108,6 +100,18 @@ sim.inner.tree <- function(model, eventlog) {
       
       next
       
+    } else if (length(which(migration.times <= new.time)) > num.migrations.occurred) {
+      # next event is a migration event that needs to be resolved
+      
+      # does this migration event involve one of our sampled lineages?
+      # for each compartment wth 1+ lineages, calculate the probability that the migration involves a sampled lineage
+      # probability of it being a sampled lineage is #sampled / N, where N = 1/coal.rate
+      # return all the compartments that can be "matched" with this migration event time
+      
+      # if yes, draw migrated lineage and source and recipient compartments
+      migrating.lineage <- sample(extant.lineages, 1)[[1]]         # draw a lineage to be migrated
+      generate.migration(model, eventlog, migrating.lineage, inf, inf.names, new.time)
+      
     } else if (length(model$get.extant.lineages(new.time)) > num.extant) {
       # OR other lineage(s) become(s) extant before the waiting time
       # update the current time to add the waiting time and start again
@@ -117,27 +121,22 @@ sim.inner.tree <- function(model, eventlog) {
       next
       
     } else {
-      # checks have been made, move forward with generating a migration or coalescent event with the new time
+      # checks have been made, move forward with generating a coalescent event with the new time
       
-      if (chosen.time == mig.time) {
-        # next event is a migration event; now draw migrated lineage, and source and recipient compartments
-        migrating.lineage <- sample(extant.lineages, 1)[[1]]         # draw a lineage to be migrated
-        generate.migration(model, eventlog, migrating.lineage, inf, inf.names, new.time)
-  
-      } else {
-        # next event is a coalescent event; now choose a 'bin' from compartment with new.time
-        coal.comp.name <- names(coal.wait.times)[which(coal.wait.times == chosen.time)]   # name of the compartment with the min coal wait time
-        coal.comp <- inf[[which(inf.names == coal.comp.name)]]
-        coal.comp.lineages <- sapply(extant.lineages, function(x){
-          if (x$get.location()$get.name() == coal.comp.name) {x}
-          else {NULL}
-        })
-        coal.comp.lineages[sapply(coal.comp.lineages, is.null)] <- NULL   # cleanup
-        lineages.to.coalesce <- sample(coal.comp.lineages, 2)
-        generate.coalescent(model, eventlog, lineages.to.coalesce, coal.comp, new.time)
-        
-      }
+      # choose a 'bin' from compartment with new.time
+      coal.comp.name <- names(coal.wait.times)[which(coal.wait.times == chosen.time)]   # name of the compartment with the min coal wait time
+      coal.comp <- inf[[which(inf.names == coal.comp.name)]]
       
+      coal.comp.lineages <- sapply(extant.lineages, function(x){
+        if (x$get.location()$get.name() == coal.comp.name) {x}
+        else {NULL}
+      })
+      
+      coal.comp.lineages[sapply(coal.comp.lineages, is.null)] <- NULL   # cleanup
+      lineages.to.coalesce <- sample(coal.comp.lineages, 2)
+      generate.coalescent(model, eventlog, lineages.to.coalesce, coal.comp, new.time)
+      
+
       # issue 40: if coalescent event occurs at a transmission time, force coalescence of all other lineages at this time
       if (length(which(transm.times <= new.time)) > num.transm.occurred) {
         old.transm <- transm.times[which(transm.times <= current.time)]
@@ -183,6 +182,7 @@ sim.inner.tree <- function(model, eventlog) {
 
 generate.migration <- function(model, eventlog, migrating.lineage, inf, inf.names, current.time) {
   # function records a migration event with a given lineage from a source to recipient migration
+  #
   # @param model = MODEl object
   # @param eventlog = EventLogger object
   # @param migrating.lineage = Lineage object; to be migrated
@@ -244,6 +244,7 @@ generate.migration <- function(model, eventlog, migrating.lineage, inf, inf.name
 
 generate.coalescent <- function(model, eventlog, lineages.to.coalesce, coalescing.comp, current.time) {
   # function records the coalescent of 2 given lineages currently extant in given Compartment into an ancestral lineage
+  #
   # @param model = MODEL object
   # @param eventlog = EventLogger object
   # @param lineages.to.coalesce = vector of Lineage objects of length 2
@@ -284,6 +285,7 @@ generate.coalescent <- function(model, eventlog, lineages.to.coalesce, coalescin
 generate.bottleneck <- function(model, eventlog, comp, current.time) {
   # function coalesces lineages currently extant in given Compartment to the given Compartment's bottleneck size
   # bottleneck size of Compartment is user determined by CompartmentType
+  #
   # @param model = MODEL object
   # @param eventlog = EventLogger object
   # @param comp = Compartment object
@@ -332,6 +334,7 @@ generate.bottleneck <- function(model, eventlog, comp, current.time) {
 
 remove.lineage.pairs <- function(model, lineage) {
   # this function removes lineage pairs in MODEL obj attr `choices`: list of lineage pair choices to coalesce
+  #
   # @param model = MODEL object, one per simulation
   # @param lineage = Lineage object, to be removed from list of lineage pair choices
   
@@ -363,6 +366,7 @@ remove.lineage.pairs <- function(model, lineage) {
 
 add.lineage.pairs <- function(model, lineage) {
   # this function adds lineage pairs in MODEL obj attr `choices`: list of lineage pair choices to coalesce
+  #
   # @param model = MODEL object
   # @param lineage = Lineage object to be added to list of lineage pair choices
   

@@ -1,6 +1,7 @@
 init.fixed.samplings <- function(model) {
   # treeswithintrees/Wiki/Simulation Pseudocode step 2
   # retrieve sampling time and populate tip labels / times in ape::phylo object (building it tips up)
+  #
   # @param model = MODEL object
 
   # add lineage sampling events from Lineage objects
@@ -21,6 +22,7 @@ init.fixed.samplings <- function(model) {
 # Case 1 : User provides a host transmission tree
 .to.eventlog <- function(newick) {
   # function converts an ape::phylo tree object into transmission events stored in a NEW EventLogger object
+  #
   # @param newick = Newick string in mode character
   # @return e = EventLogger object initialized with list of fixed transmission events
   
@@ -56,6 +58,7 @@ init.fixed.samplings <- function(model) {
 # Case 2 : User manually inputs a host transmission tree into YAML format under Compartments header
 init.branching.events <- function(model, eventlog) {
   # EventLogger object initialized with list of fixed transmission events
+  #
   # @param model = MODEL object
   # @param eventlog = EventLogger object
 
@@ -88,6 +91,7 @@ init.branching.events <- function(model, eventlog) {
 sim.outer.tree <- function(model, eventlog) {
   # simulate transmission events and fix them to the timeline of lineage sampled events
   # EventLogger object populated with generated transmission events
+  #
   # @param model = MODEL object
   # @param eventlog = EventLogger object
   
@@ -250,8 +254,9 @@ sim.outer.tree <- function(model, eventlog) {
 
 .calc.popn.rates <- function(types, indiv.types) {
   # stores population rates for each CompartmentType specified by the user
-  # @param types = all CompartmentTypes
-  # @param indiv.types = list of individual Types for each Compartment
+  #
+  # @param types = list of CompartmentType objects
+  # @param indiv.types = list of CompartmentType name of type `character` for each individual Compartment object
   # @return popn.rates = matrix of population transmission rates for each type to type comparison
   
   popn.rates <- matrix(nrow=length(types),                                # source types
@@ -273,6 +278,7 @@ sim.outer.tree <- function(model, eventlog) {
 
 .store.initial.samplings <- function(infected, types, lineages) {
   # stores first sampling time of a Lineage for each sampled infected Compartment
+  #
   # @param infected = list of infected Compartment objects
   # @param types = list of CompartmentType objects
   # @param lineages = list of Lineage objects
@@ -327,18 +333,20 @@ sim.outer.tree <- function(model, eventlog) {
 
 .calc.transmission.events <- function(popn.totals, popn.rates, init.samplings, possible.sources) {
   # generates transmission events only, based on population dynamics of the MODEL
+  #
   # @param popn.totals = totals at time `t=0` of susceptible and infected specific to each CompartmentType
   # @param popn.rates = rates of transmission between different CompartmentTypes
   # @param init.samplings = list of first sampling times for each Compartment
   # @param possible.sources = list of possible Sources that each recipient Type can receive a transmission from 
   # @return t_events = data frame of transmission events, each made up of: time, recipient Type, and source Type 
   
-  t_events <- data.frame(time=numeric(), r_type=character(), s_type=character(), v_type=character())
+  t_events <- data.frame(time=numeric(), r_type=character(), s_type=character(), v_type=character(), stringsAsFactors = FALSE)
   maxAttempts <- 10 
   
   for (attempt in 1:maxAttempts) {
     
     for (v in 1:nrow(popn.totals)) {
+      # TODO: if more than one virus, will need to make a copy of the population totals (as you are modifing the totals while generating events for each virus type)
       
       v.name <- rownames(popn.totals)[v]
       virus <- popn.totals[v,]
@@ -364,7 +372,7 @@ sim.outer.tree <- function(model, eventlog) {
         if (current.time < min(init.samplings)) { break }
         
         # store time, source and recipient types of transmission, and virus type
-        t_events <- rbind(t_events, list(time=current.time, r_type=r, s_type=s, v_type=v.name), stringsAsFactors=F)
+        t_events <- rbind(t_events, list(time=current.time, r_type=r, s_type=s, v_type=v.name))
         
         # update counts of total population  (number of susceptibles decrease by 1, number of infected increases by 1)
         virus[s] <- virus[s] - 1            
@@ -403,6 +411,7 @@ sim.outer.tree <- function(model, eventlog) {
 
 .assign.transmission.times <- function(infected, events, initial.samplings, type) {
   # assignment of transmission times specific to each type
+  #
   # @param infected = list of Compartment objects to be assigned transmission times
   # @param events = list of possible transmission events for the infected
   # @param initial.samplings = list of respective initial sampling times for each Compartment

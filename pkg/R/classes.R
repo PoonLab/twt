@@ -223,18 +223,22 @@ EventLogger <- R6Class("EventLogger",
                                               lineage1=character(),
                                               lineage2=character(),
                                               compartment1=character(),
-                                              compartment2=character()
+                                              compartment2=character(),
+                                              stringsAsFactors = FALSE
                                              ),
                           events.noncumul = data.frame(event.type=character(),
                                                        time=numeric(),
                                                        lineage1=character(),
                                                        lineage2=character(),
                                                        compartment1=character(),
-                                                       compartment2=character()
-                                                      )
+                                                       compartment2=character(),
+                                                       stringsAsFactors = FALSE
+                                                      ),
+                          migration.events.storage = data.frame(stringsAsFactors = FALSE)
     ){
       private$events <- events
       private$events.noncumul <- events.noncumul
+      private$migration.events.storage <- migration.events.storage
     },
    
    
@@ -278,7 +282,7 @@ EventLogger <- R6Class("EventLogger",
                  # OR name of a compartment object in mode character for a coalescent event
       
       CumulEvent <- list(event.type=name, time=time, lineage1=obj1, lineage2=obj2, compartment1=obj3, compartment2=obj4)
-      private$events <- rbind(private$events, CumulEvent, stringsAsFactors=F)
+      private$events <- rbind(private$events, CumulEvent)
     },
    
    
@@ -288,7 +292,8 @@ EventLogger <- R6Class("EventLogger",
                                                              lineage1=character(),
                                                              lineage2=character(),
                                                              compartment1=character(),
-                                                             compartment2=character()
+                                                             compartment2=character(),
+                                                             stringsAsFactors = FALSE
                                                             )
     },
     
@@ -300,12 +305,21 @@ EventLogger <- R6Class("EventLogger",
       rowname <- rownames(transmission.events)[index]
       eventlog.index <- which(rownames(self$get.all.events()) == rowname)
       private$events[eventlog.index, 'lineage1'] <- lineages
+    },
+    
+    get.migration.events = function() {
+      private$migration.events.storage
+    },
+    
+    store.migration.events = function(migration.events) {
+      private$migration.events.storage <- migration.events
     }
     
   ),
   private = list(
     events = NULL,
     events.noncumul = NULL,
+    migration.events.storage = NULL,
     
     generate.noncumul.eventlog = function(cumul.eventlog) {
       # generates an event log with non-cumulative times of events
@@ -315,7 +329,8 @@ EventLogger <- R6Class("EventLogger",
                                             lineage1=character(),
                                             lineage2=character(),
                                             compartment1=character(),
-                                            compartment2=character()
+                                            compartment2=character(),
+                                            stringsAsFactors = FALSE
                                             )
       event.types <- unique(cumul.eventlog$event.type)   # up to 3 different event types
       
@@ -331,7 +346,7 @@ EventLogger <- R6Class("EventLogger",
             tips <- setdiff(events$compartment1, events$compartment2)
             
             # trace from root to tips and calculate all subsequent non-cumulative times based on maxTime (cumulative time of root)
-            private$events.noncumul <- rbind(private$events.noncumul, private$generate.events(events, root, tips), stringsAsFactors=F)
+            private$events.noncumul <- rbind(private$events.noncumul, private$generate.events(events, root, tips))
           } else if (event.name == 'coalescent') {
             
           }
@@ -360,7 +375,7 @@ EventLogger <- R6Class("EventLogger",
               # traverse descendants
               generate.indiv.event(as.character(childEvent['compartment1']), as.numeric(childEvent['time']))
               childEvent['time'] <- parent_time - as.numeric(childEvent['time'])
-              private$events.noncumul <- rbind(private$events.noncumul, childEvent, stringsAsFactors=F)
+              private$events.noncumul <- rbind(private$events.noncumul, childEvent)
             }
             return(private$events.noncumul)
           }
@@ -377,7 +392,7 @@ EventLogger <- R6Class("EventLogger",
         generate.indiv.event(as.character(parentEvent['compartment1']), as.numeric(parentEvent['time']))
         # root's individualt delta t from when it was infected to when it made its first transmission is 'undefined'
         parentEvent['time'] <- maxRootTime - parentEvent['time']      # 0 or 1 by convention (see treeswithintrees closed issue #29)
-        private$events.noncumul <- rbind(private$events.noncumul, parentEvent, stringsAsFactors=F)
+        private$events.noncumul <- rbind(private$events.noncumul, parentEvent)
       }
      
       indices <- grep('NA', row.names(private$events.noncumul), ignore.case=T, invert=T)
