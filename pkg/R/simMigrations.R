@@ -120,21 +120,23 @@ sim.migrations <- function(model, eventlog) {
       stop ('Not possible to have Lineage sampling time(s) precede the start time of the "', v.name, '"epidemic. Please set the start time of the epidemic further back in time.')
     }
     
-    while (current.time > max.sampling.time) {
+    for (i in transmission.events$time) {
       # sample source and recipient types for this generated migration evnet
       r <- sample(r.types, 1)
       s <- sample(possible.source.types[[r]], 1)
       
       # calculate waiting time until the next migration event
-      num.transmissions.occurred <- length(which(transmission.events$time > current.time))
+      num.transmissions.occurred <- length(which(transmission.events$time > i))
       rate <- popn.migration.rates[s,r] * (num.transmissions.occurred + starting.infection)
       delta.t <- rexp(n=1, rate=rate)
-      current.time <- current.time- delta.t
+      migration.time <- i - delta.t
       
-      if (current.time < max.sampling.time) { break }
-      
-      # store time, source and recipient types of migration event, and virus type
-      m_events <- rbind(m_events, list(time=current.time, r_type=r, s_type=s, v_type=v.name))
+      if (migration.time < max.sampling.time) { 
+        next
+      } else {
+        # store time, source and recipient types of migration event, and virus type
+        m_events <- rbind(m_events, list(time=migration.time, r_type=r, s_type=s, v_type=v.name))
+      }
       
     }
     
