@@ -127,7 +127,7 @@ sim.migrations <- function(model, eventlog) {
       
       # calculate waiting time until the next migration event
       num.transmissions.occurred <- length(which(transmission.events$time > i))
-      rate <- popn.migration.rates[s,r] * (num.transmissions.occurred + starting.infection)
+      rate <- popn.migration.rates[s,r] * (num.transmissions.occurred + starting.infection - 1)    # substract by 1, can't receive a migration from itself
       delta.t <- rexp(n=1, rate=rate)
       migration.time <- i - delta.t
       
