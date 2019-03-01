@@ -29,7 +29,7 @@ CompartmentTypes:
     branching.rates: (blood=0.0, tissue=0.0)      # blood will have already been infected, tissue cannot infect itself (this is )
     migration.rates: (blood=0.01, tissue=0.0)     # migration rate from tissue -> blood is release of virus particles from cell lineages back into blood
     coalescent.rate: 0.5                          # if a coalescent rate is given, AND death.rate.distr, and popn.growth.dynamics, throws warning, and uses rates derived from death.wait.distr and popn.growth.dynamics
-    bottleneck.size: 1                            # assume no migration to infected cells
+    bottleneck.size: 5                            # assume no migration to infected cells
     death.rate.distr:
     wait.time.distr:                              # distribution of waiting time between infection time and first sampling time of a Compartment
       distr: 'exp'
