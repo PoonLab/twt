@@ -1,6 +1,6 @@
 ## test script
 require(twt)
-#set.seed(34)
+set.seed(34)
 setwd('~/git/treeswithintrees')
 settings <- yaml.load_file('tests/fixtures/example4.yaml')
 test <- MODEL$new(settings)

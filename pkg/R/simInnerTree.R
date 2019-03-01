@@ -296,8 +296,8 @@ generate.bottleneck <- function(model, eventlog, comp, current.time) {
     # (or in this function call's terms, the bottleneck size is not a multiple of the number of lineages to randomly split)
     # can be split up to a max of the bottleneck size, but what if there are not enough lineages?
     # this must mean that there are other unsampled infected lineages that passed through the bottleneck event, but we aren't keeping track of them
-    if (length(comp$get.lineages()) < bottleneck.size) {
-      split(sample(comp$get.lineages()), 1:length(comp$get.lineages))   # FIXME: in these instances, ensures that there is NO forced coalescence from the bottleneck event, when in reality, technically could still coalesce at this point in time
+    if (length(comp$get.lineages()) <= bottleneck.size) {
+      split(sample(comp$get.lineages()), 1:length(comp$get.lineages()))   # FIXME: in these instances, ensures that there is NO forced coalescence from the bottleneck event, when in reality, technically could still coalesce at this point in time
     } else {
       split(sample(comp$get.lineages()), 1:bottleneck.size)
     }
