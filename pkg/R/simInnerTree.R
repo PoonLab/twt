@@ -101,16 +101,53 @@ sim.inner.tree <- function(model, eventlog) {
       next
       
     } else if (length(which(migration.times <= new.time)) > num.migrations.occurred) {
-      # next event is a migration event that needs to be resolved
+      # next event is a migration event that needs to be resolved      
       
-      # does this migration event involve one of our sampled lineages?
-      # for each compartment wth 1+ lineages, calculate the probability that the migration involves a sampled lineage
-      # probability of it being a sampled lineage is #sampled / N, where N = 1/coal.rate
-      # return all the compartments that can be "matched" with this migration event time
+      old.migrations <- migration.times[which(migration.times <= current.time)]
+      all.new.migrations <- migration.times[which(migration.times <= new.time)]
+      current.time <- min(set.diff(all.new.migrations, old.migrations))
       
-      # if yes, draw migrated lineage and source and recipient compartments
-      migrating.lineage <- sample(extant.lineages, 1)[[1]]         # draw a lineage to be migrated
-      generate.migration(model, eventlog, migrating.lineage, inf, inf.names, new.time)
+      migration.event <- migration.events[which(migration.times == current.time),]
+      
+      # first, draw a random recipient compartment with a matching recipientType of the migration event to be resolved
+      possible.recipients <- sapply(inf, function(x) {
+        if (x$get.type()$get.name() == migration.event$r_type) {x}
+      })
+      chosen.recipient <- sample(possible.recipients, 1)
+      
+      # does this compartment involve one of our sampled infected compartments?
+      if (chosen.recipient$is.unsampled() != TRUE) {
+        
+        # if so, does this migration event involve one of our sampled lineages?
+        # probability of the migration involving a sampled lineage is (number of extant sampled lineages / N ), where N = 1/coal.rate
+        prob.samp.lin <- length(chosen.recipient$get.lineages()) * chosen.recipient$get.type()$get.coalescent.rate()
+        
+        # if so, draw a source compartment with a matching sourceType to the event to be resolved
+        # additionally, randomly draw a sampled infected lineage to be the migrating lineage and generate the migration event
+        if (runif(1) < prob.samp.lin) {
+          
+          possible.sources <- sapply(inf, function(y) {
+            of (y$get.type()$get.name() == migration.event$s_type) {y}
+          })
+          chosen.source <- sample(possible.sources, 1)
+         
+          migrating.lineage <- sample(chosen.recipient$get.lineages(), 1)[[1]]         # draw a lineage to be migrated
+          generate.migration(model, eventlog, chosen.source, chosen.recipient, migrating.lineage, migration.event$time)
+        } else {
+          # TODO : maybe don't "restart this simulation, rather, go straight to the next checks
+          current.time <- new.time
+          extant.lineages <- model$get.extant.lineages(current.time)
+          
+          next
+        }
+        
+      } else {
+        # TODO : maybe don't "restart this simulation, rather, go straight to the next checks
+        current.time <- new.time
+        extant.lineages <- model$get.extant.lineages(current.time)
+        
+        next
+      }
       
     } else if (length(model$get.extant.lineages(new.time)) > num.extant) {
       # OR other lineage(s) become(s) extant before the waiting time
@@ -180,7 +217,7 @@ sim.inner.tree <- function(model, eventlog) {
 
 
 
-generate.migration <- function(model, eventlog, migrating.lineage, inf, inf.names, current.time) {
+generate.migration <- function(model, eventlog, source, recipient, migrating.lineage, migration.time) {
   # function records a migration event with a given lineage from a source to recipient migration
   #
   # @param model = MODEl object
@@ -191,52 +228,42 @@ generate.migration <- function(model, eventlog, migrating.lineage, inf, inf.name
   # @param current.time = double; time of simulation current to this function call
 
   l_name <- migrating.lineage$get.name()                       # lineage name
-  r_comp <- migrating.lineage$get.location()                   # recipient compartment Lineage migrated to (forward time)
   
-  r_ind <- which(inf.names == r_comp$get.name())
-  # exclude r_comp, and exclude any source comp currently w/ only one lineage (otherwise it would be considered a transmission)
-  filtered.inf <- sapply(inf[-r_ind], function(i) {if (length(i$get.lineages()) > 1) i})
-  s_comp <- sample(filtered.inf, 1)[[1]]                        # source compartment Lineage migrated from (forward time)
-  
-  if (length(s_comp) != 0) {
-    # if this s_comp is NULL, means there are no lineages in this compartment; no migration is possible
-    # will not enter into this block, exits and moves back up a level onto next event
-  
-    outer.tree.events <- eventlog$get.events('transmission')
-    outer.tree.comps <- union(outer.tree.events$compartment1, outer.tree.events$compartment2)
-    
-    if (s_comp$get.name() %in% outer.tree.comps == FALSE) {
-      # issue 32: if migration of lineages from US individual not already included in outer tree, have to graft another branch to the outer tree
-      # source of migration is from US individual not already included in outer tree --> sample a time from stored vector of used & unused times
-      t.times <- s_comp$get.type()$get.transmission.times()
-      
-      # sample an available time
-      avail.t.time <- t.times[ sample(which(t.times[names(t.times)==T] >= mig.time), 1) ]
-      
-      # reset the vector to make the sampled time now unavailable
-      # CONFIRMED: the type's vector of available t.times is updated for every compartment under this Compartment Type
-      sampled.t.time.ind <- which(t.times == avail.t.time)
-      names(t.times)[sampled.t.time.ind] <- FALSE
-      master.comp.type <- which(model$get.names(model$get.types()) == s_comp$get.type()$get.name())
-      model$get.types()[[master.comp.type]]$set.transmission.times(t.times)
-      
-      # generate new transmission event for branch to be grafted onto tree
-      eventlog$add.event('transmission', avail.t.time, l_name, NA, r_comp$get.name(), s_comp$get.name())
-    }
-    
-    # add lineage to source compartment
-    s_comp$add.lineage(migrating.lineage)
-    
-    # remove lineage from recipient compartment
-    r_comp$remove.lineage(migrating.lineage)
-    
-    # set location of migrating lineage to source compartment
-    migrating.lineage$set.location(inf, s_comp$get.name())
-    
-    # add migration event to EventLogger
-    eventlog$add.event('migration', current.time, l_name, NA, r_comp$get.name(), s_comp$get.name())
-    
+  outer.tree.events <- eventlog$get.events('transmission')
+  outer.tree.comps <- union(outer.tree.events$compartment1, outer.tree.events$compartment2)
+
+  if (source$get.name() %in% outer.tree.comps == FALSE) {
+    # issue 32: if migration of lineages from US individual not already included in outer tree, have to graft another branch to the outer tree
+    # source of migration is from US individual not already included in outer tree --> sample a time from stored vector of used & unused times
+    t.times <- source$get.type()$get.transmission.times()
+
+    # sample an available time
+    avail.t.time <- t.times[ sample(which(t.times[names(t.times)==T] >= migration.time), 1) ]
+
+    # reset the vector to make the sampled time now unavailable
+    # CONFIRMED: the type's vector of available t.times is updated for every compartment under this Compartment Type
+    sampled.t.time.ind <- which(t.times == avail.t.time)
+    names(t.times)[sampled.t.time.ind] <- FALSE
+    master.comp.type <- which(model$get.names(model$get.types()) == source$get.type()$get.name())
+    model$get.types()[[master.comp.type]]$set.transmission.times(t.times)
+
+    # generate new transmission event for branch to be grafted onto tree
+    eventlog$add.event('transmission', avail.t.time, l_name, NA, recipient$get.name(), source$get.name())
   }
+
+  # add lineage to source compartment
+  source$add.lineage(migrating.lineage)
+  source$add.lineage.pairs(model, migrating.lineage)
+
+  # remove lineage from recipient compartment
+  recipient$remove.lineage(migrating.lineage)
+  recipient$remove.lineage.pairs(migrating.lineage)
+
+  # set location of migrating lineage to source compartment
+  migrating.lineage$set.location(inf, source$get.name())
+
+  # add migration event to EventLogger
+  eventlog$add.event('migration', current.time, l_name, NA, recipient$get.name(), source$get.name())
 
 }
 
