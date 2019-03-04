@@ -283,7 +283,7 @@ EventLogger <- R6Class("EventLogger",
                  # OR name of a compartment object in mode character for a coalescent event
       
       CumulEvent <- list(event.type=name, time=time, lineage1=obj1, lineage2=obj2, compartment1=obj3, compartment2=obj4)
-      private$events <- rbind(private$events, CumulEvent)
+      private$events <- rbind(private$events, CumulEvent, stringsAsFactors=F)
     },
    
    
@@ -347,7 +347,7 @@ EventLogger <- R6Class("EventLogger",
             tips <- setdiff(events$compartment1, events$compartment2)
             
             # trace from root to tips and calculate all subsequent non-cumulative times based on maxTime (cumulative time of root)
-            private$events.noncumul <- rbind(private$events.noncumul, private$generate.events(events, root, tips))
+            private$events.noncumul <- rbind(private$events.noncumul, private$generate.events(events, root, tips), stringsAsFactors=F)
           } else if (event.name == 'coalescent') {
             
           }
@@ -376,7 +376,7 @@ EventLogger <- R6Class("EventLogger",
               # traverse descendants
               generate.indiv.event(as.character(childEvent['compartment1']), as.numeric(childEvent['time']))
               childEvent['time'] <- parent_time - as.numeric(childEvent['time'])
-              private$events.noncumul <- rbind(private$events.noncumul, childEvent)
+              private$events.noncumul <- rbind(private$events.noncumul, childEvent, stringsAsFactors=F)
             }
             return(private$events.noncumul)
           }
@@ -393,7 +393,7 @@ EventLogger <- R6Class("EventLogger",
         generate.indiv.event(as.character(parentEvent['compartment1']), as.numeric(parentEvent['time']))
         # root's individualt delta t from when it was infected to when it made its first transmission is 'undefined'
         parentEvent['time'] <- maxRootTime - parentEvent['time']      # 0 or 1 by convention (see treeswithintrees closed issue #29)
-        private$events.noncumul <- rbind(private$events.noncumul, parentEvent)
+        private$events.noncumul <- rbind(private$events.noncumul, parentEvent, stringsAsFactors=F)
       }
      
       indices <- grep('NA', row.names(private$events.noncumul), ignore.case=T, invert=T)

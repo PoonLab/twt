@@ -103,7 +103,7 @@ sim.inner.tree <- function(model, eventlog) {
       
       old.migrations <- migration.times[which(migration.times <= current.time)]
       all.new.migrations <- migration.times[which(migration.times <= new.time)]
-      current.time <- min(set.diff(all.new.migrations, old.migrations))
+      current.time <- min(setdiff(all.new.migrations, old.migrations))
       
       migration.event <- migration.events[which(migration.times == current.time),]
       
@@ -111,7 +111,8 @@ sim.inner.tree <- function(model, eventlog) {
       possible.recipients <- sapply(inf, function(x) {
         if (x$get.type()$get.name() == migration.event$r_type) {x}
       })
-      chosen.recipient <- sample(possible.recipients, 1)
+      possible.recipients[sapply(possible.recipients, is.null)] <- NULL    # cleanup
+      chosen.recipient <- sample(possible.recipients, 1)[[1]]
       
       # does this compartment involve one of our sampled infected compartments?
       if (chosen.recipient$is.unsampled() != TRUE) {
@@ -125,12 +126,14 @@ sim.inner.tree <- function(model, eventlog) {
         if (runif(1) < prob.samp.lin) {
           
           possible.sources <- sapply(inf, function(y) {
-            of (y$get.type()$get.name() == migration.event$s_type) {y}
+            if (y$get.type()$get.name() == migration.event$s_type) {y}
           })
-          chosen.source <- sample(possible.sources, 1)
+          possible.sources[sapply(possible.sources, is.null)] <- NULL   # cleanup
+          chosen.source <- sample(possible.sources, 1)[[1]]
          
           migrating.lineage <- sample(chosen.recipient$get.lineages(), 1)[[1]]         # draw a lineage to be migrated
           generate.migration(model, eventlog, chosen.source, chosen.recipient, migrating.lineage, migration.event$time)
+          
         } else {
           # TODO : maybe don't "restart this simulation, rather, go straight to the next checks
           current.time <- new.time
@@ -251,17 +254,17 @@ generate.migration <- function(model, eventlog, source, recipient, migrating.lin
 
   # add lineage to source compartment
   source$add.lineage(migrating.lineage)
-  source$add.lineage.pairs(model, migrating.lineage)
+  add.lineage.pairs(model, migrating.lineage)
 
   # remove lineage from recipient compartment
   recipient$remove.lineage(migrating.lineage)
-  recipient$remove.lineage.pairs(migrating.lineage)
+  remove.lineage.pairs(model, migrating.lineage)
 
   # set location of migrating lineage to source compartment
-  migrating.lineage$set.location(inf, source$get.name())
+  migrating.lineage$set.location(c(model$get.compartments(), model$get.unsampled.hosts()), source$get.name())
 
   # add migration event to EventLogger
-  eventlog$add.event('migration', current.time, l_name, NA, recipient$get.name(), source$get.name())
+  eventlog$add.event('migration', migration.time, l_name, NA, recipient$get.name(), source$get.name())
 
 }
 

@@ -13,6 +13,10 @@ export(sim.outer.tree)
 export(sim.migrations)
 
 export(sim.inner.tree)
+export(calc.coal.wait.times)
+export(generate.coalescent)
+export(generate.migration)
+export(generate.bottleneck)
 
 export(.outer.tree.to.phylo)
 export(.inner.tree.to.phylo)

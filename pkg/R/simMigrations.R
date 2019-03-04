@@ -121,21 +121,35 @@ sim.migrations <- function(model, eventlog) {
     }
     
     for (i in transmission.events$time) {
-      # sample source and recipient types for this generated migration evnet
-      r <- sample(r.types, 1)
-      s <- sample(possible.source.types[[r]], 1)
       
-      # calculate waiting time until the next migration event
-      num.transmissions.occurred <- length(which(transmission.events$time > i))
-      rate <- popn.migration.rates[s,r] * (num.transmissions.occurred + starting.infection - 1)    # substract by 1, can't receive a migration from itself
-      delta.t <- rexp(n=1, rate=rate)
-      migration.time <- i - delta.t
+      temp.time <- i
       
-      if (migration.time < max.sampling.time) { 
-        next
-      } else {
-        # store time, source and recipient types of migration event, and virus type
-        m_events <- rbind(m_events, list(time=migration.time, r_type=r, s_type=s, v_type=v.name))
+      while (temp.time > max.sampling.time) {
+        
+        # sample source and recipient types for this generated migration evnet
+        r <- sample(r.types, 1)
+        s <- sample(possible.source.types[[r]], 1)
+        
+        # calculate waiting time until the next migration event
+        num.transmissions.occurred <- length(which(transmission.events$time >= temp.time))
+        rate <- popn.migration.rates[s,r] * (num.transmissions.occurred + starting.infection - 1)    # substract by 1, can't receive a migration from itself
+        if (rate <= 0) {
+          break
+        } else {
+          delta.t <- rexp(n=1, rate=rate)
+          migration.time <- temp.time - delta.t
+        }
+        
+        if (migration.time < max.sampling.time) { 
+          break
+        } else {
+          # store time, source and recipient types of migration event, and virus type
+          m_events <- rbind(m_events, list(time=migration.time, r_type=r, s_type=s, v_type=v.name), stringsAsFactors=F)
+          temp.time <- migration.time
+        }
+        
+        
+        
       }
       
     }

@@ -1,6 +1,6 @@
 ## test script
 require(twt)
-set.seed(34)
+#set.seed(34)
 setwd('~/git/treeswithintrees')
 # setwd('C:/Users/tng92/git/treeswithintrees')
 settings <- yaml.load_file('tests/fixtures/example4.yaml')
@@ -11,6 +11,7 @@ e <- EventLogger$new()
 sim.outer.tree(test, e)
 sim.migrations(test, e)
 sim.inner.tree(test, e)
+e$get.all.events()
 
 # transm.tree <- .outer.tree.to.phylo(o)
 phy <- .inner.tree.to.phylo(e, fixed.samplings)
