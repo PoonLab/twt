@@ -265,7 +265,7 @@ EventLogger <- R6Class("EventLogger",
       if (nrow(eventList) != 0) {
         eventList
       } else {
-        cat('No events of type "', event.type, '".')
+        cat('No events of type "', event.type, '".\n')
         NULL
       }
      

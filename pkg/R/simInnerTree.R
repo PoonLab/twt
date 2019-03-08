@@ -44,6 +44,20 @@ sim.inner.tree <- function(model, eventlog) {
       # move up to the earliest event (transmission or migration) in the EventLogger
       
       current.time <- min(c(transm.times, migration.times))
+      
+      # must resolve transmission event or migration event (issue #53)
+      
+      if (current.time %in% transm.times) {
+        # transmission event to be resolved
+        transm.event <- transm.events[which(transm.times == current.time),]
+        update.transmission(model, eventlog, inf, inf.names, transm.event)
+        
+      } else {
+        # migration event to be resolved
+        migration.event <- migration.events[which(migration.times == current.time),]
+        
+      }
+      
       extant.lineages <- model$get.extant.lineages(current.time)
       next
       
@@ -70,32 +84,9 @@ sim.inner.tree <- function(model, eventlog) {
       current.time <- min(union( all.new.transm, old.transm )) 
       
       transm.event <- transm.events[which(transm.times == current.time),]
-      comp.2.bottle <- inf[[which(inf.names == transm.event$compartment1)]]
-      comp.2.receive <- inf[[which(inf.names == transm.event$compartment2)]]
+      update.transmission(model, eventlog, inf, inf.names, transm.event)
       
-      survivor.lineages <- generate.bottleneck(model, eventlog, comp.2.bottle, current.time)
-      new.comp.location <- comp.2.receive$get.name()
-      
-      # for the survivor lineage(s), the compartment needs to update its location to the source of the transmission event
-      survivor.names <- sapply(survivor.lineages, function(x) {
-        x$set.location(inf, new.comp.location)
-        x$get.name()
-      })
-      survivors <- paste0(survivor.names, collapse=',')
-      
-      # need to remove survivor lineages from comp.2.bottle, and add those same survivor lineages to new.comp.location
-      # also need to remove all lineage pairs in the bottlenecking compartment, and update/add all lineage pairs into the receiving compartment
-      sapply(survivor.lineages, function(x) {
-        comp.2.bottle$remove.lineage(x)
-        remove.lineage.pairs(model, x)
-        comp.2.receive$add.lineage(x)
-        add.lineage.pairs(model, x)
-      })
-      
-      # the transmission event's `lineage` column can now be updated to included the names of the 'survivors'
-      eventlog$modify.event(transm.event$time, survivors)
       extant.lineages <- model$get.extant.lineages(current.time)
-      
       next
       
     } else if (length(which(migration.times <= new.time)) > num.migrations.occurred) {
@@ -175,33 +166,16 @@ sim.inner.tree <- function(model, eventlog) {
       generate.coalescent(model, eventlog, lineages.to.coalesce, coal.comp, new.time)
       
 
-      # issue 40: if coalescent event occurs at a transmission time, force coalescence of all other lineages at this time
       if (length(which(transm.times <= new.time)) > num.transm.occurred) {
+        # issue 40: if coalescent event occurs at a transmission time, force coalescence of all other lineages at this time
+        
         old.transm <- transm.times[which(transm.times <= current.time)]
         all.new.transm <- which(transm.times <= new.time)
         current.time <- min(union( all.new.transm, old.transm ))
         
-        transm.event <- transm.events[which(transm.times == current.time),]
-        comp.2.bottle <- inf[[which(inf.names == transm.event$compartment1)]]
-        comp.2.receive <- inf[[which(inf.names == transm.event$compartment2)]]
+        transm.event <- transm.events[which(transm.times == new.time),]     # this is new.time instead of current.time (compared to the outermost if statement)
+        update.transmission(model, eventlog, inf, inf.names, transm.event)
         
-        survivor.lineages <- generate.bottleneck(model, eventlog, comp.2.bottle, current.time)
-        new.comp.location <- comp.2.receive$get.name()
-        
-        # for each of the survivor lineages, the compartment needs to update its location to the source of the transmission event
-        survivor.names <- sapply(survivor.lineages, function(x) {
-          x$set.location(inf, new.comp.location)
-          x$get.name()
-        })
-        
-        # need to remove survivor lineages from comp.2.bottle, and add those same survivor lineages to new.comp.location
-        sapply(survivor.lineages, function(x) {
-          comp.2.bottle$remove.lineage(x)
-          comp.2.receive$add.lineage(x)
-        })
-        
-        # the transmission event's `lineage` column can now be updated to included the names of the 'survivors'
-        eventlog$modify.event(transm.event$time, survivor.names)
       }
       
       # update current time and extant lineages
@@ -213,6 +187,46 @@ sim.inner.tree <- function(model, eventlog) {
   }
   
   #eventlog
+}
+
+
+
+
+update.transmission <- function(model, eventlog, inf, inf.names, transm.event) {
+  
+  comp.2.bottle <- inf[[which(inf.names == transm.event$compartment1)]]
+  comp.2.receive <- inf[[which(inf.names == transm.event$compartment2)]]
+  
+  survivor.lineages <- generate.bottleneck(model, eventlog, comp.2.bottle, current.time)
+  new.comp.location <- comp.2.receive$get.name()
+  
+  # for the survivor lineage(s), the compartment needs to update its location to the source of the transmission event
+  survivor.names <- sapply(survivor.lineages, function(x) {
+    x$set.location(inf, new.comp.location)
+    x$get.name()
+  })
+  survivors <- paste0(survivor.names, collapse=',')
+  
+  # need to remove survivor lineages from comp.2.bottle, and add those same survivor lineages to new.comp.location
+  # also need to remove all lineage pairs in the bottlenecking compartment, and update/add all lineage pairs into the receiving compartment
+  sapply(survivor.lineages, function(x) {
+    comp.2.bottle$remove.lineage(x)
+    remove.lineage.pairs(model, x)
+    comp.2.receive$add.lineage(x)
+    add.lineage.pairs(model, x)
+  })
+  
+  # the transmission event's `lineage` column can now be updated to included the names of the 'survivors'
+  eventlog$modify.event(transm.event$time, survivors)
+  
+}
+
+
+
+
+resolve.migration <- function(model, eventlog, inf, migration.event) {
+  
+  
 }
 
 

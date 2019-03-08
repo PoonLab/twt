@@ -168,11 +168,15 @@ plot.EventLogger <- function(eventlog, fixed.samplings=fixed.samplings) {
   
   c_events <- eventlog$get.events('coalescent')
   b_events <- eventlog$get.events('bottleneck')
-  b_events_lineages <- sapply(1:nrow(b_events), function(x) {
-    split.bottleneck.lineages(b_events[x,]$lineage1)
-  })
+  if (is.null(b_events)) {
+    b_events_lineages <- NULL
+  } else {
+    b_events_lineages <- sapply(1:nrow(b_events), function(x) {
+      split.bottleneck.lineages(b_events[x,]$lineage1)
+    })
+  }
   
-  total_events <- rbind(m_events, c_events, b_events)
+  total_events <- rbind(c_events, b_events)
   
   # initialize attributes of an ape::phylo object
   tip.label <- vector()
@@ -184,6 +188,7 @@ plot.EventLogger <- function(eventlog, fixed.samplings=fixed.samplings) {
   
   # separate nodes into root, tips, and internals
   root <- unlist(setdiff(c(c_events$compartment1, b_events$compartment1), c(c_events$lineage1, c_events$lineage2, unlist(b_events_lineages))))
+  if (length(root) > 1) cat('Root > 1: ', root)
   tips <- unlist(setdiff(c(c_events$lineage1, c_events$lineage2, unlist(b_events_lineages)), c(c_events$compartment1, b_events$compartment1)))
   internals <- unlist(intersect(c(c_events$compartment1, b_events$compartment1), c(c_events$lineage1, c_events$lineage2, unlist(b_events_lineages))))
   
@@ -197,7 +202,11 @@ plot.EventLogger <- function(eventlog, fixed.samplings=fixed.samplings) {
     # visit and populate branch lengths of all children before visiting/populating itself
     # @param node = name of a node of type character()
     # @return branch.length = branch length of node of type numeric()
-
+    
+    if (length(node) > 1) {
+      cat("Kansas we have a problem: ", node, '\n')
+    }
+    
     if (node %in% tips) {
       
       # add node.sampling.time as branch length
@@ -213,11 +222,12 @@ plot.EventLogger <- function(eventlog, fixed.samplings=fixed.samplings) {
       
       eventRow <- total_events[ which(total_events$compartment1 == node), ]
       
-      if (eventRow$event.type == 'bottleneck') {
-        children <- split.bottleneck.lineages(eventRow$lineage1)
-      } else {
+      if (length(eventRow$event.type) == 0) cat(node)
+      if (eventRow$event.type == 'coalescent') {
         # this is a coalescent event
         children <- c(eventRow$lineage1, eventRow$lineage2)
+      } else {
+        children <- split.bottleneck.lineages(eventRow$lineage1)
       }
 
       # record current node.no before recursive call
@@ -245,7 +255,6 @@ plot.EventLogger <- function(eventlog, fixed.samplings=fixed.samplings) {
             
             #node.label[nrow(edge)+1] <<- node
             edge.length[nrow(edge)+1] <<- migration.branch.length
-            cat(indiv.node.no, ' ', mig.node.no, ' ', migration.branch.length, '\n')
             edge <<- rbind(edge, c(indiv.node.no, mig.node.no))
 
             # continue with recursion
@@ -339,6 +348,10 @@ plot.EventLogger <- function(eventlog, fixed.samplings=fixed.samplings) {
   } else {
     # default behaviour: no node labels bc INDELible doesn't like them
     phy <- list(tip.label=tip.label, Nnode=Nnode, edge.length=as.numeric(edge.length), edge=edge)
+  }
+  
+  if (length(phy$edge.length) != nrow(phy$edge)) {
+    cat('Nrow does not equal edge length.')
   }
   
   attr(phy, 'class') <- 'phylo'
