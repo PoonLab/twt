@@ -43,7 +43,9 @@ sim.inner.tree <- function(model, eventlog) {
       # no coalescent events possible at this point in time
       # move up to the earliest event (transmission or migration) in the EventLogger
       
-      current.time <- min(c(transm.times, migration.times))
+      option1.time <- min(transm.times[which(transm.times >= current.time)])           # min next transmission time event
+      option2.time <- min(migration.times[which(migration.times >= current.time)])     # min next migration time event
+      current.time <- min(c(option1.time, option2.time))
       
       # must resolve transmission event or migration event (issue #53)
       
@@ -55,6 +57,7 @@ sim.inner.tree <- function(model, eventlog) {
       } else {
         # migration event to be resolved
         migration.event <- migration.events[which(migration.times == current.time),]
+        resolve.migration(model, eventlog, inf, migration.event)
         
       }
       
@@ -70,14 +73,12 @@ sim.inner.tree <- function(model, eventlog) {
     new.time <- chosen.time + current.time
     
     
+    
     # check to see if the minimum waiting time is not exceeded by other fixed events:
     
     if (length(which(transm.times <= new.time)) > num.transm.occurred) {
-      # if minimum waiting time exceeds a transmission event not previously included 
-      # (in the count of transmission events that have been recorded to have occurred)
+      # if minimum waiting time exceeds a transmission event not previously included in sim
       # update the current time to the earlier transmission time (coalesc. time) of all newly included transmission events and start again
-      # call bottleneck function to mass coalesce lineages in (first) new transmission event newly included
-      # change the location of the lineages that 'survived' the bottleneck to the source of the transmission
       
       old.transm <- transm.times[which(transm.times <= current.time)]
       all.new.transm <- transm.times[which(transm.times <= new.time)]
@@ -97,49 +98,13 @@ sim.inner.tree <- function(model, eventlog) {
       current.time <- min(setdiff(all.new.migrations, old.migrations))
       
       migration.event <- migration.events[which(migration.times == current.time),]
+      resolve.migration(model, eventlog, inf, migration.event)
       
-      # first, draw a random recipient compartment with a matching recipientType of the migration event to be resolved
-      possible.recipients <- sapply(inf, function(x) {
-        if (x$get.type()$get.name() == migration.event$r_type) {x}
-      })
-      possible.recipients[sapply(possible.recipients, is.null)] <- NULL    # cleanup
-      chosen.recipient <- sample(possible.recipients, 1)[[1]]
+      # TODO : maybe don't "restart this simulation, rather, go straight to the next checks
+      current.time <- new.time
+      extant.lineages <- model$get.extant.lineages(current.time)
       
-      # does this compartment involve one of our sampled infected compartments?
-      if (chosen.recipient$is.unsampled() != TRUE) {
-        
-        # if so, does this migration event involve one of our sampled lineages?
-        # probability of the migration involving a sampled lineage is (number of extant sampled lineages / N ), where N = 1/coal.rate
-        prob.samp.lin <- length(chosen.recipient$get.lineages()) * chosen.recipient$get.type()$get.coalescent.rate()
-        
-        # if so, draw a source compartment with a matching sourceType to the event to be resolved
-        # additionally, randomly draw a sampled infected lineage to be the migrating lineage and generate the migration event
-        if (runif(1) < prob.samp.lin) {
-          
-          possible.sources <- sapply(inf, function(y) {
-            if (y$get.type()$get.name() == migration.event$s_type) {y}
-          })
-          possible.sources[sapply(possible.sources, is.null)] <- NULL   # cleanup
-          chosen.source <- sample(possible.sources, 1)[[1]]
-         
-          migrating.lineage <- sample(chosen.recipient$get.lineages(), 1)[[1]]         # draw a lineage to be migrated
-          generate.migration(model, eventlog, chosen.source, chosen.recipient, migrating.lineage, migration.event$time)
-          
-        } else {
-          # TODO : maybe don't "restart this simulation, rather, go straight to the next checks
-          current.time <- new.time
-          extant.lineages <- model$get.extant.lineages(current.time)
-          
-          next
-        }
-        
-      } else {
-        # TODO : maybe don't "restart this simulation, rather, go straight to the next checks
-        current.time <- new.time
-        extant.lineages <- model$get.extant.lineages(current.time)
-        
-        next
-      }
+      next
       
     } else if (length(model$get.extant.lineages(new.time)) > num.extant) {
       # OR other lineage(s) become(s) extant before the waiting time
@@ -193,14 +158,22 @@ sim.inner.tree <- function(model, eventlog) {
 
 
 update.transmission <- function(model, eventlog, inf, inf.names, transm.event) {
+  # function resolves lineages associated with a transmission event between compartments and updates the eventlog
+  #
+  # @param model: MODEL object
+  # @param eventlog: EventLogger object
+  # @param inf: list of sampled and unsampled infected compartments of type Compartment
+  # @param inf.names: list of sampled and unsampled infected compartments names of type character
+  # @param transm.event: list of information specific to the transmission event being resolved
   
   comp.2.bottle <- inf[[which(inf.names == transm.event$compartment1)]]
   comp.2.receive <- inf[[which(inf.names == transm.event$compartment2)]]
   
-  survivor.lineages <- generate.bottleneck(model, eventlog, comp.2.bottle, current.time)
+  # call bottleneck function to mass coalesce lineages in (first) new transmission event newly included
+  survivor.lineages <- generate.bottleneck(model, eventlog, comp.2.bottle, transm.event$time)
   new.comp.location <- comp.2.receive$get.name()
   
-  # for the survivor lineage(s), the compartment needs to update its location to the source of the transmission event
+  # for the survivor lineage(s), the each lineage needs to update its location to the source of the transmission event
   survivor.names <- sapply(survivor.lineages, function(x) {
     x$set.location(inf, new.comp.location)
     x$get.name()
@@ -225,7 +198,42 @@ update.transmission <- function(model, eventlog, inf, inf.names, transm.event) {
 
 
 resolve.migration <- function(model, eventlog, inf, migration.event) {
+  # function resolves a potential migration event generated from `sim.migrations()`
+  #
+  # @param model: MODEL object
+  # @param eventlog: EventLogger object
+  # @param inf: list of sampled and unsampled infected compartments of type Compartment
+  # @param migration.event: list of information specific to the migration event being resolved
   
+  # first, draw a random recipient compartment with a matching recipientType of the migration event to be resolved
+  possible.recipients <- sapply(inf, function(x) {
+    if (x$get.type()$get.name() == migration.event$r_type) {x}
+  })
+  possible.recipients[sapply(possible.recipients, is.null)] <- NULL    # cleanup
+  chosen.recipient <- sample(possible.recipients, 1)[[1]]
+  
+  # does this compartment involve one of our sampled infected compartments?
+  if (chosen.recipient$is.unsampled() != TRUE) {
+    
+    # if so, does this migration event involve one of our sampled lineages?
+    # probability of the migration involving a sampled lineage is (number of extant sampled lineages / N ), where N = 1/coal.rate
+    prob.samp.lin <- length(chosen.recipient$get.lineages()) * chosen.recipient$get.type()$get.coalescent.rate()
+    
+    # if so, draw a source compartment with a matching sourceType to the event to be resolved
+    # additionally, randomly draw a sampled infected lineage to be the migrating lineage and generate the migration event
+    if (runif(1) < prob.samp.lin) {
+      
+      possible.sources <- sapply(inf, function(y) {
+        if (y$get.type()$get.name() == migration.event$s_type) {y}
+      })
+      possible.sources[sapply(possible.sources, is.null)] <- NULL   # cleanup
+      chosen.source <- sample(possible.sources, 1)[[1]]
+      
+      migrating.lineage <- sample(chosen.recipient$get.lineages(), 1)[[1]]         # draw a lineage to be migrated
+      generate.migration(model, eventlog, chosen.source, chosen.recipient, migrating.lineage, migration.event$time)
+    }
+    
+  }
   
 }
 

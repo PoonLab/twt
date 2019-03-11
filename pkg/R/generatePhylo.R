@@ -155,8 +155,12 @@ plot.EventLogger <- function(eventlog, fixed.samplings=fixed.samplings) {
   # @param transmissions = logical; if TRUE, transmission events included, else excluded otherwise
   # @return phy = ape::phylo object
   
-  if (transmissions) { t_events <- eventlog$get.events('transmission')
-  } else {t_events <- NULL}
+  t_events <- eventlog$get.events('transmission')
+  if (is.null(t_events)) {
+    t_events_lineages <- NULL
+  } else {
+    t_events_lineages <- t_events$lineage1
+  }
   
   # if the event being examined is a bottleneck event, must split column named "$lineage1" into the bottlenecking lineages
   split.bottleneck.lineages <- function(lineages.names) {
