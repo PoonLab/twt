@@ -30,11 +30,8 @@ print.EventLogger <- function(eventlog) {
   # transmission events, can be optionally included
   if (transmissions) {
     t_events <- eventlog$get.events('transmission')
-    if (is.null(t_events)) {
-      t_events_lineages <- NULL
-    } else {
-      t_events_lineages <- t_events$lineage1
-    }
+  } else {
+    t_events <- NULL
   }
   
   # migration events, can be optionally included
@@ -117,7 +114,6 @@ print.EventLogger <- function(eventlog) {
       
       eventRow <- core_events[ which(core_events$compartment1 == node), ]
       
-      # if (length(eventRow$event.type) == 0) cat(node)
       if (eventRow$event.type == 'coalescent') {
         # this is a coalescent event
         children <- c(eventRow$lineage1, eventRow$lineage2)
@@ -135,11 +131,8 @@ print.EventLogger <- function(eventlog) {
       final.node.no <- indiv.node.no
       
       for (child in children) {
-        
-        if (transmissions) {
-          # check for transmission events involving `node`; must incorporate singleton node
           
-        } else if (migrations) {
+        if (migrations) {
           # check for migration events involving `node`; must incorporate singleton node
           if (child %in% m_events$lineage1) {
             
@@ -152,52 +145,55 @@ print.EventLogger <- function(eventlog) {
             # create singleton node here
             migration.branch.length <- eventRow$time - mig.event$time
             
-            #node.label[nrow(edge)+1] <<- node
             edge.length[nrow(edge)+1] <<- migration.branch.length
             edge <<- rbind(edge, c(indiv.node.no, mig.node.no))
 
             # continue with recursion
-            recursive.call <- recursive.populate.branchlength(child)
-            child.branch.length <- recursive.call[1]
-            child.node.no <- recursive.call[2]
-            
-            individual.branch.length <- mig.event$time - child.branch.length
-            
-            record.node.label[nrow(edge)+1] <<- child
-            
-            edge.length[nrow(edge)+1] <<- individual.branch.length ###
-            edge <<- rbind(edge, c(mig.node.no, child.node.no))
-            
-            #final.node.no <- mig.node.no
-            #return (c(eventRow$time, mig.node.no))
+            add.branch(mig.event, child, child, mig.node.no)
             
           } else {
             
-            recursive.call <- recursive.populate.branchlength(child)
-            child.branch.length <- recursive.call[1]
-            child.node.no <- recursive.call[2]
-            
-            individual.branch.length <- eventRow$time - child.branch.length
-            
-            record.node.label[nrow(edge)+1] <<- node
-            
-            edge.length[nrow(edge)+1] <<- individual.branch.length ###
-            edge <<- rbind(edge, c(indiv.node.no, child.node.no))
-            
+            if (transmissions) {
+              if (child %in% t_events$lineage1) {
+                
+                t.event <- t_events[ which(t_events$lineage1 == child), ]
+                
+                t.node.no <- node.no
+                node.no <<- node.no + 1
+                Nnode <<- Nnode + 1
+                
+                add.branch(t.event, child, child, t.node.no)
+                
+              } else {
+                add.branch(eventRow, node, child, indiv.node.no)
+              }
+              
+            } else {
+              add.branch(eventRow, node, child, indiv.node.no)
+            }
+          
           }
           
         } else {
           
-          recursive.call <- recursive.populate.branchlength(child)
-          child.branch.length <- recursive.call[1]
-          child.node.no <- recursive.call[2]
-          
-          individual.branch.length <- eventRow$time - child.branch.length
-          
-          record.node.label[nrow(edge)+1] <<- node
-          
-          edge.length[nrow(edge)+1] <<- individual.branch.length ###
-          edge <<- rbind(edge, c(indiv.node.no, child.node.no))
+          if (transmissions) {
+            if (child %in% t_events$lineage1) {
+              
+              t.event <- t_events[ which(t_events$lineage1 == child), ]
+              
+              t.node.no <- node.no
+              node.no <<- node.no + 1
+              Nnode <<- Nnode + 1
+              
+              add.branch(t.event, child, child, t.node.no)
+              
+            } else {
+              add.branch(eventRow, node, child, indiv.node.no)
+            }
+            
+          } else {
+            add.branch(eventRow, node, child, indiv.node.no)
+          }
 
         }
         
@@ -209,6 +205,22 @@ print.EventLogger <- function(eventlog) {
       
     } 
       
+  }
+  
+  
+  add.branch <- function(event, node, child, node.no) {
+    
+    recursive.call <- recursive.populate.branchlength(child)
+    child.branch.length <- recursive.call[1]
+    child.node.no <- recursive.call[2]
+    
+    individual.branch.length <- event$time - child.branch.length
+    
+    record.node.label[nrow(edge)+1] <<- node
+    
+    edge.length[nrow(edge)+1] <<- individual.branch.length
+    edge <<- rbind(edge, c(node.no, child.node.no))
+    
   }
   
 
@@ -230,13 +242,32 @@ print.EventLogger <- function(eventlog) {
         }
       }
     }
-    
-    #return(node.label)
+  
   }
   
   
-  recursive.populate.branchlength(root)
+  if (transmissions) {
+    
+    if (root %in% t_events$lineage1) {
+    
+      t.event <- t_events[ which(t_events$lineage1 == root), ]
+      
+      t.node.no <- node.no
+      node.no <- node.no + 1
+      Nnode <- Nnode + 1
+      
+      # now begin recursion
+      add.branch(t.event, root, root, t.node.no)
+      
+    }
+    
+  } else {
+    
+    recursive.populate.branchlength(root)
+    
+  }
 
+  
   # convert edge dataframe into matrix
   edge <- as.matrix(edge)
   

@@ -28,7 +28,20 @@ sim.inner.tree <- function(model, eventlog) {
   }
   
   
-  while (length(extant.lineages) > 1) {
+  while (length(extant.lineages) >= 1) {
+    
+    # issue 54, case where there is 1 extant lineage remaining, but final transmission event further back in time still unresolved
+    if (length(extant.lineages) == 1) {
+      
+      # check if any of the transmission events are still left unresolved
+      t_events <- eventlog$get.events('transmission')
+      if (any(is.na(t_events$lineage1))) {
+        final.t.time <- t_events[which(is.na(t_events$lineage1)), 'time']
+        eventlog$modify.event(final.t.time, extant.lineages[[1]]$get.name())
+      }
+      
+      break
+    }
     
     # calculate waiting times for coalescent events for each compartment with 2 or more lineages
     coal.wait.times <- calc.coal.wait.times(model, current.time)
