@@ -1,176 +1,50 @@
-## these functions were extracted from MODEL class definition
-## TODO: modify function .outer.tree.to.phylo to accommodate this change
-get.leaves.names = function(e) {
-  # returns a vector of Compartment object names that are terminal nodes (only a recipient)
-  # @param e = EventLogger object
-  t_events <- e$get.events('transmission', cumulative=F)
-  setdiff(unlist(t_events$compartment1), unlist(t_events$compartment2))
-}
+# functions to convert the events stored in the EventLogger into an ape::phylo object that can then be plotted or printed
 
-get.nonterminals = function(e) {
-  # return an iterator over all names of internal nodes of the transmission tree
-  # @param e = EventLogger object
-  t_events <- e$get.events('transmission', cumulative=F)
-  intersect(unlist(t_events$compartment1), unlist(t_events$compartment2))
-}
-
-get.node.heights = function() {
-  # calculate node heights for all nodes of the tree
-  # annotate nodes with heights in place
-}
-
-
-
-.outer.tree.to.phylo <- function(eventlog) {
-  # function converts the transmission events stored in an EventLogger object into a transmission tree
-  # @param eventlog = EventLogger object
-  # @return phy = ape::phylo object
-  
-  t_events <- eventlog$get.events('transmission')
-  tips <- unlist(setdiff(t_events$compartment1, t_events$compartment2))
-  internals <- unlist(intersect(t_events$compartment1, t_events$compartment2))
-  root <- unlist(setdiff(t_events$compartment2, t_events$compartment1))
-  
-  # initialize attributes of an ape::phylo object
-  tip.label <- vector()
-  edge.length <- vector()
-  Nnode <- nrow(t_events)
-  node.label <- vector()
-  # edge matrix can't be determined as of yet, so we're going to record into a data frame
-  edge <- data.frame()
-  
-  # intiialize indices to be assigned to root, tips, and internals
-  tip.no <- 1
-  root.no <- length(c(tips, internals, root)) + 1
-  node.no <- root.no + 1
-  
-  
-  # helper function (recursive) for STEP 2
-  .assign.parent.branch.lengths <- function(node, node.ind, child.length) {
-    if (node == root) {
-      NULL
-    } else {
-      node.length <- t_events[which(t_events$compartment1 == node), 'time'] - child.length
-      ancestor <- t_events[which(t_events$compartment1 == node), 'compartment2']
-      ancestor.ind <- node.no 
-      
-      node.label[ancestor.ind] <- paste0(ancestor, '->', node)
-      edge <- rbind(edge, c(ancestor.ind, node.ind), stringsAsFactors=F)
-      
-      node.no <- node.no + 1
-      .assign.parent.branch.lengths(ancestor, ancestor.ind, node.length)
-    }
-  }
-  
-  
-  # STEP 1: start at tips and assign branch lengths
-  for (t in tips) {
-    branch.length <- t_events[which(t_events$compartment1 == t), 'time']
-    parent <- t_events[which(t_events$compartment1 == t), 'compartment2']
-    parent.ind <- node.no
-    
-    tip.label[tip.no] <- t
-    edge.length[tip.no] <- branch.length
-    node.label[parent.ind] <- paste0(parent, '->', t)
-    edge <- rbind(edge, c(parent.ind, tip.no), stringsAsFactors=F)
-    
-    tip.no <- tip.no + 1
-    node.no <- node.no + 1
-    
-    # STEP 2: follow each tip's parents up to root and assign branch lengths
-    .assign.parent.branch.lengths(parent, parent.ind, branch.length)
-  }
-  
-  # STEP 3: populate inter-node branch lengths
-  for (i in c(root, internals)) {
-    specific.events <- t_events[which(t_events$compartment2 == i), ]
-    reordered.events <- specific.events[order(specific.events$time),]
-    
-    if (nrow(reordered.events) > 1) {
-      for (pair in 1:nrow(reordered.events)-1) {
-        node.below <- reordered.events[pair,]
-        node.above <- reordered.events[pair+1,]
-        
-        node.below.name <- paste0(node.below$compartment2, '->', node.below$compartment1)
-        if (node.below.name %in% node.label) {
-          node.below.ind <- which(node.label == node.below.name)
-        } else {
-          node.below.ind <- node.no
-          node.label[node.below.ind] <- node.below.name
-          node.no <- node.no + 1
-        }
-        
-        node.above.name <- paste0(node.above$compartment2, '->', node.above$compartment1)
-        if (node.above.name %in% node.label) {
-          node.above.ind <- which(node.label == node.above.name)
-        } else {
-          node.above.ind <- node.no
-          node.label[node.above.ind] <- node.above.name
-          node.no <- node.no + 1
-        }
-        
-        edge.length[node.above.ind] <- node.above$time - node.below$time
-        edge <- rbind(edge, c(node.above.ind, node.below.ind), stringsAsFactors=F)
-          
-      }
-    } else {
-      next
-    }
-  }
-  
-  # STEP 4: finally, populate root and internals final branch lengths up to extant time (t=0) as singleton nodes
-  for (n in c(root, internals)) {
-    singleton.length <- min(t_events[which(t_events$compartment2 == n), 'time'])
-    r.name <- t_events[which(t_events$time == singleton.length), 'compartment1']
-    node.ind <- which(node.label == paste0(n, '->', r.name))
-    
-    tip.label[tip.no] <- n
-    edge.length[tip.no] <- singleton.length
-    edge <- rbind(edge, c(node.ind, tip.no), stringsAsFactors=F)
-    
-    tip.no <- tip.no + 1
-  }
-  
-  # edge matrix complete, convert data.frame to matrix
-  edge.mat <- as.matrix(edge)
-  
-  phy <- list(tip.label=tip.label, Nnode=Nnode, edge.length=as.numeric(edge.length), edge=edge.mat, node.label=node.label[!is.na(node.label)])
-  attr(phy, 'class') <- 'phylo'
-  attr(phy, 'order') <- 'cladewise'
-  phy
-}
-
-
-
-plot.EventLogger <- function(eventlog, fixed.samplings=fixed.samplings) {
-  phy <- .inner.tree.to.phylo(eventlog=eventlog, fixed.samplings=fixed.samplings)
+plot.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE, node.labels=FALSE) {
+  phy <- .eventlogger.to.phylo(eventlog=eventlog, transmissions=transmissions, migrations=migrations, node.labels=node.labels)
   plot(phy)
 }
 
 
 
-.inner.tree.to.phylo <- function(eventlog, fixed.samplings, transmissions=FALSE, migrations=FALSE, node.labels=FALSE) {
-  # function converts coalescent & migration events stored in the EventLogger object into an inner coalescent tree w/ option to include/exclude transmission events
+print.EventLogger <- function(eventlog) {
+  eventlog$get.all.events()
+}
+
+
+
+.eventlogger.to.phylo <- function(eventlog, transmissions=FALSE, migrations=FALSE, node.labels=FALSE) {
+  # function converts events stored in the EventLogger object into an inner coalescent tree w/ option to include/exclude transmission events
   # @param eventlog = EventLogger object
   # @param transmissions = logical; if TRUE, transmission events included, else excluded otherwise
   # @return phy = ape::phylo object
   
-  t_events <- eventlog$get.events('transmission')
-  if (is.null(t_events)) {
-    t_events_lineages <- NULL
-  } else {
-    t_events_lineages <- t_events$lineage1
-  }
-  
-  # if the event being examined is a bottleneck event, must split column named "$lineage1" into the bottlenecking lineages
+  # helper function: if the event being examined is a bottleneck event, must split column named "$lineage1" into the bottlenecking lineages
   split.bottleneck.lineages <- function(lineages.names) {
     as.vector(strsplit(lineages.names, ',', fixed=T)[[1]])
   }
   
-  if (migrations) {m_events <- eventlog$get.events('migration')
-  } else {m_events <- NULL}
+  # fixed sampling times of tips and heights
+  fixed.sampl <- eventlog$get.fixed.samplings()
   
-  c_events <- eventlog$get.events('coalescent')
+  # transmission events, can be optionally included
+  if (transmissions) {
+    t_events <- eventlog$get.events('transmission')
+    if (is.null(t_events)) {
+      t_events_lineages <- NULL
+    } else {
+      t_events_lineages <- t_events$lineage1
+    }
+  }
+  
+  # migration events, can be optionally included
+  if (migrations) {
+    m_events <- eventlog$get.events('migration')
+  } else {
+    m_events <- NULL
+  }
+  
+  # bottleneck events, may or may not be present
   b_events <- eventlog$get.events('bottleneck')
   if (is.null(b_events)) {
     b_events_lineages <- NULL
@@ -180,7 +54,11 @@ plot.EventLogger <- function(eventlog, fixed.samplings=fixed.samplings) {
     })
   }
   
-  total_events <- rbind(c_events, b_events)
+  # coalescent events
+  c_events <- eventlog$get.events('coalescent')
+  
+  # minimum set of events to be included
+  core_events <- rbind(c_events, b_events)
   
   # initialize attributes of an ape::phylo object
   tip.label <- vector()
@@ -191,10 +69,27 @@ plot.EventLogger <- function(eventlog, fixed.samplings=fixed.samplings) {
   edge <- data.frame()      # eventually will convert into a static edge matrix
   
   # separate nodes into root, tips, and internals
-  root <- unlist(setdiff(c(c_events$compartment1, b_events$compartment1), c(c_events$lineage1, c_events$lineage2, unlist(b_events_lineages))))
-  if (length(root) > 1) cat('Root > 1: ', root)
-  tips <- unlist(setdiff(c(c_events$lineage1, c_events$lineage2, unlist(b_events_lineages)), c(c_events$compartment1, b_events$compartment1)))
-  internals <- unlist(intersect(c(c_events$compartment1, b_events$compartment1), c(c_events$lineage1, c_events$lineage2, unlist(b_events_lineages))))
+  root <- unlist(
+            setdiff(
+              c(c_events$compartment1, b_events$compartment1), 
+              c(c_events$lineage1, c_events$lineage2, unlist(b_events_lineages))
+            )
+          )
+  if (length(root) > 1) stop('ERROR! Root > 1: ', root)   
+  
+  tips <- unlist(
+            setdiff(
+              c(c_events$lineage1, c_events$lineage2, unlist(b_events_lineages)), 
+              c(c_events$compartment1, b_events$compartment1)
+            )
+          )
+  
+  internals <-  unlist(
+                  intersect(
+                    c(c_events$compartment1, b_events$compartment1), 
+                    c(c_events$lineage1, c_events$lineage2, unlist(b_events_lineages))
+                  )
+                )
   
   # initialize ape::phylo indices to be assigned to root, tips, and internals
   tip.no <- 1
@@ -207,14 +102,10 @@ plot.EventLogger <- function(eventlog, fixed.samplings=fixed.samplings) {
     # @param node = name of a node of type character()
     # @return branch.length = branch length of node of type numeric()
     
-    if (length(node) > 1) {
-      cat("Kansas we have a problem: ", node, '\n')
-    }
-    
     if (node %in% tips) {
       
       # add node.sampling.time as branch length
-      individual.branch.length <- fixed.samplings$tip.height[ which(fixed.samplings$tip.label == node) ]
+      individual.branch.length <- fixed.sampl$tip.height[ which(fixed.sampl$tip.label == node) ]
       tip.label[tip.no] <<- node
       
       tip.no <<- tip.no + 1
@@ -224,13 +115,14 @@ plot.EventLogger <- function(eventlog, fixed.samplings=fixed.samplings) {
       
     } else {
       
-      eventRow <- total_events[ which(total_events$compartment1 == node), ]
+      eventRow <- core_events[ which(core_events$compartment1 == node), ]
       
-      if (length(eventRow$event.type) == 0) cat(node)
+      # if (length(eventRow$event.type) == 0) cat(node)
       if (eventRow$event.type == 'coalescent') {
         # this is a coalescent event
         children <- c(eventRow$lineage1, eventRow$lineage2)
       } else {
+        # this is a bottleneck event
         children <- split.bottleneck.lineages(eventRow$lineage1)
       }
 
@@ -244,7 +136,10 @@ plot.EventLogger <- function(eventlog, fixed.samplings=fixed.samplings) {
       
       for (child in children) {
         
-        if (migrations) {
+        if (transmissions) {
+          # check for transmission events involving `node`; must incorporate singleton node
+          
+        } else if (migrations) {
           # check for migration events involving `node`; must incorporate singleton node
           if (child %in% m_events$lineage1) {
             

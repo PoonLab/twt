@@ -11,6 +11,7 @@ MODEL <- R6Class("MODEL",
       private$extant.lineages <- private$retrieve.extant.lineages(0)
       private$locations <- private$init.locations()
       private$choices <- private$init.pairs()
+      private$fixed.samplings <- private$init.fixed.samplings()
     },
     
     get.origin.times = function() {private$origin.times},
@@ -88,6 +89,11 @@ MODEL <- R6Class("MODEL",
                         type=t,
                         unsampled=TRUE)
       }))) 
+    },
+    
+    get.fixed.samplings = function() {
+      # retrieves fixed sampling times of tips
+      private$fixed.samplings
     }
     
   ),
@@ -105,6 +111,7 @@ MODEL <- R6Class("MODEL",
     locations = NULL,         
     choices = NULL,
     node.ident = 1,              # used in simulation of inner tree for generating unique idents for internal nodes of ancestral lineages
+    fixed.samplings = NULL,
     
     load.origin.times = function(settings) {
       ## function loads origin times specific to each LineageType (the start time of the epidemic of one or more viruses)
@@ -380,6 +387,19 @@ MODEL <- R6Class("MODEL",
         }
       }
       private$choices
+    },
+    
+    
+    
+    init.fixed.samplings = function() {
+      # retrieve sampling time and populate tip labels / times in ape:: phylo object (for plotting Eventlogger function)
+      list(
+        # store label w/ corresponding tip height in new ape::phylo object (not casted into `phylo` yet)
+        tip.label = sapply(private$lineages, function(x) x$get.name()),
+        
+        # only used for calculating edge length
+        tip.height = sapply(private$lineages, function(x) x$get.sampling.time())
+      )
     }
     
     

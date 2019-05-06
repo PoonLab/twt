@@ -265,7 +265,7 @@ EventLogger <- R6Class("EventLogger",
       if (nrow(eventList) != 0) {
         eventList
       } else {
-        cat('No events of type "', event.type, '".\n')
+        # cat('No events of type "', event.type, '".\n')
         NULL
       }
      
@@ -314,6 +314,16 @@ EventLogger <- R6Class("EventLogger",
     
     store.migration.events = function(migration.events) {
       private$migration.events.storage <- migration.events
+    },
+    
+    get.fixed.samplings = function() {
+      # retrieves the fixed sampling times of the tips of a MODEL object
+      private$fixed.samplings.storage
+    },
+    
+    store.fixed.samplings = function(model.fixed.samplings) {
+      # stores the fixed sampling times of the tips of a MODEL object
+      private$fixed.samplings.storage <- model.fixed.samplings
     }
     
   ),
@@ -321,6 +331,7 @@ EventLogger <- R6Class("EventLogger",
     events = NULL,
     events.noncumul = NULL,
     migration.events.storage = NULL,
+    fixed.samplings.storage = NULL,
     
     generate.noncumul.eventlog = function(cumul.eventlog) {
       # generates an event log with non-cumulative times of events

@@ -1,24 +1,5 @@
-init.fixed.samplings <- function(model) {
-  # treeswithintrees/Wiki/Simulation Pseudocode step 2
-  # retrieve sampling time and populate tip labels / times in ape::phylo object (building it tips up)
-  #
-  # @param model = MODEL object
+## after the objects are generated from user inputs ('loadInputs.R'), we need to initialize the list of fixed events
 
-  # add lineage sampling events from Lineage objects
-  lineages <- model$get.lineages()
-
-  list(
-    # store label w/ corresponding tip height in new ape::phylo object (not casted into `phylo` yet)
-    tip.label = sapply(lineages, function(x) x$get.name()),
-
-    # only used for calculating edge length
-    tip.height = sapply(lineages, function(x) x$get.sampling.time())
-  )
-}
-
-
-
-# after the objects are generated from user inputs, we need to initialize the list of fixed events
 # Case 1 : User provides a host transmission tree
 .to.eventlog <- function(newick) {
   # function converts an ape::phylo tree object into transmission events stored in a NEW EventLogger object
@@ -96,6 +77,9 @@ sim.outer.tree <- function(model, eventlog) {
   # @param eventlog = EventLogger object
   
   # ptm <- proc.time()   # benchmark start time
+  
+  # store fixed sampling times of the tips of the MODEL object into the EventLogger for plotting functions
+  eventlog$store.fixed.samplings(model$get.fixed.samplings())
   
   comps <- model$get.compartments()           
   compnames <- model$get.names(comps)

@@ -1,7 +1,7 @@
 # draft proposal for specification of within-host coalescent process (single patient)
 OriginTimes:
   'virus':                                        # origin time of `virus` epidemic
-    start: 10.0                                    # note this is reverse time, cumulative
+    start: 50.0                                   # note this is reverse time, cumulative
     susceptibles:                                 # number of susceptible at the origin time of the simulation for each Type `blood` and `cell`
       - blood: 1                                  # this is a simple example: only one other compartment (tissue)                                
       - tissue: 1                                 
@@ -9,7 +9,7 @@ CompartmentTypes:
   'blood':                                        # blood no transmission to blood - transmission is to uninfected cell
     branching.rates: (blood=0.0, tissue=0.2)     # infection of a cell (transmission rate from blood -> cell)
     migration.rates: (blood=0.0, tissue=0.0)   
-    coalescent.rate: 0.9                          # default rate to generate coalescent waiting times (no given death.rate.distr and/or popn.growth.dynamics) of lineages within this compartment
+    coalescent.rate: 1.5                        # default rate to generate coalescent waiting times (no given death.rate.distr and/or popn.growth.dynamics) of lineages within this compartment
     bottleneck.size: 1                            # assume a single virus enters an uninfected cell
     death.rate.distr:                             # if this is not given, not allowed to use linear population growth dynamics to calculate coalescent times
     wait.time.distr:                              # distribution of waiting time between infection time and first sampling time of a Compartment
@@ -28,7 +28,7 @@ CompartmentTypes:
   'tissue':
     branching.rates: (blood=0.0, tissue=0.0)      # blood will have already been infected, tissue cannot infect itself (this is )
     migration.rates: (blood=0.1, tissue=0.0)     # migration rate from tissue -> blood is release of virus particles from cell lineages back into blood
-    coalescent.rate: 0.5                          # if a coalescent rate is given, AND death.rate.distr, and popn.growth.dynamics, throws warning, and uses rates derived from death.wait.distr and popn.growth.dynamics
+    coalescent.rate: 1.5                          # if a coalescent rate is given, AND death.rate.distr, and popn.growth.dynamics, throws warning, and uses rates derived from death.wait.distr and popn.growth.dynamics
     bottleneck.size: 1                            # assume no migration to infected cells
     death.rate.distr:
     wait.time.distr:                              # distribution of waiting time between infection time and first sampling time of a Compartment
@@ -73,5 +73,5 @@ Lineages:
     type: 'virus'
     sampling.time: 0
     location: tissue
-    replicates: 10
+    replicates: 10 
 
