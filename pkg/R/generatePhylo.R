@@ -157,11 +157,19 @@ print.EventLogger <- function(eventlog) {
               if (child %in% t_events$lineage1) {
                 
                 t.event <- t_events[ which(t_events$lineage1 == child), ]
+                t_events <- t_events[-which(t_events$lineage1 == child), ]
                 
                 t.node.no <- node.no
                 node.no <<- node.no + 1
                 Nnode <<- Nnode + 1
                 
+                # create a singleton node here
+                transmission.branch.length <- eventRow$time - t.event$time
+                
+                edge.length[nrow(edge)+1] <<- transmission.branch.length
+                edge <<- rbind(edge, c(indiv.node.no, t.node.no))
+                
+                # continue with recursion
                 add.branch(t.event, child, child, t.node.no)
                 
               } else {
@@ -180,11 +188,19 @@ print.EventLogger <- function(eventlog) {
             if (child %in% t_events$lineage1) {
               
               t.event <- t_events[ which(t_events$lineage1 == child), ]
+              t_events <- t_events[-which(t_events$lineage1 == child), ]
               
               t.node.no <- node.no
               node.no <<- node.no + 1
               Nnode <<- Nnode + 1
               
+              # create a singleton node here
+              transmission.branch.length <- eventRow$time - t.event$time
+              
+              edge.length[nrow(edge)+1] <<- transmission.branch.length
+              edge <<- rbind(edge, c(indiv.node.no, t.node.no))
+              
+              # continue with recursion
               add.branch(t.event, child, child, t.node.no)
               
             } else {
@@ -208,18 +224,18 @@ print.EventLogger <- function(eventlog) {
   }
   
   
-  add.branch <- function(event, node, child, node.no) {
+  add.branch <- function(event, parent.node, child.node, parent.node.no) {
     
-    recursive.call <- recursive.populate.branchlength(child)
+    recursive.call <- recursive.populate.branchlength(child.node)
     child.branch.length <- recursive.call[1]
     child.node.no <- recursive.call[2]
     
     individual.branch.length <- event$time - child.branch.length
     
-    record.node.label[nrow(edge)+1] <<- node
+    record.node.label[nrow(edge)+1] <<- parent.node
     
     edge.length[nrow(edge)+1] <<- individual.branch.length
-    edge <<- rbind(edge, c(node.no, child.node.no))
+    edge <<- rbind(edge, c(parent.node.no, child.node.no))
     
   }
   
@@ -259,6 +275,10 @@ print.EventLogger <- function(eventlog) {
       # now begin recursion
       add.branch(t.event, root, root, t.node.no)
       
+    } else {
+      
+      recursive.populate.branchlength(root)
+  
     }
     
   } else {

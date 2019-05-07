@@ -1,6 +1,6 @@
 ## after the objects are generated from user inputs ('loadInputs.R'), we need to initialize the list of fixed events
 
-# Case 1 : User provides a host transmission tree
+# Case 1 : User provides a host transmission tree in the form of an annotated ape::phylo object (w/ singletons)
 .to.eventlog <- function(newick) {
   # function converts an ape::phylo tree object into transmission events stored in a NEW EventLogger object
   #
@@ -43,24 +43,32 @@ init.branching.events <- function(model, eventlog) {
   # @param model = MODEL object
   # @param eventlog = EventLogger object
 
+  # store fixed sampling times of the tips of the MODEL object into the EventLogger for plotting functions
+  eventlog$store.fixed.samplings(model$get.fixed.samplings())
+  
   # if the user input includes a tree (host tree) then add transmission events
   comps <- model$get.compartments()
   lineages <- model$get.lineages()
 
   transmissions <- sapply(comps, function(x) {
     branching.time <- x$get.branching.time()
+    
+    if (is.numeric(branching.time)) {
       
-    if (is.R6(x$get.source())) {
-      source <- x$get.source()$get.name()
-      xLin <- sapply(lineages, function(y){which(y$get.location()$get.name() == x$get.name())})
-      lineage <- lineages[[ which(xLin == 1) ]]$get.name()
-    } else {
-      source <- x$get.source()
-      lineage <- NA
+      if (is.R6(x$get.source())) {
+        source <- x$get.source()$get.name()
+        xLin <- sapply(lineages, function(y){which(y$get.location()$get.name() == x$get.name())})
+        lineage <- lineages[[ which(xLin == 1) ]]$get.name()
+      } else {
+        source <- x$get.source()
+        lineage <- NA
+      }
+      
+      # add transmission event to EventLogger object
+      eventlog$add.event('transmission',  branching.time, lineage, NA, x$get.name(), source)
+      
     }
-
-    # add transmission event to EventLogger object
-    eventlog$add.event('transmission',  branching.time, lineage, NA, x$get.name(), source)
+    
   })
   
   #eventlog

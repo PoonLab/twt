@@ -30,8 +30,10 @@ sim.inner.tree <- function(model, eventlog) {
   
   while (length(extant.lineages) >= 1) {
     
+    num.extant <- length(extant.lineages)
+    
     # issue 54, case where there is 1 extant lineage remaining, but final transmission event further back in time still unresolved
-    if (length(extant.lineages) == 1) {
+    if (num.extant == 1) {
       
       # check if any of the transmission events are still left unresolved
       t_events <- eventlog$get.events('transmission')
@@ -57,8 +59,12 @@ sim.inner.tree <- function(model, eventlog) {
       # move up to the earliest event (transmission or migration) in the EventLogger
       
       option1.time <- min(transm.times[which(transm.times >= current.time)])           # min next transmission time event
-      option2.time <- min(migration.times[which(migration.times >= current.time)])     # min next migration time event
-      current.time <- min(c(option1.time, option2.time))
+      if (is.null(migration.times) == F) {
+        option2.time <- min(migration.times[which(migration.times >= current.time)])     # min next migration time event
+        current.time <- min(c(option1.time, option2.time))
+      } else {
+        current.time <- option1.time
+      }
       
       # must resolve transmission event or migration event (issue #53)
       
@@ -95,7 +101,7 @@ sim.inner.tree <- function(model, eventlog) {
       
       old.transm <- transm.times[which(transm.times <= current.time)]
       all.new.transm <- transm.times[which(transm.times <= new.time)]
-      current.time <- min(union( all.new.transm, old.transm )) 
+      current.time <- min(setdiff( all.new.transm, old.transm )) 
       
       transm.event <- transm.events[which(transm.times == current.time),]
       update.transmission(model, eventlog, inf, inf.names, transm.event)
@@ -113,7 +119,7 @@ sim.inner.tree <- function(model, eventlog) {
       migration.event <- migration.events[which(migration.times == current.time),]
       resolve.migration(model, eventlog, inf, migration.event)
       
-      # TODO : maybe don't "restart this simulation, rather, go straight to the next checks
+      # TODO : maybe don't "restart" this simulation, rather, go straight to the next checks
       current.time <- new.time
       extant.lineages <- model$get.extant.lineages(current.time)
       

@@ -1,4 +1,4 @@
-## test script
+## test script for 'example4.yaml'
 require(twt)
 #set.seed(34)
 setwd('~/git/treeswithintrees')
@@ -21,6 +21,19 @@ plot(e)
 phy <- .eventlogger.to.phylo(e)
 write.tree(phy)
 
-# init.branching.events(m, e)    # applies only to example1.yaml for now, since they provide a "host tree" w/ transmission events
 
+
+
+## test script for 'example1.yaml'
+settings <- yaml.load_file('tests/fixtures/example1.yaml')
+m <- MODEL$new(settings)
+e <- EventLogger$new()
+
+init.branching.events(m, e)   # user provides a "host tree" w/ transmission events
+sim.inner.tree(m, e)
+
+print(e)
+plot(e)
+phy <- .eventlogger.to.phylo(e)
+write.tree(phy)
 

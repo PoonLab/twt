@@ -13,10 +13,6 @@ calc.coal.wait.times <- function(model, current.time, dynamic=FALSE){
   comps <- model$get.compartments()
   compnames <- model$get.names(comps)
   
-  # retrieves compartments with multiple extant lineages
-  ext.comps <- sapply(comps, function(x) {if (length(x$get.lineages()) >= 2) x})
-  ext.comps[sapply(ext.comps, is.null)] <- NULL
-  
   # retrieves compartment names for extant lineages
   ext.lineages.compnames <- sapply(
     model$get.extant.lineages(current.time),
@@ -28,8 +24,12 @@ calc.coal.wait.times <- function(model, current.time, dynamic=FALSE){
   # counts the number of extant lineages in one compartment
   # calculated for parameter `k` in function `wait.time`
   num.ext.lineages <- function(x) {
-    length(which(ext.lineages.compnames==x))
+    length(which(ext.lineages.compnames==x$get.name()))
   }
+  
+  # retrieves compartments with multiple extant lineages
+  ext.comps <- sapply(comps, function(x) {if (num.ext.lineages(x) >= 2) x})
+  ext.comps[sapply(ext.comps, is.null)] <- NULL
   
   # calculate waiting times per Compartment
   waiting.times <- vector()
@@ -96,7 +96,7 @@ calc.coal.wait.times <- function(model, current.time, dynamic=FALSE){
       
       # either `death.rate.distr` and/or `popn.growth.dynamics` not specified in YAML
       # assume that coalescent rates must be uniform (constant within-host population sizes)
-      if (length(comp$get.lineages()) > 0) {
+      if (num.ext.lineages(comp) > 0) {
         coal.rate <- comp$get.type()$get.coalescent.rate()
         
         wait.time <- rexp(n=1,rate=coal.rate)
@@ -110,3 +110,4 @@ calc.coal.wait.times <- function(model, current.time, dynamic=FALSE){
   
   waiting.times
 }
+
