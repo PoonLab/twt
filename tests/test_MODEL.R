@@ -37,3 +37,18 @@ plot(e)
 phy <- .eventlogger.to.phylo(e)
 write.tree(phy)
 
+
+
+
+## test script for 'example2.yaml'
+settings <- yaml.load_file('tests/fixtures/example2.yaml')
+m <- MODEL$new(settings)
+e <- EventLogger$new()
+
+sim.outer.tree(m, e)
+sim.inner.tree(m, e)
+
+print(e)
+plot(e)
+phy <- .eventlogger.to.phylo(e)
+write.tree(phy)

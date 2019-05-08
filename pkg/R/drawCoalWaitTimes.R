@@ -10,7 +10,7 @@ calc.coal.wait.times <- function(model, current.time, dynamic=FALSE){
   # @param model = MODEL object
   # @param current.time = current time of the simulation of inner tree
   # @return waiting.times = vector of waiting times
-  comps <- model$get.compartments()
+  comps <- c(model$get.compartments(), model$get.unsampled.hosts())
   compnames <- model$get.names(comps)
   
   # retrieves compartment names for extant lineages

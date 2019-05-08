@@ -3,11 +3,12 @@ OriginTimes:
   'virus':                             # origin time of `virus` epidemic
     start: 10.0                        # note this is reverse time, cumulative
     susceptibles:
-      - host: 100                      # number of susceptible at the origin time of the simulation for Type `host`
+      - host: 25                      # number of susceptible at the origin time of the simulation for Type `host`
 CompartmentTypes:
   'host':
     branching.rates: (host=0.01)        # named vector of transmission rates to different CompartmentTypes
     migration.rates: ()                # no migration (assume no superinfection)
+    coalescent.rate: 1.0
     bottleneck.size: 1                 # bottleneck size when transmission event occurs
     wait.time.distr:                   # distribution of waiting time between infection time and first sampling time of a Compartment
       distr: 'exp'

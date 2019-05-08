@@ -99,7 +99,7 @@ sim.outer.tree <- function(model, eventlog) {
   popn.totals <- model$get.origin.times()
   popn.rates <- .calc.popn.rates(types, indiv.types)
   
-  # record max sampling times of lineages for each Compartment
+  # record max sampling times (furthest back in time) of lineages for each Compartment
   storage <- .store.initial.samplings(comps, types, model$get.lineages())
   time.bands <- storage$initial.times
   possible.source.types <- storage$s.types
@@ -165,7 +165,7 @@ sim.outer.tree <- function(model, eventlog) {
     specific.type <- names(source.popns)[x]
     s.pop.by.type <- sapply(sources, function(y) {
       if (y$get.type()$get.name() == specific.type) {
-        if (is.null(y$get.branching.time())) {y}    # root no branching time
+        if (length(y$get.branching.time()) == 0 || is.null(y$get.branching.time())) {y}    # root no branching time
         else if (y$get.branching.time() > comps[[1]]$get.branching.time()) {y}
       } 
     })
@@ -193,15 +193,16 @@ sim.outer.tree <- function(model, eventlog) {
     }
     
     # list of possible sources is based off of the `s_type` recorded in the event associated with the transmission time in master copy `t_events`
-    if (is.null(recipient$get.branching.time())) {
+    if (length(recipient$get.branching.time()) == 0 || is.null(recipient$get.branching.time())) {
       # root case, "final" resolved transmission event (aka first recorded transmission, furthest back in time)
       break
       
     } else {
+      
       s_type <- t_events[ which(t_events$time == recipient$get.branching.time()), 's_type']
       # refine list of sources previously separated by Type also by earlier branching times than recipient's branching time
       refined.list.sources <- sapply(source.popns[[s_type]], function(s) {
-        if (is.null(s$get.branching.time())) s
+        if (length(s$get.branching.time()) == 0 || is.null(s$get.branching.time())) s
         else if (s$get.branching.time() > recipient$get.branching.time()) s
         else NULL
       })
@@ -212,12 +213,16 @@ sim.outer.tree <- function(model, eventlog) {
       source <- refined.list.sources[[s_ind_s_popn]]
       s_name <- source$get.name()
       
-      eventlog$add.event('transmission', recipient$get.branching.time(),NA, NA, r_name, s_name)
+      eventlog$add.event('transmission', recipient$get.branching.time(), NA, NA, r_name, s_name)
+      
     }
     
     # if source is an unsampled infected Compartment, now holds a sampled lineage we care about (promote us_comp)
-    if (source$is.unsampled() && source$get.name() %in% compnames == FALSE) {
+    if (source$is.unsampled() 
+        && source$get.name() %in% compnames == FALSE
+        && length(source$get.branching.time()) != 0) {
       # add us_comp to list `comps` (once first a source, can now be a recipient)
+      # AND ONLY if source is not "final" transmission event (b/c it has no source, therefore can't be recipient)
       comps[[length(comps)+1]] <- source
       compnames[[length(compnames)+1]] <- s_name
     }

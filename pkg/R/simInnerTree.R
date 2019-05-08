@@ -28,9 +28,7 @@ sim.inner.tree <- function(model, eventlog) {
   }
   
   
-  while (length(extant.lineages) >= 1) {
-    
-    num.extant <- length(extant.lineages)
+  while (num.extant >= 1) {
     
     # issue 54, case where there is 1 extant lineage remaining, but final transmission event further back in time still unresolved
     if (num.extant == 1) {
@@ -58,9 +56,9 @@ sim.inner.tree <- function(model, eventlog) {
       # no coalescent events possible at this point in time
       # move up to the earliest event (transmission or migration) in the EventLogger
       
-      option1.time <- min(transm.times[which(transm.times >= current.time)])           # min next transmission time event
+      option1.time <- min(transm.times[which(transm.times > current.time)])           # min next transmission time event
       if (is.null(migration.times) == F) {
-        option2.time <- min(migration.times[which(migration.times >= current.time)])     # min next migration time event
+        option2.time <- min(migration.times[which(migration.times > current.time)])     # min next migration time event
         current.time <- min(c(option1.time, option2.time))
       } else {
         current.time <- option1.time
@@ -81,6 +79,8 @@ sim.inner.tree <- function(model, eventlog) {
       }
       
       extant.lineages <- model$get.extant.lineages(current.time)
+      num.extant <- length(extant.lineages)
+      
       next
       
     } else {
@@ -107,6 +107,8 @@ sim.inner.tree <- function(model, eventlog) {
       update.transmission(model, eventlog, inf, inf.names, transm.event)
       
       extant.lineages <- model$get.extant.lineages(current.time)
+      num.extant <- length(extant.lineages)
+      
       next
       
     } else if (length(which(migration.times <= new.time)) > num.migrations.occurred) {
@@ -122,6 +124,7 @@ sim.inner.tree <- function(model, eventlog) {
       # TODO : maybe don't "restart" this simulation, rather, go straight to the next checks
       current.time <- new.time
       extant.lineages <- model$get.extant.lineages(current.time)
+      num.extant <- length(extant.lineages)
       
       next
       
@@ -131,6 +134,8 @@ sim.inner.tree <- function(model, eventlog) {
       
       current.time <- new.time
       extant.lineages <- model$get.extant.lineages(current.time)
+      num.extant <- length(extant.lineages)
+      
       next
       
     } else {
@@ -165,6 +170,7 @@ sim.inner.tree <- function(model, eventlog) {
       # update current time and extant lineages
       current.time <- new.time
       extant.lineages <- model$get.extant.lineages(current.time)
+      num.extant <- length(extant.lineages)
       
     }
     
