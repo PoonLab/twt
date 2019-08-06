@@ -1,63 +1,97 @@
-## after the objects are generated from user inputs ('loadInputs.R'), we need to initialize the list of fixed events
+## After the objects are generated from user inputs ('loadInputs.R'), 
+## we need to initialize the list of fixed events.  We anticipate 
+## three use cases:
+## 1. User provides a string or object representing the transmission tree
+##    that should be converted into an EventLogger object to use for 
+##    inner tree simulation.
+## 2. User manually inputs a host transmission tree into YAML format under 
+##    Compartments header.
 
-# Case 1 : User provides a host transmission tree in the form of an annotated ape::phylo object (w/ singletons)
-.to.eventlog <- function(newick) {
-  # function converts an ape::phylo tree object into transmission events stored in a NEW EventLogger object
-  #
-  # @param newick = Newick string in mode character
-  # @return e = EventLogger object initialized with list of fixed transmission events
-  
+#' eventlog.from.tree
+#' 
+#' \code{eventlog.from.tree} converts a Newick tree string or ape::phylo object
+#' into a sequence of transmission events that are stored as an eventlog object
+#' 
+#' @param tree: either a Newick tree string or an object of class 'phylo' (ape)
+#' that represents the transmission tree (history).  Internal node labels must 
+#' be present to indicate transmission sources.
+#' 
+#' @return
+#'   An object of class EventLogger initialized with a list of fixed transmission
+#'   events that were extracted from 'tree'.
+#'   
+#' @export
+eventlog.from.tree <- function(tree) {
+  # intiialize return value
   e <- EventLogger$new()
-  phy <- read.tree(text=newick)
+  
+  # check input
+  if (is.character(tree)) {
+    phy <- read.tree(text=tree)
+  } else if (any(class(tree) == 'phylo')) {
+    phy <- tree
+  } else {
+    stop("Error: arg 'tree' must be Newick tree string or 'phylo' object.")
+  }
   
   if (is.null(phy$node.label)) {
-    # in the future, may be able to generate unique name for internal node
-    stop('Node labels must be present in host transmission tree.')
-  } 
+    stop('Node labels must be present in host transmission tree to indicate sources.')
+  }
   
-  sapply(1:nrow(phy$edge), function(x) {
-    s_ind <- phy$edge[x,1]
-    r_ind <- phy$edge[x,2]
+  # iterate over edges in tree
+  . <- sapply(1:nrow(phy$edge), function(x) {
+    s_ind <- phy$edge[x,1]  # source
+    r_ind <- phy$edge[x,2]  # recipient
     
-    sourceLabel <- phy$node.label[s_ind]
+    source_label <- phy$node.label[s_ind]
     
     if (r_ind <= length(phy$tip.label)) {
-      recipientLabel <- phy$tip.label[r_ind]
+      recipient_label <- phy$tip.label[r_ind]
     } else {
-      recipientLabel <- phy$node.label[r_ind]
+      recipient_label <- phy$node.label[r_ind]
     }
     
-    branching.time <- phy$edge.length[x]
-    e$add.event('transmission', branching.time, NA, NA, recipientLabel, sourceLabel)
+    if (source_label != recipient_label) {
+      branching_time <- phy$edge.length[x]
+      e$add.event('transmission', branching_time, NA, NA, recipient_label, 
+                  source_label)
+    }  # otherwise no transmission on branch
   })
   
   e
 }
 
 
-
-# Case 2 : User manually inputs a host transmission tree into YAML format under Compartments header
+#' init.branching.events
+#' 
+#' \code{init.branching.events} initializes an EventLogger object with 
+#' a list of fixed transmission events that are specified by the user 
+#' in a YAML file that has been parsed into a MODEL object.
+#' 
+#' @param model: an object of class MODEL from which we will extract the 
+#' transmission tree information.
+#' @param eventlog: an object of class EventLog to update in-place
+#' 
+#' @export
 init.branching.events <- function(model, eventlog) {
-  # EventLogger object initialized with list of fixed transmission events
-  #
-  # @param model = MODEL object
-  # @param eventlog = EventLogger object
-
-  # store fixed sampling times of the tips of the MODEL object into the EventLogger for plotting functions
+  # store fixed sampling times of the tips for plotting functions
   eventlog$store.fixed.samplings(model$get.fixed.samplings())
   
   # if the user input includes a tree (host tree) then add transmission events
   comps <- model$get.compartments()
   lineages <- model$get.lineages()
+  locations <- sapply(lineages, function(l) l$get.location()$get.name())
 
-  transmissions <- sapply(comps, function(x) {
-    branching.time <- x$get.branching.time()
+  transmissions <- sapply(comps, function(comp) {
+    branching.time <- comp$get.branching.time()
     
     if (is.numeric(branching.time)) {
       
-      if (is.R6(x$get.source())) {
-        source <- x$get.source()$get.name()
-        xLin <- sapply(lineages, function(y){which(y$get.location()$get.name() == x$get.name())})
+      if (is.R6(comp$get.source())) {
+        source <- comp$get.source()$get.name()
+        # find all lineages that are located in this compartment
+        xLin <- which(locations == comp$get.name())
+        
         lineage <- lineages[[ which(xLin == 1) ]]$get.name()
       } else {
         source <- x$get.source()

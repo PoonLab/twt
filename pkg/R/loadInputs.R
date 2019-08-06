@@ -1,4 +1,13 @@
-# Load all of the different objects into one larger class
+#' MODEL
+#'
+#' \code{MODEL} is an R6 class that defines an object that generates all of the 
+#' objects of the various classes (e.g., Compartment, CompartmentType) that 
+#' define a simulation model.
+#' 
+#' @param settings: a named list returned by `yaml.load_file()` that contains 
+#' user specifications of the simulation model.
+#' 
+#' @export
 MODEL <- R6Class("MODEL",
   public = list(
     initialize = function(settings=NA) {

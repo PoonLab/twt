@@ -1,6 +1,33 @@
-# CompartmentType
-#  Defines a type of compartment such as a class of host
-#  individual (risk group) with a specific transmission rate
+#' CompartmentType
+#' 
+#' \code{CompartmentType} is an R6 class that defines a type of compartment, 
+#' such as a class of host individual (risk group) with a specific transmission 
+#' rate.
+#' 
+#' @param name: a character string that uniquely identifies the class
+#' @param unsampled: if TRUE, no Compartments of this Type can contain sampled
+#' lineages (directly observed tips of the inner tree).
+#' @param susceptible: if TRUE, no Compartments of this Type contain either
+#' sampled or unsampled lineages.
+#' @param branching.rates: a named vector of transmission rates *to* other
+#' CompartmentTypes.
+#' @param migration.rates: a named vector of migration rates *to* other 
+#' CompartmentTypes.
+#' @param bottleneck.size: the maximum number of lineages that can be transmitted
+#' to a Compartment of this Type.
+#' @param coalescent.rate: the rate at which lineages coalesce within a Compartment
+#' of this Type.
+#' @param death.rate.distr: a text expression for the waiting time distribution
+#' to a death event. Required for `popn.growth.dynamics` to override 
+#' `coalescent.rate`.
+#' @param wait.time.distr: a text expression for the waiting time distribution
+#' to a transmission event.
+#' @param popn.growth.dynamics: a text expression for population growth dynamics
+#' in forward time. If not NULL, can override `coalescent.rate`.
+#' @param transmission.times: numeric vector of transmission event times, 
+#' populated by `outer.tree.sim` from class parameters.
+#' 
+#' @export
 CompartmentType  <- R6Class("CompartmentType",
   public = list(
     initialize = function(name=NA, unsampled = NA,
@@ -21,6 +48,7 @@ CompartmentType  <- R6Class("CompartmentType",
       private$transmission.times <- transmission.times         # populated after outer.tree.sim, tracked used and unused for migration events in inner.tree.sim
     },
     
+    # accessor functions
     get.bottleneck.size = function() {
       private$bottleneck.size
     },
@@ -100,7 +128,21 @@ CompartmentType  <- R6Class("CompartmentType",
 
 
 
-# Compartment
+#' Compartment
+#' 
+#' \code{Compartment} is an R6 class for objects that represent the units of an
+#' outer tree simulation, such as a host individual or deme.
+#' 
+#' @param name: a character string that uniquely identifies the Compartment
+#' @param type: a reference to a CompartmentType object
+#' @param source: a reference to another Compartment from which a Lineage was 
+#' transmitted to this Compartment
+#' @param branching.time: stores the origin time of this Compartment, which 
+#' corresponds to a branching event in the "outer" tree.
+#' @param unsampled: if TRUE, then any Lineage carried by this Compartment is not
+#' directly observed, i.e., it does not represent a tip in the "inner" tree.
+#' 
+#' @export 
 Compartment <- R6Class("Compartment",
   public = list(
     initialize = function(name=NA, type=NA, source=NA, branching.time=NA, unsampled=FALSE, lineages=list()) {
@@ -112,6 +154,7 @@ Compartment <- R6Class("Compartment",
       private$lineages <- lineages
     },
     
+    # accessor functions
     get.name = function() {
       private$name
     },
@@ -171,7 +214,19 @@ Compartment <- R6Class("Compartment",
 
 
 
-# Lineage
+#' Lineage
+#' 
+#' \code{Lineage} is an R6 class for objects that represent pathogen lineages
+#' that are carried by Compartments and which comprise the "inner" tree of the 
+#' simulation.
+#' 
+#' @param name: a character string that uniquely identifies the Lineage
+#' @param type: a reference to an object of class LineageType (not yet implemented)
+#' @param sampling.time: the time that the Lineage was sampled; left to NA for 
+#' unsampled Lineages
+#' @param location: a reference to a Compartment object
+#' 
+#' @export
 Lineage <- R6Class("Lineage",
   public = list(
     initialize = function(name=NA, type=NA, sampling.time=NA, location=NA) {
@@ -214,10 +269,24 @@ Lineage <- R6Class("Lineage",
 
 
 
-# Event Logger (tracks migration, transmission, and coalescent events) (bottleneck events are logged as coalescent events)
+#' EventLogger
+#' 
+#' \code{EventLogger} is an R6 class for an object that tracks migration, 
+#' transmission, and coalescent events.  Note that bottleneck events are logged as 
+#' coalescent events.
+#' 
+#' @param events: a data frame where each row represents an event with a time 
+#' stamp in forward time.
+#' @param events.noncumul: optionally, a data frame where events are stamped 
+#' with the waiting time since the preceding event
+#' @param migration.events.storage: a data frame of migration events, returned by
+#' `simMigrations.R:.calc.migration.events()`.
+#' 
+#' @export
 EventLogger <- R6Class("EventLogger",
   public = list(
-
+    # FIXME: it would be more sensible to have one "events" argument and a 
+    #        boolean for whether the data frame is cumulative time or not.
     initialize = function(events = data.frame(event.type=character(),
                                               time=numeric(),
                                               lineage1=character(),

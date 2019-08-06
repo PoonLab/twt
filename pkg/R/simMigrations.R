@@ -103,7 +103,7 @@ sim.migrations <- function(model, eventlog) {
   # @param popn.migration.rates: rates of migration between different CompartmentTypes
   # @param max.sampling.time: time of the most recent sample as a endpoint for this function (type numeric)
   # @param possible.source.types: list of possible Sources that each recipient type can receive a migrating lineage from
-  # @return m_events = data frame of mgiration events, each made up of: time, recipient Type, and source Type
+  # @return m_events = data frame of migration events, each made up of: time, recipient Type, and source Type
   
   m_events <- data.frame(time=numeric(), r_type=character(), s_type=character(), v_type=character(), stringsAsFactors = FALSE)
   
