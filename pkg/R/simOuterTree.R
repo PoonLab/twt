@@ -1,11 +1,4 @@
-## After the objects are generated from user inputs ('loadInputs.R'), 
-## we need to initialize the list of fixed events.  We anticipate 
-## three use cases:
-## 1. User provides a string or object representing the transmission tree
-##    that should be converted into an EventLogger object to use for 
-##    inner tree simulation.
-## 2. User manually inputs a host transmission tree into YAML format under 
-##    Compartments header.
+
 
 #' eventlog.from.tree
 #' 
@@ -19,7 +12,8 @@
 #' @return
 #'   An object of class EventLogger initialized with a list of fixed transmission
 #'   events that were extracted from 'tree'.
-#'   
+#' 
+#' @seealso sim.outer.tree, init.branching.events
 #' @export
 eventlog.from.tree <- function(tree) {
   # intiialize return value
@@ -53,8 +47,8 @@ eventlog.from.tree <- function(tree) {
     
     if (source_label != recipient_label) {
       branching_time <- phy$edge.length[x]
-      e$add.event('transmission', branching_time, NA, NA, recipient_label, 
-                  source_label)
+      e$add.event('transmission', branching_time, NA, NA, 
+                  recipient_label, source_label)
     }  # otherwise no transmission on branch
   })
   
@@ -72,6 +66,7 @@ eventlog.from.tree <- function(tree) {
 #' transmission tree information.
 #' @param eventlog: an object of class EventLog to update in-place
 #' 
+#' @seealso eventlog.from.tree, sim.outer.tree
 #' @export
 init.branching.events <- function(model, eventlog) {
   # store fixed sampling times of the tips for plotting functions
@@ -90,17 +85,17 @@ init.branching.events <- function(model, eventlog) {
       if (is.R6(comp$get.source())) {
         source <- comp$get.source()$get.name()
         # find all lineages that are located in this compartment
-        xLin <- which(locations == comp$get.name())
+        my.lines <- which(locations == comp$get.name())
         
-        lineage <- lineages[[ which(xLin == 1) ]]$get.name()
+        lineage <- lineages[[ which(my.lines == 1) ]]$get.name()
       } else {
         source <- x$get.source()
         lineage <- NA
       }
       
       # add transmission event to EventLogger object
-      eventlog$add.event('transmission',  branching.time, lineage, NA, x$get.name(), source)
-      
+      eventlog$add.event('transmission',  branching.time, lineage, NA, 
+                         comp$get.name(), source)
     }
     
   })
@@ -109,24 +104,39 @@ init.branching.events <- function(model, eventlog) {
 }
 
 
-
-# Case 3: no host tree provided, transmission events need to be generated
+#' sim.outer.tree
+#' 
+#' After the objects are generated from user inputs ('loadInputs.R'), 
+#' we need to initialize the list of fixed events.  We anticipate 
+#' three use cases:
+#' 1. User provides a string or object representing the transmission tree
+#'    that should be converted into an EventLogger object to use for
+#'    inner tree simulation (`eventlog.from.tree`).
+#' 2. User manually inputs a host transmission tree into YAML format under 
+#'    Compartments header (`init.branching.events`).
+#' 3. No host tree provided, transmission events need to be simulated under
+#'    user-specified model (`sim.outer.tree`).
+#'    
+#' \code{sim.outer.tree} simulates transmission events and fixes them to the 
+#' timeline of lineage sampled events.
+#' 
+#' @param model: object of class 'MODEL'
+#' @param eventlog: object of class 'EventLogger' to update
+#' 
+#' @seealso init.branching.events, eventlog.from.tree
+#' @export
 sim.outer.tree <- function(model, eventlog) {
-  # simulate transmission events and fix them to the timeline of lineage sampled events
-  # EventLogger object populated with generated transmission events
-  #
-  # @param model = MODEL object
-  # @param eventlog = EventLogger object
-  
   # ptm <- proc.time()   # benchmark start time
   
-  # store fixed sampling times of the tips of the MODEL object into the EventLogger for plotting functions
+  # store fixed sampling times of the tips of the MODEL object
   eventlog$store.fixed.samplings(model$get.fixed.samplings())
   
   comps <- model$get.compartments()           
   compnames <- model$get.names(comps)
   
-  types <- model$get.types()
+  types <- model$get.types()  # CompartmentType objects
+  
+  # maps Compartments to CompartmentTypes
   indiv.types <- sapply(unlist(comps), function(a){a$get.type()$get.name()})
   
   # record population totals and transmission rates for all Types
@@ -282,21 +292,23 @@ sim.outer.tree <- function(model, eventlog) {
 
 
 
-
+#' .calc.popn.rates
+#' 
+#' INTERNAL.  Stores population rates for each CompartmentType specified by the user.
+#
+#' @param types:  list of CompartmentType objects
+#' @param indiv.types:  list of CompartmentType name of type `character` for each 
+#' individual Compartment object
+#' @return matrix of population transmission rates for each type to type comparison
+#' 
 .calc.popn.rates <- function(types, indiv.types) {
-  # stores population rates for each CompartmentType specified by the user
-  #
-  # @param types = list of CompartmentType objects
-  # @param indiv.types = list of CompartmentType name of type `character` for each individual Compartment object
-  # @return popn.rates = matrix of population transmission rates for each type to type comparison
-  
-  popn.rates <- matrix(nrow=length(types),                                # source types
-                       ncol=length(types),                                # recipient types
+  popn.rates <- matrix(nrow=length(types),  # source types
+                       ncol=length(types),  # recipient types
                        dimnames=list(names(types), names(types)))
   
   for (x in types) {                                                      
     for (y in names(types)) {
-      rate <- x$get.branching.rate(y)                                     # store instrinsic transmission rates for all typeA -> typeB pairs
+      rate <- x$get.branching.rate(y)  # store instrinsic transmission rates for all typeA -> typeB pairs
       popn.rates[x$get.name(), y] <- rate
     }
   }
@@ -306,17 +318,21 @@ sim.outer.tree <- function(model, eventlog) {
 
 
 
-
+#' .store.initial.samplings
+#' 
+#' INTERNAL. Stores first sampling time of a Lineage for each sampled infected 
+#' Compartment.
+#'
+#' @param infected = list of infected Compartment objects
+#' @param types = list of CompartmentType objects
+#' @param lineages = list of Lineage objects
+#'
+#' @return named list of possible Types of `source` with recipient types as names
+#' and list of first Lineage sampling times for each Compartment
 .store.initial.samplings <- function(infected, types, lineages) {
-  # stores first sampling time of a Lineage for each sampled infected Compartment
-  #
-  # @param infected = list of infected Compartment objects
-  # @param types = list of CompartmentType objects
-  # @param lineages = list of Lineage objects
-  # @return named list of possible Types of `source` with recipient types as names
-      # and list of first Lineage sampling times for each Compartment
   
-  # generate dictionary of different types of source that each recipient Type could possibly receive a transmission from
+  # Generate dictionary of different types of source that each recipient Type could 
+  #  possibly receive a transmission from
   typenames <- sapply(types, function(x) x$get.name())
   possibleSourceTypes <- as.list(rep(NA, length(typenames)))  
   names(possibleSourceTypes) <- typenames
@@ -331,7 +347,7 @@ sim.outer.tree <- function(model, eventlog) {
   possibleSourceTypes <- possibleSourceTypes[!is.na(possibleSourceTypes)] # cleanup
 
   
-  time.bands <- vector()             # vector of initial (earliest) sampling times for each Compartment
+  time.bands <- vector()  # vector of initial (earliest) sampling times for each Compartment
   lineage.locations <- sapply(lineages, function(x) {x$get.location()$get.name()})
   
   for (i in infected) {
@@ -361,15 +377,20 @@ sim.outer.tree <- function(model, eventlog) {
 
 
 
-
-.calc.transmission.events <- function(popn.totals, popn.rates, init.samplings, possible.sources) {
-  # generates transmission events only, based on population dynamics of the MODEL
-  #
-  # @param popn.totals = totals at time `t=0` of susceptible and infected specific to each CompartmentType
-  # @param popn.rates = rates of transmission between different CompartmentTypes
-  # @param init.samplings = list of first sampling times for each Compartment
-  # @param possible.sources = list of possible Sources that each recipient Type can receive a transmission from 
-  # @return t_events = data frame of transmission events, each made up of: time, recipient Type, and source Type 
+#' .calc.transmission.events
+#' 
+#' INTERNAL. Generates transmission events only, based on population dynamics of the MODEL
+#' 
+#' @param popn.totals: totals at time `t=0` of susceptible and infected specific to 
+#'        each CompartmentType
+#' @param popn.rates: rates of transmission between different CompartmentTypes
+#' @param init.samplings: list of first sampling times for each Compartment
+#' @param possible.sources: list of possible Sources that each recipient Type can 
+#'        receive a transmission from 
+#' @return t_events: data frame of transmission events, each made up of: time, 
+#'         recipient Type, and source Type 
+.calc.transmission.events <- function(popn.totals, popn.rates, init.samplings, 
+                                      possible.sources) {
   
   t_events <- data.frame(time=numeric(), r_type=character(), s_type=character(), v_type=character(), stringsAsFactors = FALSE)
   maxAttempts <- 10 
@@ -438,28 +459,35 @@ sim.outer.tree <- function(model, eventlog) {
 }
 
 
-
-
+#' .assign.transmission.times
+#' 
+#' INTERNAL. Assignment of transmission times specific to each type.
+#'
+#' @param infected:  list of Compartment objects to be assigned transmission times
+#' @param events:  list of possible transmission events for the infected
+#' @param initial.samplings:  list of respective initial sampling times for each 
+#' Compartment
+#' @param type:  CompartmentType object
+#' 
+#' @return  Returning vector of all transmission times, including times used and unused 
+#' in this current assignment of transmission times.
+#' 
 .assign.transmission.times <- function(infected, events, initial.samplings, type) {
-  # assignment of transmission times specific to each type
-  #
-  # @param infected = list of Compartment objects to be assigned transmission times
-  # @param events = list of possible transmission events for the infected
-  # @param initial.samplings = list of respective initial sampling times for each Compartment
-  # @param type = CompartmentType object
   
   infected.names <- sapply(infected, function(x) x$get.name())
-  i.times <- initial.samplings[!is.na(initial.samplings)]                     # separate sampled infected comps from 
-  u.times <- initial.samplings[is.na(initial.samplings)]                      # unsampled infected comps
-  
+  i.times <- initial.samplings[!is.na(initial.samplings)]  # separate sampled infected comps from 
+  u.times <- initial.samplings[is.na(initial.samplings)]  # unsampled infected comps
+
+  # labelled logical vector tracking used and unused transmission times  
   all.t.times <- events$time
-  names(all.t.times) <- vector(length=length(events$time))                    # labelled logical vector tracking used and unused transmission times
+  names(all.t.times) <- vector(length=length(events$time))
   
   while (length(i.times) >= 1) {
-    # for sampled infected Compartments, assignments based off of Type-specific events and Type-specific waiting time distribution
+    # for sampled infected Compartments, assignments based off of Type-specific events 
+    # and Type-specific waiting time distribution
     
-    earliest.time <- max(i.times, na.rm=T)                                    # pick Compartment with earliest sampling time (furthest back in time)
-    recipients.names <- names(i.times)[which(i.times==earliest.time)]         # group all infected with the same sampling time together
+    earliest.time <- max(i.times, na.rm=T)  # pick Compartment with earliest sampling time (furthest back in time)
+    recipients.names <- names(i.times)[which(i.times==earliest.time)]  # group all infected with the same sampling time together
     
     recipients.inds <- sapply(recipients.names, function(x) which(infected.names == x))
     recipients <- infected[recipients.inds]
@@ -486,10 +514,11 @@ sim.outer.tree <- function(model, eventlog) {
       recipients[[ind]]$set.branching.time(t.time)
       
       used.t.time.ind <- which(all.t.times == t.time)
-      names(all.t.times)[used.t.time.ind] <- TRUE                            # this transmission time has been assigned, set name in logic vector to TRUE
+      # this transmission time has been assigned
+      names(all.t.times)[used.t.time.ind] <- TRUE
       
-      recipients <- recipients[-ind]                                         # remove recipient from remaining list of recipients
-      events <- events[ -which(events$time == t.time), ]                     # remove transmission event from events
+      recipients <- recipients[-ind]  # remove from remaining list of recipients
+      events <- events[ -which(events$time == t.time), ]  # remove transmission event from events
     }
     
     if (length(recipients) != 0) sapply(recipients, function(x) x$set.branching.time(NA))
@@ -498,7 +527,8 @@ sim.outer.tree <- function(model, eventlog) {
   }
   
   while (length(u.times) >= 1) {
-    # for unsampled infected Compartments, assignments based off of Type-specific events and uniform transmission time distribution
+    # for unsampled infected Compartments, assignments based off of Type-specific events 
+    # and uniform transmission time distribution
     u.ind <- sample.int(length(u.times), 1)
     u.name <- names(u.times)[u.ind]
     u.comp <- infected[[ which(infected.names == u.name) ]]
@@ -507,12 +537,12 @@ sim.outer.tree <- function(model, eventlog) {
     t.time <- events[u.event, 'time']
     u.comp$set.branching.time(t.time)
     
-    used.t.time.ind <- which(all.t.times == t.time)                          # this transmission time has been assigned, set name in logic vector to TRUE
+    used.t.time.ind <- which(all.t.times == t.time)  # this transmission time has been assigned, set name in logic vector to TRUE
     names(all.t.times)[used.t.time.ind] <- TRUE                             
     
-    u.times <- u.times[-u.ind]                                               # remove used transmission time for unsampled Compartment
-    events <- events[-u.event,]                                              # remove used transmission event from events
+    u.times <- u.times[-u.ind]  # remove used transmission time for unsampled Compartment
+    events <- events[-u.event,]  # remove used transmission event from events
   }
   
-  all.t.times              # returning vector of all transmission times, including times used and unused in this current assignment of transmission times
+  all.t.times  
 }

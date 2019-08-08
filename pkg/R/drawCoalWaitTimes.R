@@ -1,15 +1,35 @@
-# draw waiting time for one piece of population growth dynamics
-# inverse cumulative function (Romero-Severson et al., 2017)
-wait.time <- function(k, alpha, beta){
-  u <- runif(1, 0, 1)
-  (1-(1-u)^(beta/choose(k,2)))*alpha/beta
+#' wait.time
+#' 
+#' Draw waiting time to next coalescent event for the current interval
+#' of a piecewise linear model describing the population 
+#' growth dynamics over time.
+#' Inverse cumulative function from Romero-Severson et al., 2017 
+#' https://doi.org/10.1534/genetics.117.300284
+#' 
+#' @param k: number of extant lineages that could potentially coalesce
+#' @param t1: start time in reverse, relative to intercept
+#' @param alpha: intercept, population size at t=0
+#' @param beta: slope of linear growth interval
+#' 
+#' @return
+#'   Random variate from waiting time distribution.
+wait.time <- function(k, t1, alpha, beta){
+  u <- runif(1)
+  (1-(1-u)^(beta/choose(k,2)))*(alpha+beta*t1)/beta
 }
 
+
+#' calc.coal.wait.times
+#' 
+#' Draw waiting times for all compartments that have two or more extant lineages.
+#' 
+#' @param model: object of class 'MODEL'
+#' @param current.time: current simulation time for inner tree
+#' @return Named numeric vector of waiting times per compartment
+#' 
+#' @export
 calc.coal.wait.times <- function(model, current.time, dynamic=FALSE){
-  # draw waiting times for all compartments that have two or more extant lineages
-  # @param model = MODEL object
-  # @param current.time = current time of the simulation of inner tree
-  # @return waiting.times = vector of waiting times
+  # retrieve all compartments
   comps <- c(model$get.compartments(), model$get.unsampled.hosts())
   compnames <- model$get.names(comps)
   
@@ -28,86 +48,82 @@ calc.coal.wait.times <- function(model, current.time, dynamic=FALSE){
   }
   
   # retrieves compartments with multiple extant lineages
-  ext.comps <- sapply(comps, function(x) {if (num.ext.lineages(x) >= 2) x})
-  ext.comps[sapply(ext.comps, is.null)] <- NULL
+  counts <- sapply(comp, function(x) num.ext.lineages(x))
+  ext.comps <- comps[counts >= 2]
   
   # calculate waiting times per Compartment
   waiting.times <- vector()
+  
   for (comp in ext.comps) {
+    k <- num.ext.lineages(comp)  # >=2 at this point
+    this.type <- comp$get.type()
     
-    compname <- comp$get.name()
+    if (is.null(this.type$get.death.rate.distr()) || 
+        is.null(this.type$get.popn.growth.dynamics())) {
+      
+      # assume constant rate of coalescence
+      c.rate <- this.type$get.coalescent.rate()
+      waiting.times <- c(waiting.times, rexp(n=1, rate=choose(k,2)*c.rate))
+      names(waiting.times)[length(waiting.times)] <- comp$get.name()
+    }
     
-    # determine whether to use `death.rate.distr` and `popn.growth.dynamics` to populate coalescent waiting times, or uniform coalescent rate
-    if (is.null(comp$get.type()$get.death.rate.distr()) == F && is.null(comp$get.type()$get.popn.growth.dynamics()) == F) {
+    else {
+      # population growth dynamics with user-specified piecewise linear model
+      this.name <- comp$get.name()
+      popn.growth <- this.type$get.popn.growth.dynamics()  # the model!
       
-      # `death.rate.distr` and `popn.growth.dynamics` are specified in YAML
-      # with a death rate, varying coalescent rates are permitted because it should be possible to draw a waiting time to infection of the root compartment
-      
-      # retrieve user-specified popn.growth.dynamics for this compartment
-      # NOTE: `popn.growth.dynamics` is user-specified in FORWARD-TIME
-      # RECALL: Compartment `get.branching.time` are specified in COALESCENT (BACKWARDS) TIME
-      popn.growth <- comp$get.type()$get.popn.growth.dynamics()       
-      
-      if (is.null(comp$get.branching.time())) {
-        # infection time is unknown for the compartment that started the epidemic -- could be arbitrarily large in COALESCENT (BACKWARDS) TIME
-        # assume that initial infection time is at the maximal time before it hits the final piece (when population size becomes constant) issue #46
-        infection.time <- popn.growth[nrow(popn.growth), 'startTime']     # Re-implementing after incorporating death dynamics (dated: November 26/2018)
+      # time is measured in reverse relative to start of simulation at t=0
+      if (is.null(comp$get.branchingtime())) {
+        # index case, branching time not determined by transmission from other case
+        # arbitrarily set br. time to maximum time at limit of population growth model
+        infection.time <- popn.growth[nrow(popn.growth), 'startTime']
       } else {
         infection.time <- comp$get.branching.time()
       }
       
-      # delta time = compartment infection time - current simulation time
-      delta.t = overall.t <- infection.time - current.time       
-      piece.rows <- which(popn.growth[,'startTime'] < delta.t)
+      # amount of time until we reach start of infection (backwards)
+      delta.t = overall.t <- infection.time - current.time
+      
+      # index to pieces within the remaining time interval
+      piece.rows <- which(popn.growth[, 'startTime'] < delta.t)
       if (length(piece.rows) == 1) {
-        # obtain all the pieces of the popn.growth.dynamics functions that are valid for current simulation time
-        pieces <- as.matrix(t(popn.growth[piece.rows, ]))                  
-        rownames(pieces) <- 1
+        # only one interval left - cast row vector as matrix
+        pieces <- as.matrix(t(popn.growth[piece.rows, ]))
+        row.names(pieces) <- 1
       } else {
-        pieces <- popn.growth[piece.rows, ]         
+        pieces <- popn.growth[piece.rows, ]
       }
       
-      for (i in nrow(pieces):1){
-        # iterate through the valid pieces of population growth dynamics to draw waiting time
-        # in COALESCENT TIME, start at the current piece first (this would be the latest piece in FORWARD TIME)
-        # work backwards to earlier pieces in the popn.growth.dynamic functions if needed
-        
-        piece <- pieces[i,]
-        wait <- wait.time(num.ext.lineages(compname), piece['intercept'], piece['slope'])
+      for (i in nrow(pieces):1) {
+        piece <- pieces[i, ]
+        wait <- wait.time(num.ext.lineages(this.name), piece['intercept'], piece['slope'])
         delta.t <- delta.t - wait
         
-        # if waiting time exceeds the start time of the piece, move delta.t to the start time (end time of the previous piece)
-        if (delta.t < piece['startTime']){
+        if (delta.t < piece['startTime']) {
+          # waiting time exceeds limit of this piece
           delta.t <- piece['startTime']
           if (delta.t == 0) {
-            waiting.times <- c(waiting.times, overall.t)                    # wait time 'maxed out', add total waiting time from current time
-            names(waiting.times)[[length(waiting.times)]] <- compname       # associate waiting times w/ their compartment name
+            # past limit of initial piece - either a different within-host event occurs or 
+            # we apply this compartment's bottleneck
+            waiting.times <- c(waiting.times, overall.t)
+            names(waiting.times)[[length(waiting.times)]] <- this.name
+            break
           }
-          # go to next piece and draw new waiting time
+          # otherwise, go to next piece
         } else {
-          cumul.wait.time <- overall.t - delta.t
-          waiting.times <- c(waiting.times, cumul.wait.time)                # add the waiting time of current compartment to the vector of waiting times
-          names(waiting.times)[[length(waiting.times)]] <- compname         # associate the waiting times with their compartments
+          # waiting time within this piece
+          cumul.wait.time <- overall.t - delta.t  # relative to current time
+          waiting.times <- c(waiting.times, cumul.wait.time)
+          names(waiting.times)[[length(waiting.times)]] <- this.name
           break
         }
       }
       
-    } else {
-      
-      # either `death.rate.distr` and/or `popn.growth.dynamics` not specified in YAML
-      # assume that coalescent rates must be uniform (constant within-host population sizes)
-      if (num.ext.lineages(comp) > 0) {
-        coal.rate <- comp$get.type()$get.coalescent.rate()
-        
-        wait.time <- rexp(n=1,rate=coal.rate)
-        waiting.times <- c(waiting.times, wait.time)
-        names(waiting.times)[[length(waiting.times)]] <- compname
-      }
-      
-    }
+    }  # end else
     
+    # go to next compartment
   }
   
-  waiting.times
+  return(waiting.times)
 }
 

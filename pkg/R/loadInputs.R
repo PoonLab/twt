@@ -7,6 +7,18 @@
 #' @param settings: a named list returned by `yaml.load_file()` that contains 
 #' user specifications of the simulation model.
 #' 
+#' @field origin.times matrix with rows for every LineageType, and columns for 
+#' the origin time (in reverse, relative to most recent lineage sampling time t=0) 
+#' followed by number of susceptibles per CompartmentType at origin.
+#' @field types vector of CompartmentType objects
+#' @field compartments vector of Compartment objects
+#' @field lineages vector of Lineage objects
+#' @field extant.lineages list of Lineage objects with sampling time t=0 (most recent)
+#' @field locations a named list of Lineage objects keyed by Compartment
+#' @field choices list of Lineage pairs that may coalesce per Compartment, 
+#' keyed by index to `locations`
+#' @field fixed.samplings list of Lineage names and sampling times for plotting
+#' 
 #' @export
 MODEL <- R6Class("MODEL",
   public = list(
@@ -123,19 +135,22 @@ MODEL <- R6Class("MODEL",
     fixed.samplings = NULL,
     
     load.origin.times = function(settings) {
-      ## function loads origin times specific to each LineageType (the start time of the epidemic of one or more viruses)
-      ## @return mat = named list of number of susceptibles for each CompartmentType, specific to each virus (LineageType)
+      # Loads origin times specific to each LineageType (the start time of the 
+      # epidemic of one or more viruses).
+      # @return mat: named list of number of susceptibles for each CompartmentType, 
+      # specific to each virus (LineageType)
       lin.types <- names(settings$OriginTimes)
       comp.types <- names(settings$CompartmentTypes)
       mat <- matrix(nrow=length(lin.types),
                     ncol=length(comp.types) + 1, 
                     dimnames=list(lin.types, c('start',comp.types)) )
       for (x in lin.types) {
+        # origin time is measured in reverse (prior to most recent sampled lineage)
         params <- settings$OriginTimes[[x]]
-        mat[x,'start'] <- params$start
+        mat[x, 'start'] <- params$start
         for (s in 1:length(comp.types)) {
           typename <- comp.types[s]
-          mat[x,typename] <- params$susceptibles[[s]][[typename]]
+          mat[x, typename] <- params$susceptibles[[s]][[typename]]
         }
       }
        
@@ -401,7 +416,8 @@ MODEL <- R6Class("MODEL",
     
     
     init.fixed.samplings = function() {
-      # retrieve sampling time and populate tip labels / times in ape:: phylo object (for plotting Eventlogger function)
+      # retrieve sampling time and populate tip labels / times in ape:: phylo object 
+      # (for plotting Eventlogger function)
       list(
         # store label w/ corresponding tip height in new ape::phylo object (not casted into `phylo` yet)
         tip.label = sapply(private$lineages, function(x) x$get.name()),
