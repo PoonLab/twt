@@ -1,7 +1,21 @@
-# functions to convert the events stored in the EventLogger into an ape::phylo object that can then be plotted or printed
+# functions to convert the events stored in the EventLogger into an 
+# ape::phylo object that can then be plotted or printed
 
-plot.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE, node.labels=FALSE) {
-  phy <- .eventlogger.to.phylo(eventlog=eventlog, transmissions=transmissions, migrations=migrations, node.labels=node.labels)
+
+#' plot.EventLogger
+#' 
+#' Generate a plot summarizing the content of an EventLogger object.
+#' 
+#' @param eventlog:  Object of class 'EventLogger'
+#' @param transmissions:  If TRUE, display transmission events in plot.
+#' 
+plot.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE, 
+                             node.labels=FALSE) {
+  phy <- .eventlogger.to.phylo(
+    eventlog=eventlog, 
+    transmissions=transmissions, 
+    migrations=migrations, 
+    node.labels=node.labels)
   plot(phy)
 }
 
