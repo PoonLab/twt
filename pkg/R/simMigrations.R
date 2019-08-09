@@ -10,12 +10,15 @@
 #### NOTE: There are many similarities between this code and `sim.outer.tree()` function #######
 
 
+#' sim.migrations
+#' 
+#' Annotate and update the EventLogger object with migration events.
+#' 
+#' @param model: R6 object from MODEL$new()
+#' @param eventlog: R6 Eventlogger object populated by sim.outer.tree()
+#' 
+#' @export
 sim.migrations <- function(model, eventlog) {
-  # Annotate and update the EventLogger object with migration events
-  # 
-  # @param model: R6 object from MODEL$new()
-  # @param eventlog: R6 Eventlogger object populated by sim.outer.tree()
-  
   comps <- model$get.compartments()
   compnames <- model$get.names(comps)
   
@@ -43,18 +46,21 @@ sim.migrations <- function(model, eventlog) {
 }
 
 
-
+#' .record.migration.rates
+#'
+#' INTERNAL.  Helper function stores migration rates for each CompartmentType 
+#' specified by the user.
+#'
+#' @param types: list of CompartmentType objects
+#' @param indiv.types: list of CompartmentType name of type `character` for each 
+#' individual Compartment object
+#' @return popn.migration.rates = matrix of population migration rates for each 
+#' Type to Type comparison (for all possible migration events)
 .record.migration.rates <- function(types, indiv.types) {
-  # helper function stores migration rates for each CompartmentType specified by the user
-  #
-  # @param types: list of CompartmentType objects
-  # @param indiv.types: list of CompartmentType name of type `character` for each individual Compartment object
-  # @return popn.migration.rates = matrix of population migration rates for each Type to Type comparison (for all possible migration events)
-
   popn.migration.rates <- matrix(nrow=length(types),
                                  ncol=length(types),
-                                 dimnames=list(names(types), names(types)))
-  
+                                 dimnames=list(names(types), names(types))
+                                 )
   for (x in types) {
     for (y in names(types)) {
       mig.rate <- x$get.migration.rate(y)
