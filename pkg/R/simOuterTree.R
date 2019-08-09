@@ -148,8 +148,10 @@ sim.outer.tree <- function(model, eventlog) {
   time.bands <- storage$initial.times
   possible.source.types <- storage$s.types
   
-  # generate transmission events based on population dynamics and Compartments' initial sampling times
-  t_events <- .calc.transmission.events(popn.totals, popn.rates, time.bands, possible.source.types)
+  # generate transmission events based on population dynamics and Compartments' 
+  # initial sampling times
+  t_events <- .calc.transmission.events(popn.totals, popn.rates, time.bands, 
+                                        possible.source.types)
   
   # generate unsampled hosts
   last.indiv <- T
@@ -294,13 +296,13 @@ sim.outer.tree <- function(model, eventlog) {
 
 #' .calc.popn.rates
 #' 
-#' INTERNAL.  Stores population rates for each CompartmentType specified by the user.
+#' Stores population rates for each CompartmentType specified by the user.
 #
 #' @param types:  list of CompartmentType objects
 #' @param indiv.types:  list of CompartmentType name of type `character` for each 
 #' individual Compartment object
 #' @return matrix of population transmission rates for each type to type comparison
-#' 
+#' @keywords internal
 .calc.popn.rates <- function(types, indiv.types) {
   popn.rates <- matrix(nrow=length(types),  # source types
                        ncol=length(types),  # recipient types
@@ -320,7 +322,7 @@ sim.outer.tree <- function(model, eventlog) {
 
 #' .store.initial.samplings
 #' 
-#' INTERNAL. Stores first sampling time of a Lineage for each sampled infected 
+#' Stores first sampling time of a Lineage for each sampled infected 
 #' Compartment.
 #'
 #' @param infected = list of infected Compartment objects
@@ -329,6 +331,7 @@ sim.outer.tree <- function(model, eventlog) {
 #'
 #' @return named list of possible Types of `source` with recipient types as names
 #' and list of first Lineage sampling times for each Compartment
+#' @keywords internal
 .store.initial.samplings <- function(infected, types, lineages) {
   
   # Generate dictionary of different types of source that each recipient Type could 
@@ -379,7 +382,7 @@ sim.outer.tree <- function(model, eventlog) {
 
 #' .calc.transmission.events
 #' 
-#' INTERNAL. Generates transmission events only, based on population dynamics of the MODEL
+#' Generates transmission events only, based on population dynamics of the MODEL
 #' 
 #' @param popn.totals: totals at time `t=0` of susceptible and infected specific to 
 #'        each CompartmentType
@@ -389,6 +392,7 @@ sim.outer.tree <- function(model, eventlog) {
 #'        receive a transmission from 
 #' @return t_events: data frame of transmission events, each made up of: time, 
 #'         recipient Type, and source Type 
+#' @keywords internal
 .calc.transmission.events <- function(popn.totals, popn.rates, init.samplings, 
                                       possible.sources) {
   
@@ -461,7 +465,7 @@ sim.outer.tree <- function(model, eventlog) {
 
 #' .assign.transmission.times
 #' 
-#' INTERNAL. Assignment of transmission times specific to each type.
+#' Assignment of transmission times specific to each type.
 #'
 #' @param infected:  list of Compartment objects to be assigned transmission times
 #' @param events:  list of possible transmission events for the infected
@@ -471,7 +475,7 @@ sim.outer.tree <- function(model, eventlog) {
 #' 
 #' @return  Returning vector of all transmission times, including times used and unused 
 #' in this current assignment of transmission times.
-#' 
+#' @keywords internal
 .assign.transmission.times <- function(infected, events, initial.samplings, type) {
   
   infected.names <- sapply(infected, function(x) x$get.name())
