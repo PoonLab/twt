@@ -7,7 +7,7 @@
 #           This also means that a sampled compartment can become empty of sampled lineages
 #           before we reach its transmission event. (It must contain unsampled infected lineages)
 
-#### NOTE: There are many similarities between this code and `sim.outer.tree()` function #######
+#### NOTE: There are many similarities between this code and `sim.outer.tree()` function ####
 
 
 #' sim.migrations
@@ -48,7 +48,7 @@ sim.migrations <- function(model, eventlog) {
 
 #' .record.migration.rates
 #'
-#' INTERNAL.  Helper function stores migration rates for each CompartmentType 
+#' Helper function stores migration rates for each CompartmentType 
 #' specified by the user.
 #'
 #' @param types: list of CompartmentType objects
@@ -56,6 +56,7 @@ sim.migrations <- function(model, eventlog) {
 #' individual Compartment object
 #' @return popn.migration.rates = matrix of population migration rates for each 
 #' Type to Type comparison (for all possible migration events)
+#' @keywords internal
 .record.migration.rates <- function(types, indiv.types) {
   popn.migration.rates <- matrix(nrow=length(types),
                                  ncol=length(types),
@@ -72,15 +73,19 @@ sim.migrations <- function(model, eventlog) {
 }
 
 
-
+#' .record.possible.source.types
+#' 
+#' Stores list of possible Types of `source` with recipient types for a 
+#' migration event as type character.
+#'
+#' @param types: list of CompartmentType objects
+#' @param lineages: list of Lineage objects
+#' @return  named list of possible Types of `source` with 
+#' recipient types of type character
+#' @keywords internal
 .record.possible.source.types <- function(types, lineages) {
-  # stores list of possible Types of `source` with recipient types for a migration event as type character
-  #
-  # @param types: list of CompartmentType objects
-  # @param lineages: list of Lineage objects
-  # @return possible.source.types: names list of possible Types of `source` with recipient types of type character
-  
-  # generate dictionary of different types of source that each recipient Type could possible receive a migrating lineage from
+  # generate dictionary of different types of source that each recipient Type 
+  # could possibly receive a migrating lineage from
   typenames <- sapply(types, function(x) {x$get.name()})
   possible.source.types <- as.list(rep(NA, length(typenames)))
   names(possible.source.types) <- typenames
@@ -97,21 +102,30 @@ sim.migrations <- function(model, eventlog) {
   # cleanup
   possible.source.types <- possible.source.types[!is.na(possible.source.types)]
   possible.source.types
-  
 }
 
 
-
-.calc.migration.events <- function(popn.totals, popn.migration.rates, max.sampling.time, possible.source.types, transmission.events) {
-  # generates migration events only, based on population dynamics of the MODEL
-  #
-  # @param popn.totals: totals at time `t=0` of susceptible and infected specific to each CompartmentType
-  # @param popn.migration.rates: rates of migration between different CompartmentTypes
-  # @param max.sampling.time: time of the most recent sample as a endpoint for this function (type numeric)
-  # @param possible.source.types: list of possible Sources that each recipient type can receive a migrating lineage from
-  # @return m_events = data frame of migration events, each made up of: time, recipient Type, and source Type
+#' .calc.migration.events
+#' 
+#' Generates migration events only, based on population dynamics of the MODEL.
+#'
+#' @param popn.totals: totals at time `t=0` of susceptible and infected specific 
+#' to each CompartmentType
+#' @param popn.migration.rates: rates of migration between different 
+#' CompartmentTypes
+#' @param max.sampling.time: time of the most recent sample as a endpoint for 
+#' this function (type numeric)
+#' @param possible.source.types: list of possible Sources that each recipient 
+#' type can receive a migrating lineage from
+#' @return m_events = data frame of migration events, each made up of: time, 
+#' recipient Type, and source Type
+#' @keywords internal
+.calc.migration.events <- function(popn.totals, popn.migration.rates, 
+                                   max.sampling.time, possible.source.types, 
+                                   transmission.events) {
   
-  m_events <- data.frame(time=numeric(), r_type=character(), s_type=character(), v_type=character(), stringsAsFactors = FALSE)
+  m_events <- data.frame(time=numeric(), r_type=character(), s_type=character(), 
+                         v_type=character(), stringsAsFactors = FALSE)
   
   for (v in 1:nrow(popn.totals)) {
     
@@ -129,7 +143,6 @@ sim.migrations <- function(model, eventlog) {
     for (i in transmission.events$time) {
       
       temp.time <- i
-      
       while (temp.time > max.sampling.time) {
         
         # sample source and recipient types for this generated migration evnet
@@ -153,8 +166,6 @@ sim.migrations <- function(model, eventlog) {
           m_events <- rbind(m_events, list(time=migration.time, r_type=r, s_type=s, v_type=v.name), stringsAsFactors=F)
           temp.time <- migration.time
         }
-        
-        
         
       }
       

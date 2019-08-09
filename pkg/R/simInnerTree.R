@@ -10,7 +10,6 @@
 #' @export
 sim.inner.tree <- function(model, eventlog) {
 
-  
   # vector of all infected Compartments in population at time zero (most recent)
   inf <- c(model$get.compartments(), model$get.unsampled.hosts())
   inf.names <- model$get.names(inf)

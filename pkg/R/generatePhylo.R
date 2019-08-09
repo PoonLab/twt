@@ -1,10 +1,11 @@
-# functions to convert the events stored in the EventLogger into an 
-# ape::phylo object that can then be plotted or printed
-
+# Functions to convert the events stored in the EventLogger into an 
+# ape::phylo object that can then be plotted or printed.
+# These are S3 methods defined outside of the R6 class definition.
 
 #' plot.EventLogger
 #' 
-#' Generate a plot summarizing the content of an EventLogger object.
+#' Generate a plot summarizing the content of an EventLogger object
+#' as a phylogenetic tree.
 #' 
 #' @param eventlog:  Object of class 'EventLogger'
 #' @param transmissions:  If TRUE, display transmission events in plot.
@@ -20,20 +21,32 @@ plot.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE,
 }
 
 
-
+#' print.EventLogger
+#' 
+#' `print.EventLogger` is simply a wrapper function on EventLogger's 
+#' `get.all.events()`.
+#' 
+#'  @param eventlog: object of class 'EventLog' 
 print.EventLogger <- function(eventlog) {
   eventlog$get.all.events()
 }
 
 
-
-.eventlogger.to.phylo <- function(eventlog, transmissions=FALSE, migrations=FALSE, node.labels=FALSE) {
-  # function converts events stored in the EventLogger object into an inner coalescent tree w/ option to include/exclude transmission events
-  # @param eventlog = EventLogger object
-  # @param transmissions = logical; if TRUE, transmission events included, else excluded otherwise
-  # @return phy = ape::phylo object
+#' .eventlogger.to.phylo
+#' 
+#' function converts events stored in the EventLogger object into an inner 
+#' coalescent tree w/ option to include/exclude transmission events.
+#' 
+#' @param eventlog: EventLogger object
+#' @param transmissions: logical; if TRUE, transmission events included, 
+#' else excluded otherwise.
+#' @return ape::phylo object
+#' @keywords internal
+.eventlogger.to.phylo <- function(eventlog, transmissions=FALSE, migrations=FALSE, 
+                                  node.labels=FALSE) {
   
-  # helper function: if the event being examined is a bottleneck event, must split column named "$lineage1" into the bottlenecking lineages
+  # helper function: if the event being examined is a bottleneck event, 
+  # must split column named "$lineage1" into the bottlenecking lineages
   split.bottleneck.lineages <- function(lineages.names) {
     as.vector(strsplit(lineages.names, ',', fixed=T)[[1]])
   }
@@ -96,11 +109,11 @@ print.EventLogger <- function(eventlog) {
           )
   
   internals <-  unlist(
-                  intersect(
-                    c(c_events$compartment1, b_events$compartment1), 
-                    c(c_events$lineage1, c_events$lineage2, unlist(b_events_lineages))
-                  )
-                )
+    intersect(
+      c(c_events$compartment1, b_events$compartment1), 
+      c(c_events$lineage1, c_events$lineage2, unlist(b_events_lineages))
+      )
+    )
   
   # initialize ape::phylo indices to be assigned to root, tips, and internals
   tip.no <- 1
@@ -279,7 +292,6 @@ print.EventLogger <- function(eventlog) {
   if (transmissions) {
     
     if (root %in% t_events$lineage1) {
-    
       t.event <- t_events[ which(t_events$lineage1 == root), ]
       
       t.node.no <- node.no
@@ -288,17 +300,12 @@ print.EventLogger <- function(eventlog) {
       
       # now begin recursion
       add.branch(t.event, root, root, t.node.no)
-      
     } else {
-      
       recursive.populate.branchlength(root)
-  
     }
     
   } else {
-    
     recursive.populate.branchlength(root)
-    
   }
 
   
@@ -321,9 +328,7 @@ print.EventLogger <- function(eventlog) {
   attr(phy, 'class') <- 'phylo'
   attr(phy, 'order') <- 'cladewise'
   phy
-  
 }
-
 
 
 

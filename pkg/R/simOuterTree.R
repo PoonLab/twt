@@ -1,5 +1,4 @@
 
-
 #' eventlog.from.tree
 #' 
 #' \code{eventlog.from.tree} converts a Newick tree string or ape::phylo object
@@ -58,7 +57,7 @@ eventlog.from.tree <- function(tree) {
 
 #' init.branching.events
 #' 
-#' \code{init.branching.events} initializes an EventLogger object with 
+#' `init.branching.events`` initializes an EventLogger object with 
 #' a list of fixed transmission events that are specified by the user 
 #' in a YAML file that has been parsed into a MODEL object.
 #' 
@@ -89,7 +88,7 @@ init.branching.events <- function(model, eventlog) {
         
         lineage <- lineages[[ which(my.lines == 1) ]]$get.name()
       } else {
-        source <- x$get.source()
+        source <- comp$get.source()
         lineage <- NA
       }
       
