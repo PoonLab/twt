@@ -1,9 +1,9 @@
 require(twt)
-setwd('~/git/treeswithintrees')
-source('pkg/R/simOuterTree.R')
+#setwd('~/git/treeswithintrees')
+#source('pkg/R/simOuterTree.R')
 
-file1 <- yaml.load_file('tests/fixtures/example2.yaml')
-file2 <- yaml.load_file('tests/fixtures/example3.yaml')
+file1 <- yaml.load_file('example2.yaml')
+file2 <- yaml.load_file('example3.yaml')
 
 # Case 1: single Type, multiple sampled infected, no unsampled infected
 settings <- file1

@@ -2,9 +2,10 @@
 OriginTimes:
   'virus':
     start: 10.0                        # note this is reverse time, cumulative
+    susceptibles:
+    - host: 1000
 CompartmentTypes:
   'host':
-    susceptible: 1000
     branching.rates: (host=0.1)        # named vector of transmission rates to different CompartmentTypes
     migration.rates: ()                # no migration (assume no superinfection)
     bottleneck.size: 1                 # bottleneck size when transmission event occurs

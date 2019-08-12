@@ -1,7 +1,7 @@
 require(twt)
-setwd('~/git/treeswithintrees')
-source('pkg/R/drawWaitingTime.R')
-settings <- yaml.load_file('tests/fixtures/test.yaml')
+#setwd('~/git/treeswithintrees')
+#source('pkg/R/drawWaitingTime.R')
+settings <- yaml.load_file('test.yaml')
 model <- MODEL$new(settings)
 
 wait.time <- function(k, alpha, beta){

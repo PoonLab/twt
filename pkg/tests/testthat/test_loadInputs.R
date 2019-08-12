@@ -1,7 +1,7 @@
 require(twt)
-setwd('~/git/treeswithintrees')
-source('pkg/R/loadInputs.R')
-settings <- yaml.load_file('tests/fixtures/test.yaml')
+#setwd('~/git/treeswithintrees')
+#source('pkg/R/loadInputs.R')
+settings <- yaml.load_file('test.yaml')
 test <- MODEL$new(settings)
 
 # create an EventLogger object for testing
@@ -12,49 +12,54 @@ e$add.event("transmission", 3, "NA", "I_20", "I_73")
 e$add.event("transmission", 2, "NA", "I_94", "I_20")
 e$add.event("transmission", 1, "NA", "I_97", "I_20")
 
-test.get.leaves.names <- function() {
+test_that("tip names are parsed", {
   result <- test$get.leaves.names(e)  # return terminal nodes
   expected <- c("I_94","I_97")
-  checkEquals(expected, result)
-}
+  expect_equal(result, expected)
+})
 
-test.get.nonterminals <- function() {
-  result <- test$get.nonterminals(e) # return internal nodes of the transmission tree
+
+test_that("internal nodes names are parsed", {
+  result <- test$get.nonterminals(e) 
   expected <- c("I_95","I_73","I_20")
-  checkEquals(expected, result)
-}
+  expect_equal(result, expected)
+})
 
-test.get.pairs <- function() {
-  result <- test$get.pairs() # extract all pairs of pathogen lineages that may coalesce
+
+test_that("potential coalescent pairs are extracted", {
+  result <- test$get.pairs()
   expected <- list(`I_1:I_2,I_1:I_3`="I_1",
                    `I_2:I_2,I_2:I_3`="I_2")
-  checkEquals(expected, result)
-}
+  expect_equal(result, expected)
+})
 
-test.add.pair1 <- function() {
+test_that("pair list updates on moving a lineage between compartments", {
   test$add.pair('I_1:I_2','I_1:I_1',"I_2") 
-  result <- test$get.pairs() # when a Lineage is moved from one compartment to another (transmission or migration) or when a Lineage is sampled
+  result <- test$get.pairs()
   expected <- list(`I_1:I_2,I_1:I_3`="I_1",
                    `I_2:I_2,I_2:I_3`="I_2",
-                   `I_1:I_1,I_1:I_2`="I_2")
-  checkEquals(expected, result)
-}
+                   `I_1:I_1,I_1:I_2`="I_2") 
+  expect_equal(result, expected)
+})
 
-test.add.pair2 <- function() {
+test_that("pair list updates on moving a lineage, second way", {
   test <- MODEL$new(settings)
   test$add.pair('I_1:I_3','I_1:I_2',"I_2") 
-  result <- test$get.pairs() # when a Lineage is moved from one compartment to another (transmission or migration) or when a Lineage is sampled
+  result <- test$get.pairs() 
   expected <- list(`I_1:I_2,I_1:I_3`="I_2",
                    `I_2:I_2,I_2:I_3`="I_2")
-  checkEquals(expected, result)
-}
+  expect_equal(result, expected)
+})
 
-test.remove.pair <- function() {
+test_that("pair list updates on removing a lineage", {
   test$remove.pair('I_2:I_3','I_2:I_2') 
-  result <- test$get.pairs() # when a Lineage is moved from one compartment to another (transmission or migration) or when a Lineage is sampled
+  result <- test$get.pairs() 
   expected <- list(`I_1:I_2,I_1:I_3`="I_2")
-  checkEquals(expected, result)
-}
+  expect_equal(result, expected)
+})
+
+
+
 
 test.get.types <- function(){
   result <- test$get.types() # retrieves CompartmentType objects in a list

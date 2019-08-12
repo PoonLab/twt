@@ -13,7 +13,7 @@ transmission tree information.}
 \item{eventlog:}{an object of class EventLog to update in-place}
 }
 \description{
-\code{init.branching.events} initializes an EventLogger object with 
+`init.branching.events`` initializes an EventLogger object with 
 a list of fixed transmission events that are specified by the user 
 in a YAML file that has been parsed into a MODEL object.
 }
