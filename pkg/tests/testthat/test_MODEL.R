@@ -1,11 +1,11 @@
 ## test script for 'example4.yaml'
 require(twt)
 #set.seed(34)
-setwd('~/git/treeswithintrees')
+#setwd('~/git/treeswithintrees')
 # setwd('C:/Users/tng92/git/treeswithintrees')
 
 # load settings into a MODEL object, create an Eventlogger object
-settings <- yaml.load_file('tests/fixtures/example4.yaml')
+settings <- yaml.load_file('example4.yaml')
 m <- MODEL$new(settings)
 e <- EventLogger$new()
 

@@ -17,6 +17,7 @@ popn.migration.rates = matrix of population migration rates for each
 Type to Type comparison (for all possible migration events)
 }
 \description{
-INTERNAL.  Helper function stores migration rates for each CompartmentType 
+Helper function stores migration rates for each CompartmentType 
 specified by the user.
 }
+\keyword{internal}
