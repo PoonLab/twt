@@ -253,7 +253,9 @@ Lineage <- R6Class("Lineage",
     },
     
     set.location = function(locationList, new.locationName) {
-      new.locationObj <- locationList[[ which(sapply(locationList, function(x) {x$get.name()}) == new.locationName) ]]
+      new.locationObj <- locationList[[ 
+        which(sapply(locationList, function(x) {x$get.name()}) == new.locationName) 
+        ]]
       private$location <- new.locationObj
     }
     
@@ -339,21 +341,25 @@ EventLogger <- R6Class("EventLogger",
       }
      
     },
-   
-   
-    add.event = function(name, time, obj1, obj2, obj3, obj4) {
-      # @param name = event type of either transmission, migration, or coalescent
-      # @param time = CUMULATIVE time that event has occurred between two compartments in a transmission/migration/coalescent event
-      # @param obj1 = name of a lineage object in mode character
-      # @param obj2 = name of a lineage object in mode character (optional)
-      # @param obj3 = name of a recipient compartment object in mode character for a transmission or migration event
-                 # OR name of an ancestral lineage object in mode character for a coalescent event
-      # @param obj4 = name of a source compartment object in mode character for a transmission or migration event
-                 # OR name of a compartment object in mode character for a coalescent event
+    
+    add.event = function(type, time, line1, line2, comp1, comp2) {
+      # @param type: event type, one of 'transmission', 'migration', 'coalescence',
+      # or 'bottleneck'.
+      # @param time: CUMULATIVE time that event has occurred between two compartments 
+      # in a transmission/migration/coalescent event
       
-      CumulEvent <- list(event.type=name, time=time, lineage1=obj1, lineage2=obj2, compartment1=obj3, compartment2=obj4)
-      private$events <- rbind(private$events, CumulEvent, stringsAsFactors=F)
-    },
+      if (is.element(type, c('transmission', 'migration'))) {
+        e <- list(event.type=type, time=time, lineage1=line1, lineage2=NA,
+                  compartment1=comp1, compartment2=comp2)
+      } else if (is.element(type, c('coalescent', 'bottleneck'))) {
+        e <- list(event.type=type, time=time, lineage1=line1, lineage2=line2,
+                  compartment1=comp1, compartment2=NA)
+      } else {
+        stop("Error, unrecognized type argument in add.event()")
+      }
+      
+      private$events <- rbind(private$events, e, stringsAsFactors=F)
+    } 
    
    
     clear.events = function() {
