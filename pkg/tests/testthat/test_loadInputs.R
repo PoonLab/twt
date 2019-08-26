@@ -1,158 +1,66 @@
-require(twt)
+context("load inputs")
+
+library(twt)
 #setwd('~/git/treeswithintrees')
 #source('pkg/R/loadInputs.R')
+
+
+# a system of 2 compartments, 3 sampled lineages each
 settings <- yaml.load_file('test.yaml')
-test <- MODEL$new(settings)
+m <- MODEL$new(settings)
 
-# create an EventLogger object for testing
-e <- EventLogger$new()
-e$add.event("transmission", 4, "NA", "I_95", "I_63")
-e$add.event("transmission", 6, "NA", "I_73", "I_95")
-e$add.event("transmission", 3, "NA", "I_20", "I_73")
-e$add.event("transmission", 2, "NA", "I_94", "I_20")
-e$add.event("transmission", 1, "NA", "I_97", "I_20")
 
-test_that("tip names are parsed", {
-  result <- test$get.leaves.names(e)  # return terminal nodes
-  expected <- c("I_94","I_97")
+test_that("MODEL loads origin times", {
+  result <- m$get.origin.times()
+  
+  expected <- t(as.matrix(unlist(settings$OriginTimes)))
+  row.names(expected) <- 'virus'
+  colnames(expected) <- c('start', 'host')
+  
   expect_equal(result, expected)
 })
 
 
-test_that("internal nodes names are parsed", {
-  result <- test$get.nonterminals(e) 
-  expected <- c("I_95","I_73","I_20")
+test_that("MODEL loads types", {
+  result <- m$get.types()
+  
+  expect_equal(class(result), 'list')
+  expect_equal(length(result), 1)
+  expect_equal(names(result), c('host'))
+  
+  # TODO: run tests for each member of <result>
+  expect_is(result[[1]], "CompartmentType")
+  expect_true(is.expression(parse(text=result[[1]]$get.wait.time.distr())))
+})
+
+
+test_that("compartments have names", {
+  result <- m$get.names(m$get.compartments())
+  expected <- c("I_1", "I_2")
   expect_equal(result, expected)
 })
 
 
-test_that("potential coalescent pairs are extracted", {
-  result <- test$get.pairs()
-  expected <- list(`I_1:I_2,I_1:I_3`="I_1",
-                   `I_2:I_2,I_2:I_3`="I_2")
+test_that("lineages have names", {
+  result <- m$get.names(m$get.lineages())
+  expected <- c("I_1__I_1", "I_1__I_2", "I_1__I_3", "I_2__I_1", "I_2__I_2", "I_2__I_3")
   expect_equal(result, expected)
 })
 
-test_that("pair list updates on moving a lineage between compartments", {
-  test$add.pair('I_1:I_2','I_1:I_1',"I_2") 
-  result <- test$get.pairs()
-  expected <- list(`I_1:I_2,I_1:I_3`="I_1",
-                   `I_2:I_2,I_2:I_3`="I_2",
-                   `I_1:I_1,I_1:I_2`="I_2") 
+test_that("MODEL assigns sampling times", {
+  result <- m$get.fixed.samplings()$tip.height
+  expected <- rep(c(0.2, 0, 0), times=2)
   expect_equal(result, expected)
 })
 
-test_that("pair list updates on moving a lineage, second way", {
-  test <- MODEL$new(settings)
-  test$add.pair('I_1:I_3','I_1:I_2',"I_2") 
-  result <- test$get.pairs() 
-  expected <- list(`I_1:I_2,I_1:I_3`="I_2",
-                   `I_2:I_2,I_2:I_3`="I_2")
-  expect_equal(result, expected)
+test_that("MODEL parse population growth dynamics", {
+  result <- m$get.types()[[1]]$get.popn.growth.dynamics()
+  expect_equal(class(result), "matrix")
+  expect_equal(nrow(result), 4)
+  expect_equal(as.vector(result[,1]), c(0, 0.75, 1.5, 2.25))  # startTime
+  expect_equal(as.vector(result[,2]), c(1, 50, 100, 150))  # startPopn
+  expect_equal(as.vector(result[,3]), c(0.75, 1.5, 2.25, NA))  # endTime
+  expect_equal(as.vector(result[,4]), c(45, 85, 125, 150))  # endPopn
+  expect_equal(as.vector(result[,5]), c(44/0.75, 35/0.75, 25/0.75, 0))  # slope
+  expect_equal(as.vector(result[,6]), c(1, 15, 50, 150))  # intercept
 })
-
-test_that("pair list updates on removing a lineage", {
-  test$remove.pair('I_2:I_3','I_2:I_2') 
-  result <- test$get.pairs() 
-  expected <- list(`I_1:I_2,I_1:I_3`="I_2")
-  expect_equal(result, expected)
-})
-
-
-
-
-test.get.types <- function(){
-  result <- test$get.types() # retrieves CompartmentType objects in a list
-  expected.popn.growth.dynamics <- cbind("startTime"=c(0.00,0.75,1.50,2.25), 
-                                         "startPopn"=c(1,50,100,150), 
-                                         "endTime"=c(0.75,1.50,2.25,NA), 
-                                         "endPopn"=c(45,85,125,150), 
-                                         "slope"=c((45-1)/(0.75-0.00),(85-50)/(1.50-0.75),(125-100)/(2.25-1.50),0), 
-                                         "intercept"=c(1,50-(85-50)/(1.50-0.75)*0.75,100-(125-100)/(2.25-1.50)*1.50,150))
-  rownames(expected.popn.growth.dynamics) <- 1:4
-  
-  checkEquals('host', result[[1]]$get.name())
-  checkEquals(1, result[[1]]$get.bottleneck.size())
-  checkEquals(list('host'=0.1), result[[1]]$get.branching.rates())
-  checkEquals(0.1, result[[1]]$get.branching.rate('host'))
-  checkEquals(list(), result[[1]]$get.migration.rates())
-  checkEquals(NULL, result[[1]]$get.migration.rate('host'))
-  checkEquals(expected.popn.growth.dynamics, result[[1]]$get.popn.growth.dynamics())
-  checkEquals(1000, result[[1]]$get.susceptible())
-  checkEquals(20, result[[1]]$get.unsampled())
-}
-
-test.get.unsampled.hosts <- function(){
-  test <- MODEL$new(settings)
-  result <- test$get.unsampled.hosts() # function creates "blank" Compartment objects for Unsampled Hosts (US), stored in lists for each section within a CompartmentType object
-  checkEquals(20, length(result))
-  
-  result.names <-sapply(result, function(x){
-    x$get.name()
-  })
-  expected.names <- c("US_host_1", "US_host_2", "US_host_3", "US_host_4", "US_host_5",
-                      "US_host_6", "US_host_7", "US_host_8", "US_host_9", "US_host_10",
-                      "US_host_11", "US_host_12", "US_host_13", "US_host_14", "US_host_15",
-                      "US_host_16", "US_host_17", "US_host_18", "US_host_19", "US_host_20")
-  checkEquals(expected.names, result.names)
-  
-  result.types <- sapply(result,function(x){
-    x$get.type()$get.name()
-  })
-  expected.types <- rep('host', 20)
-  checkEquals(expected.types, result.types)
-}
-
-test.get.compartments <- function(){
-  result <- test$get.compartments() # retrieves compartments in a list
-  checkEquals(2, length(result))
-  result.names <-sapply(result, function(x){
-    x$get.name()
-  })
-  expected.names <- c("I_1","I_2")
-  checkEquals(expected.names, result.names)
-  
-  result.types <- sapply(result,function(x){
-    x$get.type()$get.name()
-  })
-  expected.types <- rep('host', 2)
-  checkEquals(expected.types, result.types)
-}
-
-test.get.lineages <- function(){
-  result <- test$get.lineages() # retrieves lineages in a list
-  checkEquals(6, length(result))
-  
-  result.hosts <- sapply(result,function(x){
-    x$get.location()$get.name()
-  })
-  checkEquals(3, length(which(result.hosts=='I_1')))
-  checkEquals(3, length(which(result.hosts=='I_2')))
-  
-  result.times <- sapply(result,function(x){
-    x$get.sampling.time()
-  })
-  expected.times <- c(0.2,0,0,0.2,0,0)
-  checkEquals(expected.times, result.times)
-  
-  result[[1]]$set.location(test$get.compartments(),'I_2')
-  new.location <- result[[1]]$get.location()$get.name()
-  checkEquals('I_2', new.location)
-}
-
-test.get.extant_lineages <- function(){
-  result <- test$get.extant_lineages() # retrieves list of Lineages with sampling.time t=0
-  checkEquals(4, length(result))
-  
-  result.hosts <- sapply(result,function(x){
-    x$get.location()$get.name()
-  })
-  checkEquals(2, length(which(result.hosts=='I_1')))
-  checkEquals(2, length(which(result.hosts=='I_2')))
-  
-  result.times <- sapply(result,function(x){
-    x$get.sampling.time()
-  })
-  expected.times <- rep(0, 4)
-  checkEquals(expected.times, result.times)
-}

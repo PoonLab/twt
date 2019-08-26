@@ -37,7 +37,7 @@ MODEL <- R6Class("MODEL",
     
     get.origin.times = function() {private$origin.times},
     get.types = function() {private$types},
-    get.unsampled.hosts = function() {private$unsampled.hosts},       # populated only after the sim.outer.tree step
+    get.unsampled.hosts = function() {private$unsampled.hosts},  # populated only after the sim.outer.tree step
     get.compartments = function() {private$compartments},
     get.lineages = function() {private$lineages},
     
@@ -137,13 +137,14 @@ MODEL <- R6Class("MODEL",
     load.origin.times = function(settings) {
       # Loads origin times specific to each LineageType (the start time of the 
       # epidemic of one or more viruses).
-      # @return mat: named list of number of susceptibles for each CompartmentType, 
-      # specific to each virus (LineageType)
+      # @return mat: a matrix with rows for each LineageType and (1+N) columns for 
+      #              origin time ("start") and each of N CompartmentTypes
       lin.types <- names(settings$OriginTimes)
       comp.types <- names(settings$CompartmentTypes)
       mat <- matrix(nrow=length(lin.types),
                     ncol=length(comp.types) + 1, 
                     dimnames=list(lin.types, c('start',comp.types)) )
+      
       for (x in lin.types) {
         # origin time is measured in reverse (prior to most recent sampled lineage)
         params <- settings$OriginTimes[[x]]
@@ -160,9 +161,10 @@ MODEL <- R6Class("MODEL",
     
     
     load.types = function(settings) {
-      ## function creates CompartmentType objects
-      ## within each CompartmentType, there are distinct compartments with: 
+      # function creates CompartmentType objects
+      # within each CompartmentType, there are distinct compartments with
       # individual transmission & migration rates
+      # @return: a named vector of CompartmentType R6 objects
       unlist(sapply(names(settings$CompartmentTypes), function(x) {
         params <- settings$CompartmentTypes[[x]]
         
@@ -302,7 +304,8 @@ MODEL <- R6Class("MODEL",
         # intercept = y-intercept of the piece
       mat <- matrix(nrow=length(pieces), 
                     ncol=6, 
-                    dimnames=list(1:length(pieces), c('startTime', 'startPopn', 'endTime', 'endPopn', 'slope', 'intercept')))
+                    dimnames=list(1:length(pieces), c('startTime', 'startPopn', 'endTime', 'endPopn', 
+                                                      'slope', 'intercept')))
       for (x in seq_along(pieces)) {
         if ('startTime' %in% names(unlist(pieces[[x]])) == F) {
           stop ('Parameter "startTime" not defined for piece "', names(pieces)[[x]], '".')
@@ -317,7 +320,8 @@ MODEL <- R6Class("MODEL",
         }
         
         if ('endTime' %in% names(unlist(pieces[[x]])) == F) {
-          mat[x,3] <- NA                                            # for the final piece with `inf` time, assumed that population stays constant from startPopn
+          # for the final piece with `inf` time, assumed that population stays constant from startPopn
+          mat[x,3] <- NA
           mat[x,4] <- unlist(pieces[[x]])['startPopn']
         } else {
           mat[x,3] <- unlist(pieces[[x]])['endTime']

@@ -359,7 +359,7 @@ EventLogger <- R6Class("EventLogger",
       }
       
       private$events <- rbind(private$events, e, stringsAsFactors=F)
-    } 
+    }, 
    
    
     clear.events = function() {
