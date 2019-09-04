@@ -270,7 +270,8 @@ MODEL <- R6Class("MODEL",
             # set 'pointer' to Compartment object for location
             searchComps <- sapply(private$compartments, function(y){which(y$get.name() == paste0(params$location, '_', compNum))})
             locationObj <- private$compartments[[ which( searchComps == 1) ]]
-            x <- Lineage$new(name = paste0(locationObj$get.name(),'__',label,'_',obj),                          # unique identifier
+            # generate unique identifier
+            x <- Lineage$new(name = paste0(locationObj$get.name(),'__',label,'_',obj),
                         type = params$type,
                         sampling.time = sampleTimes[obj],
                         location = locationObj
@@ -403,15 +404,20 @@ MODEL <- R6Class("MODEL",
     
     init.pairs = function() {
       # extract all pairs of pathogen lineages that may coalesce
+      
+      # reset container
       private$choices <- list()
+      
       for (hostNum in seq_along(private$locations)) {
-        host <- private$locations[[hostNum]]
-        if (length(host) > 1) {
-          combns <- combn(host,2)
-          for (column in 1:ncol(combns)) {
-            pair <- sort(unlist(combns[,column]))
-            private$choices[[paste(pair[1], pair[2], sep=',')]] <- names(private$locations)[[hostNum]]
-          }
+        lineages <- private$locations[[hostNum]]  # returns vector of Lineages in this host
+        hostname <- names(private$locations)[[hostNum]]
+        
+        if (length(lineages) > 1) {
+          combns <- combn(lineages, 2)
+          . <- apply(combns, 2, function(pair) {
+            key <- paste(sort(pair), collapse=',')
+            private$choices[[key]] <- hostname
+          })
         }
       }
       private$choices

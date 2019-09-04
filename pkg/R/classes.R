@@ -279,8 +279,6 @@ Lineage <- R6Class("Lineage",
 #' 
 #' @param events: a data frame where each row represents an event with a time 
 #' stamp in forward time.
-#' @param events.noncumul: optionally, a data frame where events are stamped 
-#' with the waiting time since the preceding event
 #' @param migration.events.storage: a data frame of migration events, returned by
 #' `simMigrations.R:.calc.migration.events()`.
 #' 
@@ -297,49 +295,31 @@ EventLogger <- R6Class("EventLogger",
                                               compartment2=character(),
                                               stringsAsFactors = FALSE
                                              ),
-                          events.noncumul = data.frame(event.type=character(),
-                                                       time=numeric(),
-                                                       lineage1=character(),
-                                                       lineage2=character(),
-                                                       compartment1=character(),
-                                                       compartment2=character(),
-                                                       stringsAsFactors = FALSE
-                                                      ),
+
                           migration.events.storage = data.frame(stringsAsFactors = FALSE)
     ){
       private$events <- events
-      private$events.noncumul <- events.noncumul
       private$migration.events.storage <- migration.events.storage
     },
    
    
-    get.all.events = function(cumulative=TRUE) {
+    get.all.events = function() {
       if (nrow(private$events) == 0) {cat('No events to display.')}
       else {
-        if (cumulative) {
-          private$events                    # default eventlog shows cumulative time b/c more user friendly
-        } else {
-          private$generate.noncumul.eventlog(private$events)
-          private$events.noncumul
-        }
+        private$events                    # default eventlog shows cumulative time b/c more user friendly
       }
     },
    
    
-    get.events = function(event.type, cumulative=TRUE) {
-      if (cumulative) {
-        eventList <- private$events[ which(private$events$event.type == event.type), ]
-      } else {
-        private$generate.noncumul.eventlog(private$events)
-        eventList <- private$events.noncumul[ which(private$events.noncumul$event.type == event.type), ]
-      }
+    get.events = function(event.type) {
+      eventList <- private$events[ which(private$events$event.type == event.type), ]
+      
       if (nrow(eventList) != 0) {
         eventList
       } else {
         # cat('No events of type "', event.type, '".\n')
         NULL
       }
-     
     },
     
     add.event = function(type, time, line1, line2, comp1, comp2) {
@@ -363,20 +343,26 @@ EventLogger <- R6Class("EventLogger",
    
    
     clear.events = function() {
-      private$events = private$events.noncumul <- data.frame(event.type=character(),
-                                                             time=numeric(),
-                                                             lineage1=character(),
-                                                             lineage2=character(),
-                                                             compartment1=character(),
-                                                             compartment2=character(),
-                                                             stringsAsFactors = FALSE
-                                                            )
+      private$events <- data.frame(event.type=character(),
+                                   time=numeric(),
+                                   lineage1=character(),
+                                   lineage2=character(),
+                                   compartment1=character(),
+                                   compartment2=character(),
+                                   stringsAsFactors = FALSE
+                                  )
     },
     
     
     modify.event = function(transmission.time, lineages) {
-      # when inner tree simulation has reached a transmission event, need to fill in the lineage column w/ the lineages that are present at transmission time
-      transmission.events <- self$get.events('transmission')                 # in the case of bottleneck events, will have same time so have to isolate transmission event times
+      # when inner tree simulation has reached a transmission event, 
+      # need to fill in the lineage column w/ the lineages that are present 
+      # at transmission time
+      
+      # in the case of bottleneck events, will have same time so have to isolate 
+      # transmission event times
+      transmission.events <- self$get.events('transmission')
+      
       index <- which(transmission.events$time == transmission.time)
       rowname <- rownames(transmission.events)[index]
       eventlog.index <- which(rownames(self$get.all.events()) == rowname)
@@ -402,47 +388,12 @@ EventLogger <- R6Class("EventLogger",
     }
     
   ),
+  
   private = list(
     events = NULL,
-    events.noncumul = NULL,
+    #events.noncumul = NULL,  ## DEPRECATED (issue #58)
     migration.events.storage = NULL,
     fixed.samplings.storage = NULL,
-    
-    generate.noncumul.eventlog = function(cumul.eventlog) {
-      # generates an event log with non-cumulative times of events
-      # @param cumul.eventlog = an event log with cumulative times of events
-      private$events.noncumul <- data.frame(event.type=character(),
-                                            time=numeric(),
-                                            lineage1=character(),
-                                            lineage2=character(),
-                                            compartment1=character(),
-                                            compartment2=character(),
-                                            stringsAsFactors = FALSE
-                                            )
-      event.types <- unique(cumul.eventlog$event.type)   # up to 3 different event types
-      
-      sapply(event.types, function(event.name) {
-        # for each type of event (transmission, migration, and/or coalescent)
-        # retrieve set of events of that event.name type
-        events <- self$get.events(event.name)
-        if (nrow(events) == 0) {
-          NULL
-        } else {
-          if (event.name == 'transmission' || event.name == 'migration') {
-            root <- setdiff(events$compartment2, events$compartment1)
-            tips <- setdiff(events$compartment1, events$compartment2)
-            
-            # trace from root to tips and calculate all subsequent non-cumulative times based on maxTime (cumulative time of root)
-            private$events.noncumul <- rbind(private$events.noncumul, private$generate.events(events, root, tips), stringsAsFactors=F)
-          } else if (event.name == 'coalescent') {
-            
-          }
-        }
-      })
-      
-    },
-   
-   
    
     generate.events = function(events, root, tips) {
       
@@ -460,11 +411,15 @@ EventLogger <- R6Class("EventLogger",
             for (x in 1:nrow(nodeEvents)) {
               childEvent <- nodeEvents[x,]
               # traverse descendants
-              generate.indiv.event(as.character(childEvent['compartment1']), as.numeric(childEvent['time']))
+              generate.indiv.event(
+                as.character(childEvent['compartment1']), as.numeric(childEvent['time'])
+                )
               childEvent['time'] <- parent_time - as.numeric(childEvent['time'])
-              private$events.noncumul <- rbind(private$events.noncumul, childEvent, stringsAsFactors=F)
+              
+              # append to data frame
+              private$events <- rbind(private$events, childEvent, stringsAsFactors=F)
             }
-            return(private$events.noncumul)
+            return(private$events)
           }
          
         }
@@ -477,15 +432,18 @@ EventLogger <- R6Class("EventLogger",
         parentEvent <- rootEvents[x,]
         # traverse descendants
         generate.indiv.event(as.character(parentEvent['compartment1']), as.numeric(parentEvent['time']))
-        # root's individualt delta t from when it was infected to when it made its first transmission is 'undefined'
-        parentEvent['time'] <- maxRootTime - parentEvent['time']      # 0 or 1 by convention (see treeswithintrees closed issue #29)
-        private$events.noncumul <- rbind(private$events.noncumul, parentEvent, stringsAsFactors=F)
+        
+        # root's individualt delta t from when it was infected to when it made its 
+        # first transmission is 'undefined'
+        # 0 or 1 by convention (see treeswithintrees closed issue #29)
+        parentEvent['time'] <- maxRootTime - parentEvent['time']
+        private$events.noncumul <- rbind(private$events, parentEvent, stringsAsFactors=F)
       }
      
-      indices <- grep('NA', row.names(private$events.noncumul), ignore.case=T, invert=T)
-      match.cumul.ordering <- order(as.numeric(row.names(private$events.noncumul[indices,])))
-      private$events.noncumul[indices,][match.cumul.ordering,]
-     
+      indices <- grep('NA', row.names(private$events), ignore.case=T, invert=T)
+      match.cumul.ordering <- order(as.numeric(row.names(private$events[indices,])))
+      
+      private$events[indices,][match.cumul.ordering,]
     }
                          
  )

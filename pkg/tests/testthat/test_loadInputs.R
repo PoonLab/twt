@@ -43,6 +43,7 @@ test_that("compartments have names", {
 
 test_that("lineages have names", {
   result <- m$get.names(m$get.lineages())
+  # lineage name is generated from <location>__<label>_<obj>
   expected <- c("I_1__I_1", "I_1__I_2", "I_1__I_3", "I_2__I_1", "I_2__I_2", "I_2__I_3")
   expect_equal(result, expected)
 })
@@ -64,3 +65,20 @@ test_that("MODEL parse population growth dynamics", {
   expect_equal(as.vector(result[,5]), c(44/0.75, 35/0.75, 25/0.75, 0))  # slope
   expect_equal(as.vector(result[,6]), c(1, 15, 50, 150))  # intercept
 })
+
+test_that("MODEL extracts pairs of lineages", {
+  result <- m$get.pairs()
+  print(result)
+  
+  expected <- list(
+    #'I_1__I_1,I_1__I_2'='I_1',
+    #'I_1__I_1,I_1__I_3'='I_1',
+    'I_1__I_2,I_1__I_3'='I_1',
+    #'I_2__I_1,I_2__I_2'='I_2',
+    #'I_2__I_1,I_2__I_3'='I_2',
+    'I_2__I_2,I_2__I_3'='I_2'
+    )
+  
+  expect_equal(result, expected)
+})
+

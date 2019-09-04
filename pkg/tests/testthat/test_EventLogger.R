@@ -1,51 +1,32 @@
 require(twt)
 
-#setwd('~/git/treeswithintrees')
-#source('pkg/R/classes.R')
-
-# FIXME: why is this here?
-#settings <- yaml.load_file('test.yaml')
-#test <- MODEL$new(settings)
-
 
 # create an EventLogger object for testing
+# type, time, line1, line2, comp1, comp2
 e <- EventLogger$new()
-e$add.event("transmission", 4, "NA", "I_95", "I_63")
-e$add.event("transmission", 6, "NA", "I_73", "I_95")
-e$add.event("transmission", 3, "NA", "I_20", "I_73")
-e$add.event("transmission", 2, "NA", "I_94", "I_20")
-e$add.event("transmission", 1, "NA", "I_97", "I_20")
+e$add.event("transmission", time=1, line1="NA", comp1="I_97", comp2="I_20")
+e$add.event("transmission", time=2, line1="NA", comp1="I_94", comp2="I_20")
+e$add.event("transmission", time=3, line1="NA", comp1="I_20", comp2="I_73")
+e$add.event("transmission", time=4, line1="NA", comp1="I_95", comp2="I_63")
+e$add.event("transmission", time=6, line1="NA", comp1="I_73", comp2="I_95")
 
 
-test_that('get.all.events(cumul=F) returns correct df', {
-  result.noncumul <- e$get.all.events(cumulative = F)
-  expected.noncumul <- data.frame(
+
+test_that('get.all.events returns correct df', {
+  result <- e$get.all.events()
+  
+  expected <- data.frame(
     event.type=rep('transmission', 5),
-    time=c(4, 6, 3, 2, 1),
+    time=c(1, 2, 3, 4, 6),
     lineage1=rep('NA', 5),
     lineage2=rep(NA, 5),
-    compartment1=c('I_95', 'I_73', 'I_20', 'I_94', 'I_97'),
-    compartment2=c('I_63', 'I_95', 'I_73', 'I_20', 'I_20'),
+    compartment1=c('I_97', 'I_94', 'I_20', 'I_95', 'I_73'),
+    compartment2=c('I_20', 'I_20', 'I_73', 'I_63', 'I_95'),
     stringsAsFactors = FALSE
   )
-  row.names(expected.noncumul) <- 1:5
-  expect_equal(result.noncumul, expected.noncumul)
-})
-
-
-test_that('get.all.events(cumul=T) returns correct df', {
-  result.noncumul <- e$get.all.events(cumulative = T)
-  expected.noncumul <- data.frame(
-    event.type=rep('transmission', 5),
-    time=c(11, 5, 2, 0, 1),
-    lineage1=rep('NA', 5),
-    lineage2=rep(NA, 5),
-    compartment1=c('I_95', 'I_73', 'I_20', 'I_94', 'I_97'),
-    compartment2=c('I_63', 'I_95', 'I_73', 'I_20', 'I_20'),
-    stringsAsFactors = FALSE
-  )
-  row.names(expected.noncumul) <- 1:5
-  expect_equal(result.noncumul, expected.noncumul)
+  
+  row.names(expected) <- 1:5
+  expect_equal(result, expected)
 })
 
 
