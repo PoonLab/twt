@@ -25,7 +25,7 @@ write.tree(phy)
 
 
 ## test script for 'example1.yaml'
-settings <- yaml.load_file('tests/fixtures/example1.yaml')
+settings <- yaml.load_file('example1.yaml')
 m <- MODEL$new(settings)
 e <- EventLogger$new()
 

@@ -388,7 +388,8 @@ MODEL <- R6Class("MODEL",
     
     init.locations = function() {
       # helper function for private$init.pairs()
-      # collect host locations of all extant pathogen lineages into dict of host1: [path1, path2, path3, ...]
+      # collect host locations of all extant pathogen lineages into dict 
+      # of host1: [path1, path2, path3, ...]
       private$locations <- list()      # reset list
       for (node in private$extant.lineages) {
         compName <- node$get.location()$get.name()
@@ -409,15 +410,22 @@ MODEL <- R6Class("MODEL",
       private$choices <- list()
       
       for (hostNum in seq_along(private$locations)) {
-        lineages <- private$locations[[hostNum]]  # returns vector of Lineages in this host
+        # retrieve vector of Lineages in this host
+        lineages <- private$locations[[hostNum]]
         hostname <- names(private$locations)[[hostNum]]
         
         if (length(lineages) > 1) {
           combns <- combn(lineages, 2)
-          . <- apply(combns, 2, function(pair) {
-            key <- paste(sort(pair), collapse=',')
+          
+          for (col in 1:ncol(combns)) {
+            pair <- sort(unlist(combns[,col]))
+            key <- paste(pair, collapse=',')
             private$choices[[key]] <- hostname
-          })
+          }
+          #. <- apply(combns, 2, function(pair) {
+          #  key <- paste(sort(unlist(pair)), collapse=',')
+          #  private$choices[[key]] <- hostname
+          #})
         }
       }
       private$choices

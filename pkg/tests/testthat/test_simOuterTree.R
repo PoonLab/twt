@@ -5,30 +5,55 @@ require(twt)
 file1 <- yaml.load_file('example2.yaml')
 file2 <- yaml.load_file('example3.yaml')
 
-# Case 1: single Type, multiple sampled infected, no unsampled infected
-settings <- file1
-settings$CompartmentTypes[[1]]$unsampled <- 0
-model <- MODEL$new(settings)
-eventlog <- EventLogger$new()
-case1 <- sim.outer.tree(model, eventlog)
+test_that("build eventlog from tree string", {
+  tree <- "((A:0.1,B:0.2)A:0.3,C:0.4)A:0.5;"
+  e <- eventlog.from.tree(tree)
+  result <- e$get.all.events()
+  
+  expected <- data.frame(
+    event.type=rep('transmission', 2),
+    time=c(0.2, 0.5),
+    lineage1=rep(NA, 2),
+    lineage2=rep(NA, 2),
+    compartment1=c('B', 'C'),  # recipient (reverse time)
+    compartment2=c('A', 'A'),  # source
+    stringsAsFactors = FALSE
+  )
+  
+  expect_equal(result, expected)
+})
 
-# Case 2: single Type, multiple sampled infected, multiple unsampled infected
-settings <- file1
-model <- MODEL$new(settings)
-eventlog <- EventLogger$new()
-case2 <- sim.outer.tree(model, eventlog)
 
-# Case 3: multiple Types, multiple sampled infected, no unsampled infected, selective zero branching rates
-settings <- file2
-settings$CompartmentTypes[[1]]$unsampled <- 0
-settings$CompartmentTypes[[2]]$unsampled <- 0
-model <- MODEL$new(settings)
-eventlog <- EventLogger$new()
-case3 <- sim.outer.tree(model, eventlog)
+test_that("build eventlog from YAML", {
+  settings <- yaml.load_file('example1.yaml')
+  m <- MODEL$new(settings)
+  e <- EventLogger$new()
+  init.branching.events(m, e)
+  result <- e$get.all.events()
+  
+  expected <- data.frame(
+    event.type=rep('transmission', 2),
+    time=c(3.0, 1.0),
+    lineage1=c('B_1__2_1', 'C_1__3_1'),
+    lineage2=rep(NA, 2),
+    compartment1=c('B_1', 'C_1'),  # recipient (reverse time)
+    compartment2=c('A_1', 'B_1'),  # source
+    stringsAsFactors = FALSE
+  )
+  
+  expect_equal(result, expected)
+})
 
-# Case 4: multiple Types, multiple sampled infected, multiple unsampled infected, selective zero branching rates
-settings <- file2
-model <- MODEL$new(settings)
-eventlog <- EventLogger$new()
-case4 <- sim.outer.tree(model, eventlog)
+
+test_that("simulate outer tree", {
+  # SI model with 10 sampled hosts
+  settings <- yaml.load_file('example2.yaml')
+  m <- MODEL$new(settings)
+  e <- EventLogger$new()
+  sim.outer.tree(m, e)
+  result <- e$get.all.events()
+  
+  # event log should contain 9 transmission events
+  expect_equal(nrow(result), 9)
+})
 

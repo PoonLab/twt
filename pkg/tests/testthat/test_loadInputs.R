@@ -68,14 +68,11 @@ test_that("MODEL parse population growth dynamics", {
 
 test_that("MODEL extracts pairs of lineages", {
   result <- m$get.pairs()
-  print(result)
   
+  # there are only one pair per host because the third lineage is not yet extant
+  # at time 0 (sampling times = 0.2)
   expected <- list(
-    #'I_1__I_1,I_1__I_2'='I_1',
-    #'I_1__I_1,I_1__I_3'='I_1',
     'I_1__I_2,I_1__I_3'='I_1',
-    #'I_2__I_1,I_2__I_2'='I_2',
-    #'I_2__I_1,I_2__I_3'='I_2',
     'I_2__I_2,I_2__I_3'='I_2'
     )
   

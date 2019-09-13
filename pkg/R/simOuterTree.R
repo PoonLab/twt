@@ -27,26 +27,33 @@ eventlog.from.tree <- function(tree) {
     stop("Error: arg 'tree' must be Newick tree string or 'phylo' object.")
   }
   
+  # tree should be rooted and binary
+  if (!is.rooted(phy)) {
+    stop("Error in eventlog.from.tree(), tree must be rooted")
+  }
+  if (!is.binary(phy)) {
+    stop("Error in eventlog.from.tree(), tree must be binary")
+  }
   if (is.null(phy$node.label)) {
     stop('Node labels must be present in host transmission tree to indicate sources.')
   }
+  phy$labels <- c(phy$tip.label, phy$node.label)
+  phy$depths <- node.depth.edgelength(phy)
+  phy$heights <- max(phy$depths) - phy$depths
   
   # iterate over edges in tree
   . <- sapply(1:nrow(phy$edge), function(x) {
-    s_ind <- phy$edge[x,1]  # source
-    r_ind <- phy$edge[x,2]  # recipient
+    s_ind <- phy$edge[x, 1]  # source
+    r_ind <- phy$edge[x, 2]  # recipient
     
-    source_label <- phy$node.label[s_ind]
-    
-    if (r_ind <= length(phy$tip.label)) {
-      recipient_label <- phy$tip.label[r_ind]
-    } else {
-      recipient_label <- phy$node.label[r_ind]
-    }
-    
+    # nodes are numbered terminal first (1,2,...,n) and internal nodes
+    # are numbered root first.  Sources are always internal
+    source_label <- phy$labels[s_ind]
+    recipient_label <- phy$labels[r_ind]
+
     if (source_label != recipient_label) {
       branching_time <- phy$edge.length[x]
-      e$add.event('transmission', branching_time, NA, NA, 
+      e$add.event('transmission', phy$heights[s_ind], NA, NA, 
                   recipient_label, source_label)
     }  # otherwise no transmission on branch
   })
@@ -76,7 +83,7 @@ init.branching.events <- function(model, eventlog) {
   lineages <- model$get.lineages()
   locations <- sapply(lineages, function(l) l$get.location()$get.name())
 
-  transmissions <- sapply(comps, function(comp) {
+  . <- sapply(comps, function(comp) {
     branching.time <- comp$get.branching.time()
     
     if (is.numeric(branching.time)) {
@@ -86,7 +93,7 @@ init.branching.events <- function(model, eventlog) {
         # find all lineages that are located in this compartment
         my.lines <- which(locations == comp$get.name())
         
-        lineage <- lineages[[ which(my.lines == 1) ]]$get.name()
+        lineage <- lineages[[ my.lines ]]$get.name()
       } else {
         source <- comp$get.source()
         lineage <- NA
