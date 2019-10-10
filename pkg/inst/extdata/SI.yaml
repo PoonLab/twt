@@ -1,0 +1,37 @@
+# how would we encode an SI model?
+OriginTimes:
+  'virus':                             # origin time of `virus` epidemic
+    start: 10.0                        # note this is reverse time, cumulative
+    susceptibles:
+      - host: 25                      # number of susceptible at the origin time of the simulation for Type `host`
+CompartmentTypes:
+  'host':
+    branching.rates: (host=0.01)        # named vector of transmission rates to different CompartmentTypes
+    migration.rates: ()                # no migration (assume no superinfection)
+    coalescent.rate: 1.0
+    bottleneck.size: 1                 # bottleneck size when transmission event occurs
+    wait.time.distr:                   # distribution of waiting time between infection time and first sampling time of a Compartment
+      distr: 'exp'
+      hyperparameters:
+        - rate: 20
+    popn.growth.dynamics:
+      piece1:
+        - startTime: 0
+        - startPopn: 1
+        - endTime: 5
+        - endPopn: 20
+      piece2:
+        - startTime: 5
+        - startPopn: 10
+LineageTypes:
+  'virus':
+Compartments:
+  'I':
+    type: host                         # CompartmentType 
+    replicates: 10
+Lineages:
+  'I':
+    type: 'virus'
+    sampling.time: 0             
+    location: I
+    replicates: 3                      # implied to be per-host

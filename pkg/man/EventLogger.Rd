@@ -12,9 +12,6 @@ EventLogger
 \item{events:}{a data frame where each row represents an event with a time 
 stamp in forward time.}
 
-\item{events.noncumul:}{optionally, a data frame where events are stamped 
-with the waiting time since the preceding event}
-
 \item{migration.events.storage:}{a data frame of migration events, returned by
 `simMigrations.R:.calc.migration.events()`.}
 }

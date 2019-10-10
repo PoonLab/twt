@@ -40,4 +40,11 @@ keyed by index to `locations`}
 \item{\code{fixed.samplings}}{list of Lineage names and sampling times for plotting}
 }}
 
+\examples{
+require(twt)
+path <- system.file('extdata', 'SI.yaml', package='twt')
+settings <- yaml.load_file(path)
+mod <- MODEL$new(settings)
+
+}
 \keyword{datasets}

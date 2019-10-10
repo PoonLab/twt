@@ -53,7 +53,11 @@ test_that("simulate outer tree", {
   sim.outer.tree(m, e)
   result <- e$get.all.events()
   
-  # event log should contain 9 transmission events
-  expect_equal(nrow(result), 9)
+  # TODO: transmission events should define a DAG
+  
+  # every recipient (compartment1) should appear once only
+  expect_true(all(result$event.type=='transmission'))
+  expect_equal(length(unique(result$compartment1)), nrow(result))
+  
 })
 

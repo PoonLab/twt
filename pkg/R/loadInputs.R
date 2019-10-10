@@ -19,6 +19,18 @@
 #' keyed by index to `locations`
 #' @field fixed.samplings list of Lineage names and sampling times for plotting
 #' 
+#' @examples 
+#' require(twt)
+#' # get path to example YAML file
+#' path <- system.file('extdata', 'SI.yaml', package='twt')
+#' 
+#' # load file and parse to construct MODEL object
+#' settings <- yaml.load_file(path)
+#' mod <- MODEL$new(settings)
+#' 
+#' # display the first compartment
+#' mod$get.compartments()[1]
+#' 
 #' @export
 MODEL <- R6Class("MODEL",
   public = list(

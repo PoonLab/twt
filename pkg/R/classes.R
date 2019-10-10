@@ -27,6 +27,17 @@
 #' @param transmission.times: numeric vector of transmission event times, 
 #' populated by `outer.tree.sim` from class parameters.
 #' 
+#' @examples 
+#' 
+#' # load CompartmentTypes from a YAML object
+#' path <- system.file('extdata', 'SI.yaml', package='twt')
+#' settings <- yaml.load_file(path)
+#' mod <- MODEL$new(settings)
+#' mod$get.types()
+#' 
+#' # manually specify a CompartmentType object (usually done by YAML)
+#' host <- CompartmentType$new(name='host', branching.rates=c(host=0.1), bottleneck.size=1, coalescent.rate=1, wait.time.distr='rexp(1,1)')
+#' 
 #' @export
 CompartmentType  <- R6Class("CompartmentType",
   public = list(
@@ -142,6 +153,20 @@ CompartmentType  <- R6Class("CompartmentType",
 #' @param unsampled: if TRUE, then any Lineage carried by this Compartment is not
 #' directly observed, i.e., it does not represent a tip in the "inner" tree.
 #' 
+#' @examples 
+#' # load Compartments from a YAML object
+#' path <- system.file('extdata', 'SI.yaml', package='twt')
+#' settings <- yaml.load_file(path)
+#' mod <- MODEL$new(settings)
+#' 
+#' # display first Compartment object
+#' host1 <- mod$get.compartments()[[1]]
+#' host1
+#' 
+#' # manually initialize a new Compartment object
+#' hostN <- Compartment$new(name='newHost', unsampled=TRUE)
+#' hostN$set.type(host1$get.type())
+#' 
 #' @export 
 Compartment <- R6Class("Compartment",
   public = list(
@@ -226,6 +251,21 @@ Compartment <- R6Class("Compartment",
 #' unsampled Lineages
 #' @param location: a reference to a Compartment object
 #' 
+#' @examples
+#' # load Compartments from a YAML object
+#' path <- system.file('extdata', 'SI.yaml', package='twt')
+#' settings <- yaml.load_file(path)
+#' mod <- MODEL$new(settings)
+#' 
+#' # display first Lineage in first Compartment
+#' comp <- mod$get.compartments()[[1]]
+#' comp$get.lineages()  # display all 3 lineages
+#' 
+#' # manually add an unsampled Lineage
+#' lin <- Lineage$new(name="L0", location=comp)
+#' comp$add.lineage(lin)
+#' 
+#' 
 #' @export
 Lineage <- R6Class("Lineage",
   public = list(
@@ -281,6 +321,13 @@ Lineage <- R6Class("Lineage",
 #' stamp in forward time.
 #' @param migration.events.storage: a data frame of migration events, returned by
 #' `simMigrations.R:.calc.migration.events()`.
+#' 
+#' @examples
+#' # manually initialize an EventLog object
+#' e <- EventLogger$new()
+#' # note this log entry is not linked to existing Lineage or Compartment objects
+#' e$add.event("transmission", time=1, line1="NA", comp1="hist1", comp2="host2")
+#' e$get.all.events()
 #' 
 #' @export
 EventLogger <- R6Class("EventLogger",

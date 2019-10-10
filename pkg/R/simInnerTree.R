@@ -7,6 +7,9 @@
 #' @param model: R6 object from Model$new()
 #' @param eventlog: R6 EventLogger object populated by sim.outer.tree() and sim.migrations() 
 #' 
+#' @examples
+#' 
+#' 
 #' @export
 sim.inner.tree <- function(model, eventlog) {
 
