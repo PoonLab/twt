@@ -26,4 +26,19 @@ directly observed, i.e., it does not represent a tip in the "inner" tree.}
 \code{Compartment} is an R6 class for objects that represent the units of an
 outer tree simulation, such as a host individual or deme.
 }
+\examples{
+# load Compartments from a YAML object
+path <- system.file('extdata', 'SI.yaml', package='twt')
+settings <- yaml.load_file(path)
+mod <- MODEL$new(settings)
+
+# display first Compartment object
+host1 <- mod$get.compartments()[[1]]
+host1
+
+# manually initialize a new Compartment object
+hostN <- Compartment$new(name='newHost', unsampled=TRUE)
+hostN$set.type(host1$get.type())
+
+}
 \keyword{datasets}

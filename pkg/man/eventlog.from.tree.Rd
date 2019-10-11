@@ -19,6 +19,10 @@ An object of class EventLogger initialized with a list of fixed transmission
 \code{eventlog.from.tree} converts a Newick tree string or ape::phylo object
 into a sequence of transmission events that are stored as an eventlog object
 }
+\examples{
+
+
+}
 \seealso{
 sim.outer.tree, init.branching.events
 }

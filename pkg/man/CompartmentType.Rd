@@ -47,4 +47,16 @@ populated by `outer.tree.sim` from class parameters.}
 such as a class of host individual (risk group) with a specific transmission 
 rate.
 }
+\examples{
+
+# load CompartmentTypes from a YAML object
+path <- system.file('extdata', 'SI.yaml', package='twt')
+settings <- yaml.load_file(path)
+mod <- MODEL$new(settings)
+mod$get.types()
+
+# manually specify a CompartmentType object (usually done by YAML)
+host <- CompartmentType$new(name='host', branching.rates=c(host=0.1), bottleneck.size=1, coalescent.rate=1, wait.time.distr='rexp(1,1)')
+
+}
 \keyword{datasets}

@@ -12,6 +12,9 @@
 #'   An object of class EventLogger initialized with a list of fixed transmission
 #'   events that were extracted from 'tree'.
 #' 
+#' @examples
+#' 
+#' 
 #' @seealso sim.outer.tree, init.branching.events
 #' @export
 eventlog.from.tree <- function(tree) {
@@ -127,11 +130,23 @@ init.branching.events <- function(model, eventlog) {
 #' timeline of lineage sampled events.
 #' 
 #' @param model: object of class 'MODEL'
-#' @param eventlog: object of class 'EventLogger' to update
+#' @return object of class 'EventLogger'
+#' 
+#' @examples
+#' 
+#' #' # load susceptible-infected (SI) compartmental model
+#' path <- system.file('extdata', 'SI.yaml', package='twt')
+#' settings <- yaml.load_file(path)
+#' mod <- MODEL$new(settings)
+#' 
+#' tree <- sim.outer.tree(mod)
 #' 
 #' @seealso init.branching.events, eventlog.from.tree
 #' @export
-sim.outer.tree <- function(model, eventlog) {
+sim.outer.tree <- function(model) {
+  # TODO: function should not require eventlog, make this a new return value
+  eventlog <- EventLogger$new()
+  
   # ptm <- proc.time()   # benchmark start time
   
   # store fixed sampling times of the tips of the MODEL object
@@ -295,7 +310,7 @@ sim.outer.tree <- function(model, eventlog) {
   # total <- proc.time() - ptm
   # cat("Total:", round(total[['elapsed']],5), "s\n")
     
-  # eventlog
+  eventlog
 }
 
 

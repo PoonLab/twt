@@ -4,12 +4,13 @@
 \alias{sim.outer.tree}
 \title{sim.outer.tree}
 \usage{
-sim.outer.tree(model, eventlog)
+sim.outer.tree(model)
 }
 \arguments{
 \item{model:}{object of class 'MODEL'}
-
-\item{eventlog:}{object of class 'EventLogger' to update}
+}
+\value{
+object of class 'EventLogger'
 }
 \description{
 After the objects are generated from user inputs ('loadInputs.R'), 
@@ -25,6 +26,16 @@ three use cases:
    
 \code{sim.outer.tree} simulates transmission events and fixes them to the 
 timeline of lineage sampled events.
+}
+\examples{
+
+#' # load susceptible-infected (SI) compartmental model
+path <- system.file('extdata', 'SI.yaml', package='twt')
+settings <- yaml.load_file(path)
+mod <- MODEL$new(settings)
+
+tree <- sim.outer.tree(mod)
+
 }
 \seealso{
 init.branching.events, eventlog.from.tree

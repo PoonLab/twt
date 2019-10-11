@@ -8,7 +8,10 @@
 #' @param eventlog: R6 EventLogger object populated by sim.outer.tree() and sim.migrations() 
 #' 
 #' @examples
-#' 
+#' # load 
+#' path <- system.file('extdata', 'SI.yaml', package='twt')
+#' settings <- yaml.load_file(path)
+#' mod <- MODEL$new(settings)
 #' 
 #' @export
 sim.inner.tree <- function(model, eventlog) {

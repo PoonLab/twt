@@ -17,6 +17,9 @@ AND resolve the migration events that may or may not involve sampled pathogen
 lineages within hosts.  EventLogger object updated with inner tree events.
 }
 \examples{
-
+# load 
+path <- system.file('extdata', 'SI.yaml', package='twt')
+settings <- yaml.load_file(path)
+mod <- MODEL$new(settings)
 
 }

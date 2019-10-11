@@ -1,3 +1,189 @@
+#' EventLogger
+#' 
+#' \code{EventLogger} is an R6 class for an object that tracks migration, 
+#' transmission, and coalescent events.  Note that bottleneck events are logged as 
+#' coalescent events.
+#' 
+#' @param events: a data frame where each row represents an event with a time 
+#' stamp in forward time.
+#' @param migration.events.storage: a data frame of migration events, returned by
+#' `simMigrations.R:.calc.migration.events()`.
+#' 
+#' @examples
+#' # manually initialize an EventLog object
+#' e <- EventLogger$new()
+#' # note this log entry is not linked to existing Lineage or Compartment objects
+#' e$add.event("transmission", time=1, line1="NA", comp1="hist1", comp2="host2")
+#' e$get.all.events()
+#' 
+#' @export
+EventLogger <- R6Class("EventLogger", 
+  public = list(
+    initialize = function(events = NA, migration.events.storage = NA) {
+      if (is.na(events)) {
+        self$clear.events()
+      } else {
+        private$events <- events  
+      }
+      
+      if (is.na(migration.events.storage)) {
+        private$migration.events.storage <- data.frame(stringsAsFactors = FALSE)
+      } else {
+        private$migration.events.storage <- migration.events.storage
+      }
+    },
+   
+   
+    get.all.events = function() {
+      if (nrow(private$events) == 0) {cat('No events to display.')}
+      else {
+        private$events                    # default eventlog shows cumulative time b/c more user friendly
+      }
+    },
+    
+    
+    get.events = function(event.type) {
+      eventList <- private$events[ which(private$events$event.type == event.type), ]
+      
+      if (nrow(eventList) != 0) {
+        eventList
+      } else {
+        # cat('No events of type "', event.type, '".\n')
+        NULL
+      }
+    },
+    
+    add.event = function(type, time, line1, line2, comp1, comp2) {
+      # @param type: event type, one of 'transmission', 'migration', 'coalescence',
+      # or 'bottleneck'.
+      # @param time: CUMULATIVE time that event has occurred between two compartments 
+      # in a transmission/migration/coalescent event
+      
+      if (is.element(type, c('transmission', 'migration'))) {
+        e <- list(event.type=type, time=time, lineage1=line1, lineage2=NA,
+                  compartment1=comp1, compartment2=comp2)
+      } else if (is.element(type, c('coalescent', 'bottleneck'))) {
+        e <- list(event.type=type, time=time, lineage1=line1, lineage2=line2,
+                  compartment1=comp1, compartment2=NA)
+      } else {
+        stop("Error, unrecognized type argument in add.event()")
+      }
+      
+      private$events <- rbind(private$events, e, stringsAsFactors=F)
+    }, 
+    
+    
+    clear.events = function() {
+      private$events <- data.frame(
+        event.type=character(),
+        time=numeric(),
+        lineage1=character(),
+        lineage2=character(),
+        compartment1=character(),
+        compartment2=character(),
+        stringsAsFactors = FALSE
+        )
+    },
+    
+    
+    modify.event = function(transmission.time, lineages) {
+      # when inner tree simulation has reached a transmission event, 
+      # need to fill in the lineage column w/ the lineages that are present 
+      # at transmission time
+      
+      # in the case of bottleneck events, will have same time so have to isolate 
+      # transmission event times
+      transmission.events <- self$get.events('transmission')
+      
+      index <- which(transmission.events$time == transmission.time)
+      rowname <- rownames(transmission.events)[index]
+      eventlog.index <- which(rownames(self$get.all.events()) == rowname)
+      private$events[eventlog.index, 'lineage1'] <- lineages
+    },
+    
+    get.migration.events = function() {
+      private$migration.events.storage
+    },
+    
+    store.migration.events = function(migration.events) {
+      private$migration.events.storage <- migration.events
+    },
+    
+    get.fixed.samplings = function() {
+      # retrieves the fixed sampling times of the tips of a MODEL object
+      private$fixed.samplings.storage
+    },
+   
+    store.fixed.samplings = function(model.fixed.samplings) {
+      # stores the fixed sampling times of the tips of a MODEL object
+      private$fixed.samplings.storage <- model.fixed.samplings
+    }
+    
+  ),  # end public
+  
+  
+  private = list(
+    events = NULL,
+    #events.noncumul = NULL,  ## DEPRECATED (issue #58)
+    migration.events.storage = NULL,
+    fixed.samplings.storage = NULL,
+    
+    generate.events = function(events, root, tips) {
+      
+      # inner recursive helper function
+      generate.indiv.event <- function(node, parent_time) {
+        # recursive function to generate cumulative times for each individual event
+        # returns a childEvent or NULL to be added to the eventlog data frame
+        if (node %in% tips) {
+          return (NULL)
+        } else {
+          nodeEvents <- events[ which(events$compartment2 == node), ]
+          if (length(row.names(nodeEvents)) == 0) {
+            return(NULL)
+          } else {
+            for (x in 1:nrow(nodeEvents)) {
+              childEvent <- nodeEvents[x,]
+              # traverse descendants
+              generate.indiv.event(
+                as.character(childEvent['compartment1']), as.numeric(childEvent['time'])
+              )
+              childEvent['time'] <- parent_time - as.numeric(childEvent['time'])
+              
+              # append to data frame
+              private$events <- rbind(private$events, childEvent, stringsAsFactors=F)
+            }
+            return(private$events)
+          }
+         
+        }
+      }
+      
+      # beginning of function generate.events()
+      rootEvents <- events[ which(events$compartment2 == root), ]
+      maxRootTime <- max(rootEvents$time)
+      for (x in 1:nrow(rootEvents)) {
+        parentEvent <- rootEvents[x,]
+        # traverse descendants
+        generate.indiv.event(as.character(parentEvent['compartment1']), as.numeric(parentEvent['time']))
+        
+        # root's individualt delta t from when it was infected to when it made its 
+        # first transmission is 'undefined'
+        # 0 or 1 by convention (see treeswithintrees closed issue #29)
+        parentEvent['time'] <- maxRootTime - parentEvent['time']
+        private$events.noncumul <- rbind(private$events, parentEvent, stringsAsFactors=F)
+      }
+      
+      indices <- grep('NA', row.names(private$events), ignore.case=T, invert=T)
+      match.cumul.ordering <- order(as.numeric(row.names(private$events[indices,])))
+      
+      private$events[indices,][match.cumul.ordering,]
+    }
+    
+  )  # end private
+)
+
+
+
 # Functions to convert the events stored in the EventLogger into an 
 # ape::phylo object that can then be plotted or printed.
 # These are S3 methods defined outside of the R6 class definition.
@@ -28,7 +214,10 @@ plot.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE,
 #' 
 #'  @param eventlog: object of class 'EventLog' 
 print.EventLogger <- function(eventlog) {
-  eventlog$get.all.events()
+  events <- eventlog$get.all.events()
+  if (!is.null(events)) {
+    print(events)
+  }
 }
 
 

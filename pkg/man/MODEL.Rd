@@ -42,9 +42,15 @@ keyed by index to `locations`}
 
 \examples{
 require(twt)
+# get path to example YAML file
 path <- system.file('extdata', 'SI.yaml', package='twt')
+
+# load file and parse to construct MODEL object
 settings <- yaml.load_file(path)
 mod <- MODEL$new(settings)
+
+# display the first compartment
+mod$get.compartments()[1]
 
 }
 \keyword{datasets}

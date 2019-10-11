@@ -23,4 +23,20 @@ unsampled Lineages}
 that are carried by Compartments and which comprise the "inner" tree of the 
 simulation.
 }
+\examples{
+# load Compartments from a YAML object
+path <- system.file('extdata', 'SI.yaml', package='twt')
+settings <- yaml.load_file(path)
+mod <- MODEL$new(settings)
+
+# display first Lineage in first Compartment
+comp <- mod$get.compartments()[[1]]
+comp$get.lineages()  # display all 3 lineages
+
+# manually add an unsampled Lineage
+lin <- Lineage$new(name="L0", location=comp)
+comp$add.lineage(lin)
+
+
+}
 \keyword{datasets}
