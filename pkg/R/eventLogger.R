@@ -198,6 +198,7 @@ EventLogger <- R6Class("EventLogger",
 #' @param eventlog:  Object of class 'EventLogger'
 #' @param transmissions:  If TRUE, display transmission events in plot.
 #' 
+#' @export
 plot.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE, 
                              node.labels=FALSE) {
   evt <- eventlog$get.all.events()
@@ -226,7 +227,9 @@ plot.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE,
 #' `print.EventLogger` is simply a wrapper function on EventLogger's 
 #' `get.all.events()`.
 #' 
-#'  @param eventlog: object of class 'EventLog' 
+#' @param eventlog: object of class 'EventLog' 
+#'  
+#' @export
 print.EventLogger <- function(eventlog) {
   events <- eventlog$get.all.events()
   if (is.null(events)) {

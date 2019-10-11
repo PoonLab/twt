@@ -2,10 +2,11 @@
 #' 
 #' Simulate the coalescence of pathogen lineages within hosts (compartments)
 #' AND resolve the migration events that may or may not involve sampled pathogen 
-#' lineages within hosts.  EventLogger object updated with inner tree events.
+#' lineages within hosts.
 #'
 #' @param model: R6 object from Model$new()
 #' @param eventlog: R6 EventLogger object populated by sim.outer.tree() and sim.migrations() 
+#' @return EventLogger object updated with inner tree events.
 #' 
 #' @examples
 #' # load model
@@ -17,11 +18,12 @@
 #' 
 #' # simulate outer tree
 #' outer <- sim.outer.tree(mod)
-#' sim.inner.tree(mod, outer)
+#' tree <- sim.inner.tree(mod, outer)
 #' 
 #' @export
-sim.inner.tree <- function(model, eventlog) {
-
+sim.inner.tree <- function(model, outer.tree) {
+  eventlog <- outer.tree$clone()
+  
   # vector of all infected Compartments in population at time zero (most recent)
   inf <- c(model$get.compartments(), model$get.unsampled.hosts())
   inf.names <- model$get.names(inf)
@@ -198,7 +200,7 @@ sim.inner.tree <- function(model, eventlog) {
     
   }
   
-  #eventlog
+  eventlog
 }
 
 

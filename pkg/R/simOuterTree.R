@@ -145,7 +145,7 @@ init.branching.events <- function(model, eventlog) {
 #' @seealso init.branching.events, eventlog.from.tree
 #' @export
 sim.outer.tree <- function(model) {
-  # TODO: function should not require eventlog, make this a new return value
+  # initialize a new object as return value
   eventlog <- EventLogger$new()
   
   # ptm <- proc.time()   # benchmark start time
@@ -153,9 +153,9 @@ sim.outer.tree <- function(model) {
   # store fixed sampling times of the tips of the MODEL object
   eventlog$store.fixed.samplings(model$get.fixed.samplings())
   
+  # extract objects from MODEL
   comps <- model$get.compartments()           
   compnames <- model$get.names(comps)
-  
   types <- model$get.types()  # CompartmentType objects
   
   # maps Compartments to CompartmentTypes
@@ -171,17 +171,24 @@ sim.outer.tree <- function(model) {
   possible.source.types <- storage$s.types
   
   # generate transmission events based on population dynamics and Compartments' 
-  # initial sampling times
+  # initial sampling times: (time, recipient Type, source Type, virus Type)
   t_events <- .calc.transmission.events(popn.totals, popn.rates, time.bands, 
                                         possible.source.types)
   
   # generate unsampled hosts
-  last.indiv <- T
+  model$clear.unsampled()  # reset MODEL - issue #68
+  last.indiv <- T  # FIXME: what is the role of this flag?
+  
   for (t in types) {
-    num.unsampled <- length(which(t_events$r_type == t$get.name())) - length(which(indiv.types == t$get.name()))
+    num.unsampled <- length(which(t_events$r_type == t$get.name())) - 
+      length(which(indiv.types == t$get.name()))
+    
     if (num.unsampled > 0) {
       if (last.indiv) {
-        model$generate.unsampled(num.unsampled+1, t)      # this is the reason why unsampled are not generated at the initialization of the MODEL object
+        # this is the reason why unsampled are not generated at the 
+        # initialization of the MODEL object
+        # FIXME: why do we have one extra unsampled host of the first Type?
+        model$generate.unsampled(num.unsampled+1, t)      
         last.indiv <- F
       } else {
         model$generate.unsampled(num.unsampled, t)
@@ -191,24 +198,33 @@ sim.outer.tree <- function(model) {
   
   # update `time.bands` to include unsampled hosts
   time.bands <- c(time.bands, rep(NA, length(model$get.unsampled.hosts())))
-  names(time.bands) <- c(names(time.bands)[nzchar(x=names(time.bands))], model$get.names(model$get.unsampled.hosts()))
+  names(time.bands) <- c(names(time.bands)[nzchar(x=names(time.bands))], 
+                         model$get.names(model$get.unsampled.hosts()))
   
   # unsampled infected now calculated and generated, set source population
   sources <- c(comps, model$get.unsampled.hosts())
   sources.names <- model$get.names(sources)
   
-  sapply(names(possible.source.types), function(x) {          #names(possible.source.types) represents names of types that can be recipients
-    # for each Type that can be a recipient, assign transmission times to all of its infected compartments
+  
+  # names(possible.source.types) represents names of types that can be recipients
+  . <- sapply(names(possible.source.types), function(x) {
+    # for each Type that can be a recipient, assign transmission times to all of its 
+    # infected compartments
     r.indices <- which( sapply(sources, function(y) y$get.type()$get.name() == x) )
     r.comps <- sources[r.indices]
     r.init.samplings <- time.bands[ which(names(time.bands) %in% sources.names[r.indices]) ]
     r.events <- t_events[ which(t_events$r_type == x), ]
     
-    if (nrow(r.events) != 0) {            # no transmission events for case of ie. blood compartment
-      # assigns transmission times but also returns a binary (logical) vector of which transmission times have been used
-      # will store this binary vector with associated transmission times into the MODEL (specific to each type)
+    
+    # no transmission events for case of ie. blood compartment
+    if (nrow(r.events) != 0) {            
+      # assigns transmission times but also returns a binary (logical) vector of which 
+      # transmission times have been used
+      # will store this binary vector with associated transmission times into the 
+      # MODEL (specific to each type)
       type.comp <- types[[ which(sapply(types, function(t) t$get.name() == x)) ]]
-      assigned.times <- .assign.transmission.times(r.comps, r.events, r.init.samplings, type.comp)
+      assigned.times <- .assign.transmission.times(r.comps, r.events, r.init.samplings, 
+                                                   type.comp)
     } 
     
   })
@@ -227,12 +243,17 @@ sim.outer.tree <- function(model) {
   
   # each assigned transmission time is associated with an event, which determines what TYPE its source is, just not which Compartment in particular
   
-  source.popns = source.popns.names <- setNames(vector(length(types), mode="list"), names(types))
+  source.popns = source.popns.names <- setNames(vector(length(types), mode="list"), 
+                                                names(types))
+
   # separate source populations into lists that are as many as the number of distinct Types in the model
   for (x in 1:length(names(source.popns))) {
     specific.type <- names(source.popns)[x]
+    
+    # get all source Compartments of this Type
     s.pop.by.type <- sapply(sources, function(y) {
       if (y$get.type()$get.name() == specific.type) {
+        
         if (length(y$get.branching.time()) == 0 || is.null(y$get.branching.time())) {y}    # root no branching time
         else if (y$get.branching.time() > comps[[1]]$get.branching.time()) {y}
       } 
@@ -243,10 +264,14 @@ sim.outer.tree <- function(model) {
     source.popns.names[[specific.type]] <- s.pop.by.type.names
   }
   
-  # assign source compartments for all sampled infected and promoted unsampled infected Compartments
+  
+  # assign source compartments for all sampled infected and promoted unsampled 
+  # infected Compartments
   numActive <- length(comps)
   while (numActive >= 1) {
-    r_ind_comps <- 1                            # first recipient == most recent infection time == largest list of `sources` --> efficiency                             
+    # first recipient == most recent infection time == largest list of 
+    # `sources` --> efficiency
+    r_ind_comps <- 1                            
     recipient <- comps[[r_ind_comps]]
     r_name <- recipient$get.name()
     r_type <- recipient$get.type()$get.name()
@@ -255,25 +280,37 @@ sim.outer.tree <- function(model) {
     comps[[ r_ind_comps ]] <- NULL
     compnames <- compnames[-r_ind_comps]
     ind_source_popn <- which(source.popns.names[[r_type]] == r_name)
-    if (length(ind_source_popn) != 0) {         # TRUE for all iterations except initial iteration case (bc starting recipient already removed)
+    if (length(ind_source_popn) != 0) {
+      # TRUE for all iterations except initial iteration case (bc starting 
+      # recipient already removed)
       source.popns[[r_type]][[ind_source_popn]] <- NULL
       source.popns.names[[r_type]] <- source.popns.names[[r_type]][-ind_source_popn]
     }
     
-    # list of possible sources is based off of the `s_type` recorded in the event associated with the transmission time in master copy `t_events`
-    if (length(recipient$get.branching.time()) == 0 || is.null(recipient$get.branching.time())) {
-      # root case, "final" resolved transmission event (aka first recorded transmission, furthest back in time)
+    # list of possible sources is based off of the `s_type` recorded in the 
+    # event associated with the transmission time in master copy `t_events`
+    if (length(recipient$get.branching.time()) == 0 
+        || is.null(recipient$get.branching.time())) {
+      # root case, "final" resolved transmission event (aka first recorded 
+      # transmission, furthest back in time)
       break
       
     } else {
       
       s_type <- t_events[ which(t_events$time == recipient$get.branching.time()), 's_type']
+      
       # refine list of sources previously separated by Type also by earlier branching times than recipient's branching time
       refined.list.sources <- sapply(source.popns[[s_type]], function(s) {
         if (length(s$get.branching.time()) == 0 || is.null(s$get.branching.time())) s
         else if (s$get.branching.time() > recipient$get.branching.time()) s
         else NULL
       })
+      
+      if (length(refined.list.sources) == 0) {
+        print(numActive)
+        print(source.popns)
+        stop("")
+      }
       refined.list.sources[sapply(refined.list.sources, is.null)] <- NULL   # cleanup
       
       # select source from a list of sources previously separated by Type
@@ -285,12 +322,14 @@ sim.outer.tree <- function(model) {
       
     }
     
-    # if source is an unsampled infected Compartment, now holds a sampled lineage we care about (promote us_comp)
+    # if source is an unsampled infected Compartment, now holds a sampled lineage 
+    # we care about (promote us_comp)
     if (source$is.unsampled() 
         && source$get.name() %in% compnames == FALSE
         && length(source$get.branching.time()) != 0) {
       # add us_comp to list `comps` (once first a source, can now be a recipient)
-      # AND ONLY if source is not "final" transmission event (b/c it has no source, therefore can't be recipient)
+      # AND ONLY if source is not "final" transmission event (b/c it has no source, 
+      # therefore can't be recipient)
       comps[[length(comps)+1]] <- source
       compnames[[length(compnames)+1]] <- s_name
     }

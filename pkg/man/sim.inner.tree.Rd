@@ -11,15 +11,24 @@ sim.inner.tree(model, eventlog)
 
 \item{eventlog:}{R6 EventLogger object populated by sim.outer.tree() and sim.migrations()}
 }
+\value{
+EventLogger object updated with inner tree events.
+}
 \description{
 Simulate the coalescence of pathogen lineages within hosts (compartments)
 AND resolve the migration events that may or may not involve sampled pathogen 
-lineages within hosts.  EventLogger object updated with inner tree events.
+lineages within hosts.
 }
 \examples{
-# load 
+# load model
 path <- system.file('extdata', 'SI.yaml', package='twt')
+
+# load file and parse to construct MODEL object
 settings <- yaml.load_file(path)
 mod <- MODEL$new(settings)
+
+# simulate outer tree
+outer <- sim.outer.tree(mod)
+tree <- sim.inner.tree(mod, outer)
 
 }

@@ -6,10 +6,10 @@
 \usage{
 \method{print}{EventLogger}(eventlog)
 }
+\arguments{
+\item{eventlog:}{object of class 'EventLog'}
+}
 \description{
 `print.EventLogger` is simply a wrapper function on EventLogger's 
 `get.all.events()`.
-}
-\details{
-@param eventlog: object of class 'EventLog'
 }

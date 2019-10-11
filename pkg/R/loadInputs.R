@@ -124,6 +124,10 @@ MODEL <- R6Class("MODEL",
       }))) 
     },
     
+    clear.unsampled = function() {
+      private$unsampled.hosts <- NULL
+    },
+    
     get.fixed.samplings = function() {
       # retrieves fixed sampling times of tips
       private$fixed.samplings
