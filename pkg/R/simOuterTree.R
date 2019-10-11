@@ -13,7 +13,8 @@
 #'   events that were extracted from 'tree'.
 #' 
 #' @examples
-#' 
+#' outer <- eventlog.from.tree('(((A:1,B:1)B:1,C:1)C:1,D:1)D:1;')
+#' outer
 #' 
 #' @seealso sim.outer.tree, init.branching.events
 #' @export

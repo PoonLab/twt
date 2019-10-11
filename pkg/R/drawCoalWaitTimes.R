@@ -48,7 +48,7 @@ calc.coal.wait.times <- function(model, current.time, dynamic=FALSE){
   }
   
   # retrieves compartments with multiple extant lineages
-  counts <- sapply(comp, function(x) num.ext.lineages(x))
+  counts <- sapply(comps, function(x) num.ext.lineages(x))
   ext.comps <- comps[counts >= 2]
   
   # calculate waiting times per Compartment

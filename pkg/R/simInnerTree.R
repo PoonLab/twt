@@ -8,10 +8,16 @@
 #' @param eventlog: R6 EventLogger object populated by sim.outer.tree() and sim.migrations() 
 #' 
 #' @examples
-#' # load 
+#' # load model
 #' path <- system.file('extdata', 'SI.yaml', package='twt')
+#' 
+#' # load file and parse to construct MODEL object
 #' settings <- yaml.load_file(path)
 #' mod <- MODEL$new(settings)
+#' 
+#' # simulate outer tree
+#' outer <- sim.outer.tree(mod)
+#' sim.inner.tree(mod, outer)
 #' 
 #' @export
 sim.inner.tree <- function(model, eventlog) {
@@ -23,6 +29,12 @@ sim.inner.tree <- function(model, eventlog) {
   # retrieve transmission events and times
   transm.events <- eventlog$get.events('transmission')
   transm.times <- transm.events$time[!is.na(transm.events$time)]
+  
+  # check that compartment names in transmission events match model
+  transm.names <- unique(c(transm.events$compartment1, transm.events$compartment2))
+  if (all(!is.element(transm.names, inf.names))) {
+    stop("None of compartment names in eventlog match model.")
+  }
   
   # retrieve migration events **to be resolved** and times
   migration.events <- eventlog$get.migration.events()

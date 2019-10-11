@@ -35,9 +35,11 @@ EventLogger <- R6Class("EventLogger",
    
    
     get.all.events = function() {
-      if (nrow(private$events) == 0) {cat('No events to display.')}
-      else {
-        private$events                    # default eventlog shows cumulative time b/c more user friendly
+      if (nrow(private$events) == 0) {
+        #cat('No events to display.')
+        NULL
+      } else {
+        private$events  # default eventlog shows cumulative time b/c more user friendly
       }
     },
     
@@ -198,12 +200,24 @@ EventLogger <- R6Class("EventLogger",
 #' 
 plot.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE, 
                              node.labels=FALSE) {
-  phy <- .eventlogger.to.phylo(
-    eventlog=eventlog, 
-    transmissions=transmissions, 
-    migrations=migrations, 
-    node.labels=node.labels)
-  plot(phy)
+  evt <- eventlog$get.all.events()
+  if (is.null(evt)) {
+    cat("No events to display.")
+  }
+  else {
+    if (all(is.element(evt$event.type, c('transmission', 'migration')))) {
+      # this is an outer tree
+      .plot.outer.tree(eventlog)
+    } 
+    else {
+      phy <- .eventlogger.to.phylo(
+        eventlog=eventlog, 
+        transmissions=transmissions, 
+        migrations=migrations, 
+        node.labels=node.labels)
+      plot(phy)
+    }
+  }
 }
 
 
@@ -215,9 +229,40 @@ plot.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE,
 #'  @param eventlog: object of class 'EventLog' 
 print.EventLogger <- function(eventlog) {
   events <- eventlog$get.all.events()
-  if (!is.null(events)) {
+  if (is.null(events)) {
+    print("No events to display.")
+  } else {
     print(events)
   }
+}
+
+
+
+#' .plot.outer.tree
+#' 
+#' A function that converts events stored in an EventLogger object into
+#' an outer transmission tree.
+#' 
+#' @param e: EventLogger object
+#' 
+#' @return ape::phylo object
+#' @keywords internal
+.plot.outer.tree <- function(e) {
+  events <- e$get.all.events()
+  stopifnot(all(events$event.type == 'transmission'))
+  
+  recip <- events$compartment1
+  source <- events$compartment2
+  comps <- unique(c(recip, source))
+  
+  # source that is never a recipient is the root
+  root <- unique(source[!is.element(source, recip)])
+  if (length(root) != 1) {
+    stop("Eventlog contains more than one index compartment (root)")
+  }
+  
+  # TODO work in progress!
+  
 }
 
 
