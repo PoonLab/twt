@@ -266,6 +266,13 @@ print.EventLogger <- function(eventlog) {
   
   # TODO work in progress!
   
+  # 1. sort compartments in order of infection time
+  
+  # 2. draw horizontal line segments for compartments
+  
+  # 3. draw vertical line segments for transmissions
+  
+  
 }
 
 
