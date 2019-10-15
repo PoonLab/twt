@@ -4,7 +4,7 @@
 \alias{sim.inner.tree}
 \title{sim.inner.tree}
 \usage{
-sim.inner.tree(model, eventlog)
+sim.inner.tree(model, outer.tree)
 }
 \arguments{
 \item{model:}{R6 object from Model$new()}
@@ -29,6 +29,9 @@ mod <- MODEL$new(settings)
 
 # simulate outer tree
 outer <- sim.outer.tree(mod)
+
+# simulate inner tree
 tree <- sim.inner.tree(mod, outer)
+plot(tree)
 
 }

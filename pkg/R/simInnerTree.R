@@ -18,7 +18,10 @@
 #' 
 #' # simulate outer tree
 #' outer <- sim.outer.tree(mod)
+#' 
+#' # simulate inner tree
 #' tree <- sim.inner.tree(mod, outer)
+#' plot(tree)
 #' 
 #' @export
 sim.inner.tree <- function(model, outer.tree) {
