@@ -76,9 +76,22 @@ eventlog.from.tree <- function(tree) {
 #' transmission tree information.
 #' @param eventlog: an object of class EventLog to update in-place
 #' 
+#' @examples
+#' # load model
+#' path <- system.file('extdata', 'chain.yaml', package='twt')
+#' settings <- yaml.load_file(path)
+#' mod <- MODEL$new(settings)
+#' 
+#' e <- init.branching.events(mod)
+#' plot(e)
+#' 
 #' @seealso eventlog.from.tree, sim.outer.tree
 #' @export
-init.branching.events <- function(model, eventlog) {
+init.branching.events <- function(model, eventlog=NA) {
+  if (is.na(eventlog)) {
+    eventlog <- EventLogger$new()
+  }
+  
   # store fixed sampling times of the tips for plotting functions
   eventlog$store.fixed.samplings(model$get.fixed.samplings())
   
@@ -110,7 +123,7 @@ init.branching.events <- function(model, eventlog) {
     
   })
   
-  #eventlog
+  eventlog
 }
 
 
