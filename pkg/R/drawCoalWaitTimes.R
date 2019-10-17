@@ -27,6 +27,16 @@ wait.time <- function(k, t1, alpha, beta){
 #' @param current.time: current simulation time for inner tree
 #' @return Named numeric vector of waiting times per compartment
 #' 
+#' @examples 
+#' # this model specifies 10 compartments with 3 lineages each,
+#' # and constant coalescent rate 1.0
+#' path <- system.file('extdata', 'SI.yaml', package='twt')
+#' settings <- yaml.load_file(path)
+#' mod <- MODEL$new(settings)
+#' 
+#' # these should average 0.333
+#' calc.coal.wait.times(mod, 0)
+#' 
 #' @export
 calc.coal.wait.times <- function(model, current.time, dynamic=FALSE){
   # retrieve all compartments

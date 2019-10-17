@@ -14,3 +14,14 @@ sim.migrations(model, eventlog)
 \description{
 Annotate and update the EventLogger object with migration events.
 }
+\examples{
+path <- system.file('extdata', 'structSI.yaml', package='twt')
+settings <- yaml.load_file(path)
+mod <- MODEL$new(settings)
+
+tree <- sim.outer.tree(mod)
+sim.migrations(mod, tree)
+tree$get.migration.events()  # display private data frame
+tree2 <- sim.inner.tree(mod, tree)
+
+}

@@ -4,8 +4,9 @@
 #' AND resolve the migration events that may or may not involve sampled pathogen 
 #' lineages within hosts.
 #'
-#' @param model: R6 object from Model$new()
-#' @param eventlog: R6 EventLogger object populated by sim.outer.tree() and sim.migrations() 
+#' @param mod: R6 object from Model$new()
+#' @param outer.tree: R6 EventLogger object populated by sim.outer.tree() 
+#' and (optionally) sim.migrations() 
 #' @return EventLogger object updated with inner tree events.
 #' 
 #' @examples
@@ -24,7 +25,9 @@
 #' plot(tree)
 #' 
 #' @export
-sim.inner.tree <- function(model, outer.tree) {
+sim.inner.tree <- function(mod, outer.tree) {
+  # don't modify initial settings of original object
+  model <- mod$clone()
   eventlog <- outer.tree$clone()
   
   # vector of all infected Compartments in population at time zero (most recent)

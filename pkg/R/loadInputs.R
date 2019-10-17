@@ -319,10 +319,17 @@ MODEL <- R6Class("MODEL",
         # popn = inputted popn size of the piece at time `time`
         # slope = slope of the piece 
         # intercept = y-intercept of the piece
-      mat <- matrix(nrow=length(pieces), 
-                    ncol=6, 
-                    dimnames=list(1:length(pieces), c('startTime', 'startPopn', 'endTime', 'endPopn', 
-                                                      'slope', 'intercept')))
+      
+      if (is.null(pieces)) {
+        return (NULL)
+      }
+      mat <- matrix(
+        nrow=length(pieces), ncol=6, 
+        dimnames=list(1:length(pieces), 
+                      c('startTime', 'startPopn', 'endTime', 'endPopn', 
+                        'slope', 'intercept'))
+        )
+      
       for (x in seq_along(pieces)) {
         if ('startTime' %in% names(unlist(pieces[[x]])) == F) {
           stop ('Parameter "startTime" not defined for piece "', names(pieces)[[x]], '".')

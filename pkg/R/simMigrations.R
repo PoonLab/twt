@@ -17,6 +17,16 @@
 #' @param model: R6 object from MODEL$new()
 #' @param eventlog: R6 Eventlogger object populated by sim.outer.tree()
 #' 
+#' @examples 
+#' path <- system.file('extdata', 'structSI.yaml', package='twt')
+#' settings <- yaml.load_file(path)
+#' mod <- MODEL$new(settings)
+#' 
+#' tree <- sim.outer.tree(mod)
+#' sim.migrations(mod, tree)
+#' tree$get.migration.events()  # display private data frame
+#' tree2 <- sim.inner.tree(mod, tree)
+#' 
 #' @export
 sim.migrations <- function(model, eventlog) {
   comps <- model$get.compartments()
@@ -86,22 +96,10 @@ sim.migrations <- function(model, eventlog) {
 .record.possible.source.types <- function(types, lineages) {
   # generate dictionary of different types of source that each recipient Type 
   # could possibly receive a migrating lineage from
-  typenames <- sapply(types, function(x) {x$get.name()})
-  possible.source.types <- as.list(rep(NA, length(typenames)))
-  names(possible.source.types) <- typenames
-  
-  for (t in types) {
-    mig.rates <- t$get.migration.rates()
-    r.types <- names(mig.rates)
-    for (r in 1:length(mig.rates)) {
-      if (mig.rates[r] == 0) next
-      else possible.source.types[[r.types[r]]] <- t$get.name()
-    }
-  }
-  
-  # cleanup
-  possible.source.types <- possible.source.types[!is.na(possible.source.types)]
-  possible.source.types
+  lapply(types, function(t) {
+    rates <- t$get.migration.rates()
+    names(rates)[rates>0]
+  })
 }
 
 

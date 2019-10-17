@@ -13,3 +13,11 @@
 `print.EventLogger` is simply a wrapper function on EventLogger's 
 `get.all.events()`.
 }
+\examples{
+e <- EventLogger$new()
+e  # no events to display
+
+e$add.event("transmission", time=1, line1="NA", comp1="hist1", comp2="host2")
+e
+
+}

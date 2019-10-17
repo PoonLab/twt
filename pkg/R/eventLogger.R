@@ -198,6 +198,21 @@ EventLogger <- R6Class("EventLogger",
 #' @param eventlog:  Object of class 'EventLogger'
 #' @param transmissions:  If TRUE, display transmission events in plot.
 #' 
+#' @examples 
+#' # load model
+#' path <- system.file('extdata', 'SI.yaml', package='twt')
+#' 
+#' # load file and parse to construct MODEL object
+#' settings <- yaml.load_file(path)
+#' mod <- MODEL$new(settings)
+#' 
+#' # simulate outer tree
+#' outer <- sim.outer.tree(mod)
+#' 
+#' # simulate inner tree
+#' tree <- sim.inner.tree(mod, outer)
+#' plot(tree)
+#' 
 #' @export
 plot.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE, 
                              node.labels=FALSE) {
@@ -228,7 +243,14 @@ plot.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE,
 #' `get.all.events()`.
 #' 
 #' @param eventlog: object of class 'EventLog' 
-#'  
+#' 
+#' @examples
+#' e <- EventLogger$new()
+#' e  # no events to display
+#' 
+#' e$add.event("transmission", time=1, line1="NA", comp1="hist1", comp2="host2")
+#' e
+#' 
 #' @export
 print.EventLogger <- function(eventlog) {
   events <- eventlog$get.all.events()

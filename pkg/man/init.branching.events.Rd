@@ -4,7 +4,7 @@
 \alias{init.branching.events}
 \title{init.branching.events}
 \usage{
-init.branching.events(model, eventlog)
+init.branching.events(model, eventlog = NA)
 }
 \arguments{
 \item{model:}{an object of class MODEL from which we will extract the 
@@ -16,6 +16,16 @@ transmission tree information.}
 `init.branching.events`` initializes an EventLogger object with 
 a list of fixed transmission events that are specified by the user 
 in a YAML file that has been parsed into a MODEL object.
+}
+\examples{
+# load model
+path <- system.file('extdata', 'chain.yaml', package='twt')
+settings <- yaml.load_file(path)
+mod <- MODEL$new(settings)
+
+e <- init.branching.events(mod)
+plot(e)
+
 }
 \seealso{
 eventlog.from.tree, sim.outer.tree

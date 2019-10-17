@@ -4,12 +4,13 @@
 \alias{sim.inner.tree}
 \title{sim.inner.tree}
 \usage{
-sim.inner.tree(model, outer.tree)
+sim.inner.tree(mod, outer.tree)
 }
 \arguments{
-\item{model:}{R6 object from Model$new()}
+\item{mod:}{R6 object from Model$new()}
 
-\item{eventlog:}{R6 EventLogger object populated by sim.outer.tree() and sim.migrations()}
+\item{outer.tree:}{R6 EventLogger object populated by sim.outer.tree() 
+and (optionally) sim.migrations()}
 }
 \value{
 EventLogger object updated with inner tree events.

@@ -410,18 +410,10 @@ sim.outer.tree <- function(model) {
   
   # Generate dictionary of different types of source that each recipient Type could 
   #  possibly receive a transmission from
-  typenames <- sapply(types, function(x) x$get.name())
-  possibleSourceTypes <- as.list(rep(NA, length(typenames)))  
-  names(possibleSourceTypes) <- typenames
-  for (t in types) {
+  possibleSourceTypes <- lapply(types, function(t) {
     rates <- t$get.branching.rates()
-    r.types <- names(rates)
-    for (r in 1:length(rates)) {
-      if (rates[r] == 0) next
-      else possibleSourceTypes[[r.types[r]]] <- t$get.name()
-    }
-  }
-  possibleSourceTypes <- possibleSourceTypes[!is.na(possibleSourceTypes)] # cleanup
+    names(rates[rates>0])    
+  })
 
   
   time.bands <- vector()  # vector of initial (earliest) sampling times for each Compartment
@@ -470,13 +462,16 @@ sim.outer.tree <- function(model) {
 .calc.transmission.events <- function(popn.totals, popn.rates, init.samplings, 
                                       possible.sources) {
   
-  t_events <- data.frame(time=numeric(), r_type=character(), s_type=character(), v_type=character(), stringsAsFactors = FALSE)
+  t_events <- data.frame(time=numeric(), r_type=character(), s_type=character(), 
+                         v_type=character(), stringsAsFactors = FALSE)
   maxAttempts <- 10 
   
   for (attempt in 1:maxAttempts) {
     
     for (v in 1:nrow(popn.totals)) {
-      # TODO: if more than one virus, will need to make a copy of the population totals (as you are modifing the totals while generating events for each virus type)
+      # TODO: if more than one virus, will need to make a copy of the 
+      # population totals (as you are modifing the totals while generating 
+      # events for each virus type)
       
       v.name <- rownames(popn.totals)[v]
       virus <- popn.totals[v,]
@@ -502,7 +497,9 @@ sim.outer.tree <- function(model) {
         if (current.time < min(init.samplings)) { break }
         
         # store time, source and recipient types of transmission, and virus type
-        t_events <- rbind(t_events, list(time=current.time, r_type=r, s_type=s, v_type=v.name))
+        t_events <- rbind(t_events, 
+                          list(time=current.time, r_type=r, s_type=s, v_type=v.name),
+                          stringsAsFactors=FALSE)
         
         # update counts of total population  (number of susceptibles decrease by 1, number of infected increases by 1)
         virus[s] <- virus[s] - 1            

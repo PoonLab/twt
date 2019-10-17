@@ -16,3 +16,19 @@
 Generate a plot summarizing the content of an EventLogger object
 as a phylogenetic tree.
 }
+\examples{
+# load model
+path <- system.file('extdata', 'SI.yaml', package='twt')
+
+# load file and parse to construct MODEL object
+settings <- yaml.load_file(path)
+mod <- MODEL$new(settings)
+
+# simulate outer tree
+outer <- sim.outer.tree(mod)
+
+# simulate inner tree
+tree <- sim.inner.tree(mod, outer)
+plot(tree)
+
+}
