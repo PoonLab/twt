@@ -1,0 +1,50 @@
+# structured SI model with high-risk population
+OriginTimes:
+  'virus':
+    start: 10.0
+    susceptibles:
+      - host1: 49
+      - host2: 50
+
+CompartmentTypes:
+  'host1':
+    branching.rates: (host1=0.01, host2=0.01)
+    migration.rates: (host1=0.01, host2=0.01)
+    coalescent.rate: 0.1
+    bottleneck.size: 1
+    wait.time.distr:
+      distr: 'exp'
+      hyperparameters:
+        - rate: 20
+  'host2':
+    branching.rates: (host1=0.02, host2=0.02)
+    migration.rates: (host1=0.01, host2=0.01)
+    coalescent.rate: 0.1
+    bottleneck.size: 1
+    wait.time.distr:
+      distr: 'exp'
+      hyperparameters:
+        - rate: 20
+
+LineageTypes:
+  'virus':
+
+Compartments:
+  'I1':
+    type: host1 
+    replicates: 5
+  'I2':
+    type: host2
+    replicates: 5
+
+Lineages:
+  'I1':
+    type: 'virus'
+    sampling.time: 0             
+    location: I1
+    replicates: 5
+  'I2':
+    type: 'virus'
+    sampling.time: 0
+    location: I2
+    replicates: 5
