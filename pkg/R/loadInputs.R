@@ -35,7 +35,7 @@
 MODEL <- R6Class("MODEL",
   public = list(
     initialize = function(settings=NA) {
-      private$origin.times <- private$load.origin.times(settings)
+      private$initial.conds <- private$load.initial.conds(settings)
       private$types <- private$load.types(settings)
       private$compartments <- private$load.compartments(settings)
       private$compartments <- private$set.sources()
@@ -47,9 +47,9 @@ MODEL <- R6Class("MODEL",
       private$fixed.samplings <- private$init.fixed.samplings()
     },
     
-    get.origin.times = function() {private$origin.times},
+    get.initial.conds = function() {private$initial.conds},
     get.types = function() {private$types},
-    get.unsampled.hosts = function() {private$unsampled.hosts},  # populated only after the sim.outer.tree step
+    get.unsampled.hosts = function() {private$unsampled.hosts},  # populated by sim.outer.tree
     get.compartments = function() {private$compartments},
     get.lineages = function() {private$lineages},
     
@@ -137,7 +137,7 @@ MODEL <- R6Class("MODEL",
   
   
   private = list(
-    origin.times = NULL,
+    initial.conds = NULL,
     types = NULL,
     unsampled.hosts = NULL,
     compartments = NULL,
@@ -147,33 +147,58 @@ MODEL <- R6Class("MODEL",
     
     locations = NULL,         
     choices = NULL,
-    node.ident = 1,              # used in simulation of inner tree for generating unique idents for internal nodes of ancestral lineages
+    node.ident = 1,  # used in simulation of inner tree for generating 
+                     # unique idents for internal nodes of ancestral lineages
     fixed.samplings = NULL,
-    
-    load.origin.times = function(settings) {
-      # Loads origin times specific to each LineageType (the start time of the 
-      # epidemic of one or more viruses).
-      # @return mat: a matrix with rows for each LineageType and (1+N) columns for 
-      #              origin time ("start") and each of N CompartmentTypes
-      lin.types <- names(settings$OriginTimes)
-      comp.types <- names(settings$CompartmentTypes)
-      mat <- matrix(nrow=length(lin.types),
-                    ncol=length(comp.types) + 1, 
-                    dimnames=list(lin.types, c('start',comp.types)) )
+
+        
+    load.initial.conds = function(settings) {
+      # Loads initial conditions
+      # @return list object
+      result <- list()
       
-      for (x in lin.types) {
-        # origin time is measured in reverse (prior to most recent sampled lineage)
-        params <- settings$OriginTimes[[x]]
-        mat[x, 'start'] <- params$start
-        for (s in 1:length(comp.types)) {
-          typename <- comp.types[s]
-          mat[x, typename] <- params$susceptibles[[s]][[typename]]
+      # origin time is measured in reverse (prior to most recent sampled lineage)
+      params <- settings$InitialConditions #[[x]]
+      if (!is.numeric(params$originTime)) {
+        stop("InitialConditions:originTime must be numeric; is this key missing?")
+      }
+      if (params$originTime <= 0) {
+        stop("InitialConditions:originTime must be >0")
+      }
+      result['originTime'] <- params$originTime
+      
+      
+      # load initial numbers of Compartments per Type
+      if (is.null(settings$CompartmentType)) {
+        stop("InitialConditions:CompartmentType key missing")
+      }
+      comp.types <- names(settings$CompartmentTypes)
+      result$size <- list()
+      for (i in 1:length(params$size) {
+        typename <- names(params$size)[i]
+        if (!is.element(typename, comp.types)) {
+          stop(paste("InitialConditions:size key", typename, 
+                     "must match CompartmentType"))
         }
+        size <- params$size[[typename]]
+        if (!is.numeric(size)) {
+          stop(paste("InitialConditions:size:", typename, " not numeric"))
+        }
+        result['size'][typename] <- size
       }
        
-      mat
+      
+      # specify CompartmentType of index case
+      if (is.null(params$indexType)) {
+        stop("Settings must specify 'indexType' CompartmentType under InitialConditions")
+      }
+      if (!is.element(params$indexType, comp.types)) {
+        stop("'indexType' in InitialConditions does not match any CompartmentType in settings")
+      }
+      result['indexType'] <- params$index
+      
+      result
     },
-    
     
     
     load.types = function(settings) {

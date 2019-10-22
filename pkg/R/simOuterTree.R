@@ -163,7 +163,7 @@ sim.outer.tree <- function(model) {
   
   # ptm <- proc.time()   # benchmark start time
   
-  # store fixed sampling times of the tips of the MODEL object
+  # store fixed sampling times of Lineages as specified by model
   eventlog$store.fixed.samplings(model$get.fixed.samplings())
   
   # extract objects from MODEL
@@ -171,22 +171,26 @@ sim.outer.tree <- function(model) {
   compnames <- model$get.names(comps)
   types <- model$get.types()  # CompartmentType objects
   
-  # maps Compartments to CompartmentTypes
+  # maps Compartments to CompartmentTypes by index
   indiv.types <- sapply(unlist(comps), function(a){a$get.type()$get.name()})
+  
   
   # record population totals and transmission rates for all Types
   popn.totals <- model$get.origin.times()
-  popn.rates <- .calc.popn.rates(types, indiv.types)
+  popn.rates <- .calc.popn.rates(types, indiv.types)  # matrix of transmission rates
+  
   
   # record max sampling times (furthest back in time) of lineages for each Compartment
   storage <- .store.initial.samplings(comps, types, model$get.lineages())
   time.bands <- storage$initial.times
   possible.source.types <- storage$s.types
   
+  
   # generate transmission events based on population dynamics and Compartments' 
   # initial sampling times: (time, recipient Type, source Type, virus Type)
   t_events <- .calc.transmission.events(popn.totals, popn.rates, time.bands, 
                                         possible.source.types)
+  
   
   # generate unsampled hosts
   model$clear.unsampled()  # reset MODEL - issue #68
@@ -219,36 +223,44 @@ sim.outer.tree <- function(model) {
   sources.names <- model$get.names(sources)
   
   
-  # names(possible.source.types) represents names of types that can be recipients
-  . <- sapply(names(possible.source.types), function(x) {
-    # for each Type that can be a recipient, assign transmission times to all of its 
-    # infected compartments
-    r.indices <- which( sapply(sources, function(y) y$get.type()$get.name() == x) )
-    r.comps <- sources[r.indices]
-    r.init.samplings <- time.bands[ which(names(time.bands) %in% sources.names[r.indices]) ]
-    r.events <- t_events[ which(t_events$r_type == x), ]
-    
-    
-    # no transmission events for case of ie. blood compartment
-    if (nrow(r.events) != 0) {            
-      # assigns transmission times but also returns a binary (logical) vector of which 
-      # transmission times have been used
-      # will store this binary vector with associated transmission times into the 
-      # MODEL (specific to each type)
-      type.comp <- types[[ which(sapply(types, function(t) t$get.name() == x)) ]]
-      assigned.times <- .assign.transmission.times(r.comps, r.events, r.init.samplings, 
-                                                   type.comp)
-    } 
-    
-  })
+  
+  # FIXME: I think this sapply() can be removed
+  #
+  # # names(possible.source.types) represents names of types that can be recipients
+  # . <- sapply(names(possible.source.types), function(x) {
+  #   # for each Type that can be a recipient, assign transmission times to all of its 
+  #   # infected compartments
+  #   r.indices <- which( sapply(sources, function(y) y$get.type()$get.name() == x) )
+  #   r.comps <- sources[r.indices]
+  #   r.init.samplings <- time.bands[ which(names(time.bands) %in% sources.names[r.indices]) ]
+  #   r.events <- t_events[ which(t_events$r_type == x), ]
+  #   
+  #   
+  #   # no transmission events for case of ie. blood compartment
+  #   if (nrow(r.events) != 0) {            
+  #     # assigns transmission times but also returns a binary (logical) vector of which 
+  #     # transmission times have been used
+  #     # will store this binary vector with associated transmission times into the 
+  #     # MODEL (specific to each type)
+  #     type.comp <- types[[ which(sapply(types, function(t) t$get.name() == x)) ]]
+  #     
+  #     # FIXME: this is an unused variable
+  #     assigned.times <- .assign.transmission.times(r.comps, r.events, r.init.samplings, 
+  #                                                  type.comp)
+  #   } 
+  #   
+  # })
+  
   
   
   # mark1 <- proc.time() - ptm            # benchmark 1 (generation of transmission events)
   # cat("GTE:", round(mark1[['elapsed']],5), "s\n")
   # ptm1 <- proc.time()
   
-  # after transmission times are matched with infected Compartments as recipients, now have to assign source Compartments
-  # order infection times from most recent to furthest back in time
+  
+  # After transmission times are matched with infected Compartments as recipients, 
+  # now have to assign source Compartments
+  # Order infection times from most recent to furthest back in time
   comps[sapply(sapply(comps, function(x) x$get.branching.time()), is.null)] <- NULL 
   new.order <- order(sapply(comps, function(x) x$get.branching.time()))
   comps <- comps[ new.order ]
@@ -259,7 +271,8 @@ sim.outer.tree <- function(model) {
   source.popns = source.popns.names <- setNames(vector(length(types), mode="list"), 
                                                 names(types))
 
-  # separate source populations into lists that are as many as the number of distinct Types in the model
+  # separate source populations into lists that are as many as the number of distinct 
+  # Types in the model
   for (x in 1:length(names(source.popns))) {
     specific.type <- names(source.popns)[x]
     
@@ -267,7 +280,12 @@ sim.outer.tree <- function(model) {
     s.pop.by.type <- sapply(sources, function(y) {
       if (y$get.type()$get.name() == specific.type) {
         
-        if (length(y$get.branching.time()) == 0 || is.null(y$get.branching.time())) {y}    # root no branching time
+        # include unsampled Compartments as potential sources
+        # root no branching time
+        if (length(y$get.branching.time()) == 0 
+            || is.null(y$get.branching.time())) {y}
+        
+        # exclude Compartments sampled *after* the recipient
         else if (y$get.branching.time() > comps[[1]]$get.branching.time()) {y}
       } 
     })
@@ -322,7 +340,7 @@ sim.outer.tree <- function(model) {
       if (length(refined.list.sources) == 0) {
         print(numActive)
         print(source.popns)
-        stop("")
+        browser()
       }
       refined.list.sources[sapply(refined.list.sources, is.null)] <- NULL   # cleanup
       
@@ -332,7 +350,7 @@ sim.outer.tree <- function(model) {
       s_name <- source$get.name()
       
       eventlog$add.event('transmission', recipient$get.branching.time(), NA, NA, r_name, s_name)
-      
+      #print(eventlog)  ### DEBUGGING ###
     }
     
     # if source is an unsampled infected Compartment, now holds a sampled lineage 
@@ -373,18 +391,17 @@ sim.outer.tree <- function(model) {
 #' Stores population rates for each CompartmentType specified by the user.
 #
 #' @param types:  list of CompartmentType objects
-#' @param indiv.types:  list of CompartmentType name of type `character` for each 
-#' individual Compartment object
 #' @return matrix of population transmission rates for each type to type comparison
 #' @keywords internal
-.calc.popn.rates <- function(types, indiv.types) {
+.calc.popn.rates <- function(types) {
   popn.rates <- matrix(nrow=length(types),  # source types
                        ncol=length(types),  # recipient types
                        dimnames=list(names(types), names(types)))
   
   for (x in types) {                                                      
     for (y in names(types)) {
-      rate <- x$get.branching.rate(y)  # store instrinsic transmission rates for all typeA -> typeB pairs
+      # store instrinsic transmission rates for all typeA -> typeB pairs
+      rate <- x$get.branching.rate(y)
       popn.rates[x$get.name(), y] <- rate
     }
   }
@@ -399,7 +416,7 @@ sim.outer.tree <- function(model) {
 #' Stores first sampling time of a Lineage for each sampled infected 
 #' Compartment.
 #'
-#' @param infected = list of infected Compartment objects
+#' @param infected = list of sampled infected Compartment objects
 #' @param types = list of CompartmentType objects
 #' @param lineages = list of Lineage objects
 #'
@@ -410,13 +427,12 @@ sim.outer.tree <- function(model) {
   
   # Generate dictionary of different types of source that each recipient Type could 
   #  possibly receive a transmission from
-  possibleSourceTypes <- lapply(types, function(t) {
-    rates <- t$get.branching.rates()
-    names(rates[rates>0])    
+  possibleSourceTypes <- lapply(types, function(source) {
+    rates <- source$get.branching.rates()  # per recipient Type
+    names(rates[rates>0])
   })
 
-  
-  time.bands <- vector()  # vector of initial (earliest) sampling times for each Compartment
+  time.bands <- vector()  # initial (earliest) sampling times for each Compartment
   lineage.locations <- sapply(lineages, function(x) {x$get.location()$get.name()})
   
   for (i in infected) {
@@ -448,36 +464,45 @@ sim.outer.tree <- function(model) {
 
 #' .calc.transmission.events
 #' 
-#' Generates transmission events only, based on population dynamics of the MODEL
+#' Generates transmission events only, based on population dynamics of the
+#' MODEL
 #' 
-#' @param popn.totals: totals at time `t=0` of susceptible and infected specific to 
-#'        each CompartmentType
+#' @param popn.totals: (named matrix) numbers of susceptible and infected 
+#'        Lineages at time t=0, specific to each LineageType (rows) and 
+#'        CompartmentType (columns)
 #' @param popn.rates: rates of transmission between different CompartmentTypes
 #' @param init.samplings: list of first sampling times for each Compartment
 #' @param possible.sources: list of possible Sources that each recipient Type can 
 #'        receive a transmission from 
-#' @return t_events: data frame of transmission events, each made up of: time, 
-#'         recipient Type, and source Type 
+#' @param max.attempts: number of tries to sample transmission events
+#'        
+#' @return data frame of transmission events, each made up of: time, 
+#'         recipient Type, source Type, and LineageType (not yet implemented)
 #' @keywords internal
 .calc.transmission.events <- function(popn.totals, popn.rates, init.samplings, 
-                                      possible.sources) {
+                                      possible.sources, max.attempts=10) {
   
+  # prepare outcome container
   t_events <- data.frame(time=numeric(), r_type=character(), s_type=character(), 
                          v_type=character(), stringsAsFactors = FALSE)
-  maxAttempts <- 10 
+  #maxAttempts <- 10
+  r.types <- names(possible.sources)
   
-  for (attempt in 1:maxAttempts) {
+  
+  for (attempt in 1:max.attempts) {
     
     for (v in 1:nrow(popn.totals)) {
-      # TODO: if more than one virus, will need to make a copy of the 
+      # TODO: if more than one LineageType, will need to make a copy of the 
       # population totals (as you are modifing the totals while generating 
-      # events for each virus type)
+      # events for each type)
       
       v.name <- rownames(popn.totals)[v]
       virus <- popn.totals[v,]
-      r.types <- names(possible.sources)
-      current.time <- as.numeric(virus['start'])          # current time starts at user given time for each epidemic
-      num.infected <- 1                                   # starting infection
+      
+      # current time starts at user-specified time for each epidemic
+      current.time <- as.numeric(virus['start'])
+      
+      num.infected <- 1  # index case
       
       # check sampling times with epidemic start time
       if (any(init.samplings > current.time)) {

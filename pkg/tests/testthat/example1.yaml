@@ -2,11 +2,13 @@
 # Example Newick Tree:
 # ((C:1,B:1)B:2,A:3)A:1;
 # Internal node labels specify who infected whom, and branch lengths indicate the timing of transmission events and host sampling
-OriginTimes:
-  'virus':                          # origin time of `virus` epidemic
-    start: 10.0                     # note this is reverse time, cumulative
-    susceptibles:
-      - host: 1000                  # number of susceptible at the origin time of the simulation for Type `host`
+
+InitialConditions:
+  origin: 10.0  # note this is reverse time, cumulative
+  size:
+    host: 1000  # number of susceptible at the origin time of the simulation for Type `host`
+  index: 'host'
+
 CompartmentTypes:
   'host':                           # option to have more than one host type with different parameters
     branching.rates: (host=0.2)     # only one CompartmentType, in this case represents transmission rates
