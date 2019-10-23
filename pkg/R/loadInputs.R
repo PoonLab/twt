@@ -587,7 +587,15 @@ MODEL <- R6Class("MODEL",
 
 
 print.MODEL <- function(obj) {
+  cat("twt MODEL object\n\n")
+  
   cat("Initial conditions:\n")
-  cat("  originTime: ", obj$origin, "\n")
+  init <- obj$get.initial.conds()
+  cat("  originTime: ", init$originTime, "\n")
+  
+  cat("  size:\n")
+  for (i in 1:length(init$size)) {
+    cat(paste0("    ", names(init$size)[i], ": ", init$size[i]))
+  }
   
 }
