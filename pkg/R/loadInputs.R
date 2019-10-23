@@ -7,17 +7,15 @@
 #' @param settings: a named list returned by `yaml.load_file()` that contains 
 #' user specifications of the simulation model.
 #' 
-#' @field origin.times matrix with rows for every LineageType, and columns for 
-#' the origin time (in reverse, relative to most recent lineage sampling time t=0) 
-#' followed by number of susceptibles per CompartmentType at origin.
-#' @field types vector of CompartmentType objects
-#' @field compartments vector of Compartment objects
-#' @field lineages vector of Lineage objects
-#' @field extant.lineages list of Lineage objects with sampling time t=0 (most recent)
-#' @field locations a named list of Lineage objects keyed by Compartment
-#' @field choices list of Lineage pairs that may coalesce per Compartment, 
+#' @field initial.conds  Initial Conditions
+#' @field types  vector of CompartmentType objects
+#' @field compartments  vector of Compartment objects
+#' @field lineages  vector of Lineage objects
+#' @field extant.lineages  list of Lineage objects with sampling time t=0 (most recent)
+#' @field locations  a named list of Lineage objects keyed by Compartment
+#' @field choices  list of Lineage pairs that may coalesce per Compartment, 
 #' keyed by index to `locations`
-#' @field fixed.samplings list of Lineage names and sampling times for plotting
+#' @field fixed.samplings  list of Lineage names and sampling times for plotting
 #' 
 #' @examples 
 #' require(twt)
@@ -72,6 +70,9 @@ MODEL <- R6Class("MODEL",
     },
     
     add.pair = function(L1, L2, host) {
+      # FIXME: this and subsequent functions involve manipulation of private data
+      # which means that a MODEL changes state after simulation.  Make a derived class?
+      
       # adds a pair of pathogen lineages that may coalesce within a given compartment into list of `choices`
         # A. when a Lineage is moved from one compartment to another (transmission or migration)
         # B. when a Lineage is sampled
@@ -174,7 +175,7 @@ MODEL <- R6Class("MODEL",
       }
       comp.types <- names(settings$CompartmentTypes)
       result$size <- list()
-      for (i in 1:length(params$size) {
+      for (i in 1:length(params$size)) {
         typename <- names(params$size)[i]
         if (!is.element(typename, comp.types)) {
           stop(paste("InitialConditions:size key", typename, 
@@ -184,7 +185,7 @@ MODEL <- R6Class("MODEL",
         if (!is.numeric(size)) {
           stop(paste("InitialConditions:size:", typename, " not numeric"))
         }
-        result['size'][typename] <- size
+        result$size[typename] <- size
       }
        
       
@@ -206,26 +207,50 @@ MODEL <- R6Class("MODEL",
       # within each CompartmentType, there are distinct compartments with
       # individual transmission & migration rates
       # @return: a named vector of CompartmentType R6 objects
+      
+      if (is.null(settings$CompartmentTypes)) {
+        stop("Missing 'CompartmentTypes' field in settings")
+      }
+      if (length(settings$CompartmentTypes) == 0) {
+        stop("Empty 'CompartmentTypes' field in settings.")
+      }
+      
+      required <- c('branching.rates', 'migration.rates', 'bottleneck.size',
+                    'coalescent.rate', 'wait.time.distr')
+      
       unlist(sapply(names(settings$CompartmentTypes), function(x) {
         params <- settings$CompartmentTypes[[x]]
         
-        # generate wait time distribution between Compartment infection time and its first sampling time
+        missing <- which( !is.element(required, names(params)) )
+        if (length(missing) > 0) {
+          stop(paste("CompartmentTypes:", x, " missing required field(s): ", required[missing]))
+        }
+        
+        # Generate wait time distribution between Compartment infection time and 
+        # its first sampling time
         # code below is based directly from Poonlab/Kaphi/pkg/R/smcConfig.R
         sublist <- params$wait.time.distr
         rng.call <- paste('d', sublist$dist, '(x,', sep='')
         args <- sapply(sublist[['hyperparameters']], function(x) paste(names(x), x, sep='='))
         rng.call <- paste(rng.call, paste(args, collapse=','), ')', sep='')
         
-        x <- CompartmentType$new(name = x,
-                                 branching.rates = eval(parse(text=paste('list', params$branching.rates))),
-                                 migration.rates = eval(parse(text=paste('list', params$migration.rates))),
-                                 bottleneck.size = params$bottleneck.size,
-                                 coalescent.rate = params$coalescent.rate,
-                                 death.rate.distr = params$death.rate.distr,
-                                 wait.time.distr = rng.call,
-                                 popn.growth.dynamics = private$init.popn.growth.dynamics(params$popn.growth.dynamics)
-                                 # transmission.times parameter populated later when simulating outer tree (simOuterTree.R)
-                                 # to be used when simulating migration events in inner tree (simInnerTree.R)
+        CompartmentType$new(
+          name = x,
+          branching.rates = eval(parse(text=paste('list', params$branching.rates))),
+          migration.rates = eval(parse(text=paste('list', params$migration.rates))),
+          
+          bottleneck.size = params$bottleneck.size,
+          coalescent.rate = params$coalescent.rate,
+          
+          death.rate.distr = params$death.rate.distr,  # not implemented yet
+          wait.time.distr = rng.call,
+          
+          popn.growth.dynamics = private$init.popn.growth.dynamics(
+            params$popn.growth.dynamics
+            )
+          # transmission.times parameter populated later when simulating outer tree 
+          # (simOuterTree.R) to be used when simulating migration events in inner 
+          # tree (simInnerTree.R)
         )
       }))
     },
@@ -234,24 +259,43 @@ MODEL <- R6Class("MODEL",
    
     load.compartments = function(settings) {
       ## function creates Compartment objects
-      ## `type` attr points directly back to a CompartmentType object, and `name` attr is a unique identifier
+      ## `type` attr points directly back to a CompartmentType object, and 
+      ## `name` attr is a unique identifier
+      if (is.null(settings$Compartments)) {
+        stop("Missing 'Compartments' field in settings.")
+      }
       unlist(sapply(names(settings$Compartments), function(comp) {
+        if (grepl("_", comp)) {
+          stop("Error: Underscore characters are reserved, please modify Compartment name", comp)
+        }
+        
         params <- settings$Compartments[[comp]]
+        if (is.null(params$type)) {
+          stop(paste("Compartment", comp, "missing required field 'type'."))
+        }
         
         if (params$type %in% names(settings$CompartmentType)) {
           searchTypes <- which(names(settings$CompartmentType) == params$type)
-          typeObj <- private$types[[ searchTypes ]]                  # pointer to CompartmentType object
-        } else {
-          stop(params$type, ' of Compartment ', comp, ' is not a specified Compartment Type object')
+          # reference to CompartmentType object
+          typeObj <- private$types[[ searchTypes ]]
+        }
+        else {
+          stop(params$type, ' of Compartment ', comp, 
+               ' is not a specified Compartment Type object')
         }
         
-        nIndiv <- params$replicates
+        if (is.null(params$replicates)) {
+          nIndiv <- 1
+        } else {
+          nIndiv <- params$replicates
+        }
         
         sapply(1:nIndiv, function(obj) {
-          Compartment$new(name = paste0(comp,'_', obj),            # unique identifier
-                          type = typeObj,
-                          source = params$source,        
-                          branching.time = params$branching.time
+          Compartment$new(
+            name = paste0(comp,'_', obj),  # unique identifier
+            type = typeObj,
+            source = params$source,        
+            branching.time = params$branching.time
           )
         })
         
@@ -260,15 +304,22 @@ MODEL <- R6Class("MODEL",
     
     
     set.sources = function() {
-      ## re-iterates over generated Compartment objects and populates `source` attr with R6 objects
-      ## sets 'pointers' to other Compartment objects after generated w/ private$load.compartments()
+      ## Sets `source` attribute to other Compartment objects after generated 
+      ## w/ private$load.compartments().  Note assignment of Compartments
+      ## generated through `replicates` setting is not supported.
+      
       compNames <- sapply(private$compartments, function(n){n$get.name()})
+      
       sapply(private$compartments, function(x) {
-        if (paste0(x$get.source(),'_1') %in% compNames) {                         # FIXME: arbitrary assignment of source
-          searchComps <- which(compNames == paste0(x$get.source(),'_1'))          # FIXME: arbitrarily assigning source to first object in Compartment with $name == x$get.source()
-          sourceObj <- private$compartments[[ searchComps ]]    
+        matches <- which(compNames == paste0(x$get.source(), '_1'))
+        if (length(matches) > 0) {
+          sourceObj <- private$compartments[[ matches ]]    
           x$set.source(sourceObj)
-        } # TODO: else statement { if source is 'undefined' or not in the list, must be assigned to an unsampled host (US) }
+        } 
+        else {
+          # TODO: if source is 'undefined' or not in the list, must be 
+          # assigned to an unsampled host (US)
+        }
         x
       })
     },
@@ -276,50 +327,87 @@ MODEL <- R6Class("MODEL",
     
 
     load.lineages = function(settings) {
-      ## function creates Lineage objects
-      ## `location` attr points directly to a Compartment object, and `name` attr is unique identifier
-      ## identifiers create unique Lineages for each Compartment, 
-      ## but Compartment A_1 could have Lineage cell_1 and Compartment B_1 also have a separate Lineage cell_1
+      ## Parse `Lineages` field of settings
+      
+      if (is.null(settings$Lineages)) {
+        stop("'Lineages' is a required field in settings.")
+      }
+      
       unlist(sapply(names(settings$Lineages), function(label) {
+        if (grepl("_", label)) {
+          stop("Error: underscore characters are reserved, please modify Lineage name",
+               label)
+        }
+         
         params <- settings$Lineages[[label]]
-        
-        if (params$location %in% names(settings$Compartments)) {
-          searchComps <- which(names(settings$Compartments) == params$location)
-          nlocationObj <- settings$Compartments[[ searchComps ]]$replicates
-        } else {
-          stop(params$location, ' of Lineage ', label, ' is not a specified Compartment object')
+        if (is.null(params$location)) {
+          stop("Lineage", label, "missing required field 'location'")
         }
         
-        nIndiv <- params$replicates
         
+        # find all Compartments that match the specified location
+        if (length(private$compartments) == 0) {
+          stop("Compartments must be parsed before Lineages.")
+        }
+        
+        # FIXME: this should work..
+        #compNames <- self$get.names(Compartment)
+        compNames <- sapply(private$compartments, function(n){n$get.name()})
+        
+        searchComps <- which(grepl(paste0("^", params$location, "_"), compNames))
+        if (length(searchComps) == 0) {
+          stop(params$location, ' of Lineage ', label, 
+               ' is not a specified Compartment object.\n',
+               'Available compartments:\n', 
+               paste(compNames))
+        }
+        
+        
+        if (is.null(params$replicates)) {
+          nIndiv <- 1
+        } else {
+          nIndiv <- params$replicates  
+        }
+        
+        
+        if (is.null(params$sampling.time)) {
+          stop("Lineage", label, "missing required field 'sampling.time'")
+        }
         if (is.numeric(params$sampling.time)) {
           sampleTimes <- rep.int(params$sampling.time, times=nIndiv)
-        } else {
+        } 
+        else {
           vec <- unlist(strsplit(params$sampling.time, split='[`(`|,|`)`]'))
+          # exclude empty strings
           sampleTimes <- as.double(vec[nzchar(x=vec)])
           if (any(is.na(sampleTimes))) {
-              stop('\nSampling times must all be specified as type `numeric` or type `double`. ', 
-                   'Sampling time "', vec, '" is of type `', typeof(vec), '`.\n')
+            # failed to parse string as double
+            stop('\nSampling times must all be specified as type `numeric` or type `double`. ', 
+                 'Sampling time "', vec, '" is of type `', typeof(vec), '`.\n')
           }
           if (length(sampleTimes) != nIndiv) {
-            stop('attribute `sampling.time` of Lineage ', label, ' does not match number of replicates specified for respective Lineage.')
+            stop('attribute `sampling.time` of Lineage ', label, 
+                 ' does not match number of replicates specified for respective Lineage.')
           }
         }
-        
-        sapply(1:nlocationObj, function(compNum) {
-          sapply(1:nIndiv, function(obj) {
-            # set 'pointer' to Compartment object for location
-            searchComps <- sapply(private$compartments, function(y){which(y$get.name() == paste0(params$location, '_', compNum))})
-            locationObj <- private$compartments[[ which( searchComps == 1) ]]
+
+                
+        sapply(searchComps, function(compIdx) {
+          comp <- private$compartments[[compIdx]]
+          
+          sapply(1:nIndiv, function(i) {            
             # generate unique identifier
-            x <- Lineage$new(name = paste0(locationObj$get.name(),'__',label,'_',obj),
-                        type = params$type,
-                        sampling.time = sampleTimes[obj],
-                        location = locationObj
+            new.lineage <- Lineage$new(
+              # for example, "host_3__virus_2"
+              name = paste0(comp$get.name(),'__',label,'_',i),
+              type = params$type,  # LineageType, UNUSED
+              sampling.time = sampleTimes[i],
+              location = comp  # reference to Compartment object
             )
-            # add new Lineage to current location
-            locationObj$add.lineage(x)
-            x
+            # add Lineage to Compartment
+            comp$add.lineage(new.lineage)
+            
+            new.lineage  # return object
           })
         })
       
@@ -497,3 +585,9 @@ MODEL <- R6Class("MODEL",
   )
 )
 
+
+print.MODEL <- function(obj) {
+  cat("Initial conditions:\n")
+  cat("  originTime: ", obj$origin, "\n")
+  
+}

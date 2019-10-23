@@ -4,10 +4,10 @@
 # Internal node labels specify who infected whom, and branch lengths indicate the timing of transmission events and host sampling
 
 InitialConditions:
-  origin: 10.0  # note this is reverse time, cumulative
+  originTime: 10.0  # note this is reverse time, cumulative
   size:
     host: 1000  # number of susceptible at the origin time of the simulation for Type `host`
-  index: 'host'
+  indexType: 'host'
 
 CompartmentTypes:
   'host':                           # option to have more than one host type with different parameters

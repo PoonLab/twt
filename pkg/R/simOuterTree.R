@@ -501,24 +501,31 @@ sim.outer.tree <- function(model) {
       
       # current time starts at user-specified time for each epidemic
       current.time <- as.numeric(virus['start'])
-      
-      num.infected <- 1  # index case
+
+      # FIXME: this should be partitioned by source Type      
+      num.infected <- 1  # =I, index case
       
       # check sampling times with epidemic start time
       if (any(init.samplings > current.time)) {
-        stop ('Not possible to have Compartment initial sampling time(s) precede the start time of the "', v.name, '" epidemic. Please set the start time of the epidemic further back in time.')
+        stop ('Not possible to have Compartment initial sampling time(s) precede the start time of the "', 
+              v.name, '" epidemic. Please set the start time of the epidemic further back in time.')
       }
       
-      while (current.time > min(init.samplings) && all(virus[2:length(virus)] >= 1)) {  #&& all(virus != 1)
-        # calculate total waiting time
-        r <- sample(r.types, 1)
-        s <- sample(possible.sources[[r]], 1)
+      
+      # note, this is forward-time simulation on a reverse-time scale
+      while (current.time > min(init.samplings) && 
+             all(virus[2:length(virus)] >= 1)) {  #&& all(virus != 1)
+
+        r <- sample(r.types, 1)  # sample recipient Type
+        s <- sample(possible.sources[[r]], 1)  # sample source Type
         
-        # total waiting time = exp(-beta * (S-1) * I)
-        rate <- popn.rates[s,r] * (virus[s]) * num.infected
+        # waiting time ~ exp(-beta * S * I)
+        rate <- popn.rates[s, r] * (virus[s]) * num.infected
         delta.t <- rexp(n=1, rate=rate)
         current.time <- current.time - delta.t
         
+        # transmission event is more recent than the most recent sampling time
+        # this event, and any subsequent transmissions, are irrelevant
         if (current.time < min(init.samplings)) { break }
         
         # store time, source and recipient types of transmission, and virus type
