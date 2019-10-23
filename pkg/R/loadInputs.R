@@ -174,7 +174,7 @@ MODEL <- R6Class("MODEL",
       }
       comp.types <- names(settings$CompartmentTypes)
       result$size <- list()
-      for (i in 1:length(params$size) {
+      for (i in 1:length(params$size)) {
         typename <- names(params$size)[i]
         if (!is.element(typename, comp.types)) {
           stop(paste("InitialConditions:size key", typename, 
