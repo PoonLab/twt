@@ -3,6 +3,7 @@
 S3method(plot,EventLogger)
 S3method(print,EventLogger)
 S3method(print,Model)
+S3method(summary,Model)
 S3method(update,transmission)
 export(Compartment)
 export(CompartmentType)

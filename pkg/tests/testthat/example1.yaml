@@ -15,32 +15,29 @@ CompartmentTypes:
     migration.rates: ()             # assume no migration
     coalescent.rate: 1.5
     bottleneck.size: 1              # bottleneck size when transmission event occurs
-    wait.time.distr:                # distribution of waiting time between infection time and first sampling time of a Compartment
+    wait.time.distr:
       distr: 'exp'
       hyperparameters:
-        - rate: 20
+        rate: 20
     popn.growth.dynamics:
       piece1:
-        - startTime: 0
-        - startPopn: 1
-        - endTime: 0.75
-        - endPopn: 45
+        startTime: 0
+        startPopn: 1
+        endTime: 0.75
+        endPopn: 45
       piece2:
-        - startTime: 0.75
-        - startPopn: 50
-        - endTime: 1.5
-        - endPopn: 85
+        startTime: 0.75
+        startPopn: 50
+        endTime: 1.5
+        endPopn: 85
       piece3:
-        - startTime: 1.5
-        - startPopn: 100
-        - endTime: 2.25
-        - endPopn: 125
+        startTime: 1.5
+        startPopn: 100
+        endTime: 2.25
+        endPopn: 125
       piece4:
-        - startTime: 2.25           # assumed that piece with no end time goes onwards to infinity at constant population
-        - startPopn: 150
-        
-LineageTypes:
-  'virus':
+        startTime: 2.25
+        startPopn: 150
 
 Compartments:
   'A':                              # label is linked to Newick tree tip label
@@ -58,7 +55,7 @@ Compartments:
     source: B
     branching.time: 1.0
     replicates: 1
-    
+
 Lineages:
   '1': 
     type: virus

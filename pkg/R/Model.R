@@ -29,12 +29,13 @@
 #' 
 #' @export
 Model <- R6Class("Model",
-  lock_objects = FALSE,
+  #lock_objects = FALSE,
   
   public = list(
-    initialize = function(settings=NA) {
-      private$initial.conds <- private$load.initial.conds(settings)
+    initialize = function(settings=NA, name=NA) {
+      self$name <- name
       
+      private$initial.conds <- private$load.initial.conds(settings)
       private$types <- private$load.types(settings)
       private$compartments <- private$load.compartments(settings)
       private$compartments <- private$set.sources()
@@ -42,6 +43,9 @@ Model <- R6Class("Model",
       
       private$fixed.samplings <- private$init.fixed.samplings()
     },
+    
+    # public variables
+    name = NULL,
     
     # ACCESSOR FUNCTIONS
     get.initial.conds = function() { private$initial.conds },
@@ -467,7 +471,7 @@ Model <- R6Class("Model",
 #' S3 class function to display contents of a Model object
 #' @export
 print.Model <- function(obj) {
-  cat("twt Model\n\n")
+  cat("twt Model", ifelse(is.na(obj$name), '<unnamed>', obj$name), "\n\n")
   
   cat("Initial conditions:\n")
   init <- obj$get.initial.conds()
@@ -475,10 +479,16 @@ print.Model <- function(obj) {
   
   cat("  size:\n")
   for (i in 1:length(init$size)) {
-    cat(paste0("    ", names(init$size)[i], ": ", init$size[i]))
+    cat(paste0("    ", names(init$size)[i], ": ", init$size[i]), "\n")
   }
   
   cat("  indexType: ", init$indexType, "\n")
-  
-  
+}
+
+#' summary.Model
+#' S3 class function to summarize a Model object - simply a wrapper 
+#' around print()
+#' @export
+summary.Model <- function(obj) {
+  print(obj)
 }

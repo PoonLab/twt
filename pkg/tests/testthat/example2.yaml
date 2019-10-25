@@ -14,19 +14,16 @@ CompartmentTypes:
     wait.time.distr:                   # distribution of waiting time between infection time and first sampling time of a Compartment
       distr: 'exp'
       hyperparameters:
-        - rate: 20
+        rate: 20
     popn.growth.dynamics:
       piece1:
-        - startTime: 0
-        - startPopn: 1
-        - endTime: 5
-        - endPopn: 20
+        startTime: 0
+        startPopn: 1
+        endTime: 5
+        endPopn: 20
       piece2:
-        - startTime: 5
-        - startPopn: 10
-
-LineageTypes:
-  'virus':
+        startTime: 5
+        startPopn: 10
 
 Compartments:
   'I':

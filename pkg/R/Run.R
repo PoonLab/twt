@@ -43,7 +43,10 @@ Run <- R6Class(
 
     
     ## ACCESSOR FUNCTIONS
-    
+    get.types = function() {private$types},
+    get.compartments = function() {private$compartments},
+    get.lineages = function() {private$lineages},
+    get.fixed.samplings = function() {private$fixed.samplings},
     get.unsampled.hosts = function() { private$unsampled.hosts },
     
     get.extant.lineages = function(time) {
