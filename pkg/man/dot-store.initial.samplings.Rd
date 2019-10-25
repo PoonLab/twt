@@ -7,7 +7,7 @@
 .store.initial.samplings(infected, types, lineages)
 }
 \arguments{
-\item{infected}{= list of infected Compartment objects}
+\item{infected}{= list of sampled infected Compartment objects}
 
 \item{types}{= list of CompartmentType objects}
 

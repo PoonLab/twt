@@ -38,9 +38,10 @@ CompartmentTypes:
       piece4:
         - startTime: 2.25           # assumed that piece with no end time goes onwards to infinity at constant population
         - startPopn: 150
+        
 LineageTypes:
   'virus':
-  # no parameters for now -- this class would allow for heterogeneity in transmission dynamics among pathogens
+
 Compartments:
   'A':                              # label is linked to Newick tree tip label
     type: host                      # reference to CompartmentType object
@@ -57,6 +58,7 @@ Compartments:
     source: B
     branching.time: 1.0
     replicates: 1
+    
 Lineages:
   '1': 
     type: virus

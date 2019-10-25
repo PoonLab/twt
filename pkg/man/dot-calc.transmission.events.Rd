@@ -5,11 +5,12 @@
 \title{.calc.transmission.events}
 \usage{
 .calc.transmission.events(popn.totals, popn.rates, init.samplings,
-  possible.sources)
+  possible.sources, max.attempts = 10)
 }
 \arguments{
-\item{popn.totals:}{totals at time `t=0` of susceptible and infected specific to 
-each CompartmentType}
+\item{popn.totals:}{(named matrix) numbers of susceptible and infected 
+Lineages at time t=0, specific to each LineageType (rows) and 
+CompartmentType (columns)}
 
 \item{popn.rates:}{rates of transmission between different CompartmentTypes}
 
@@ -17,12 +18,15 @@ each CompartmentType}
 
 \item{possible.sources:}{list of possible Sources that each recipient Type can 
 receive a transmission from}
+
+\item{max.attempts:}{number of tries to sample transmission events}
 }
 \value{
-t_events: data frame of transmission events, each made up of: time, 
-        recipient Type, and source Type
+data frame of transmission events, each made up of: time, 
+        recipient Type, source Type, and LineageType (not yet implemented)
 }
 \description{
-Generates transmission events only, based on population dynamics of the MODEL
+Generates transmission events only, based on population dynamics of the
+MODEL
 }
 \keyword{internal}

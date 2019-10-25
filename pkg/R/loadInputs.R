@@ -1,8 +1,10 @@
-#' MODEL
+#' Model
 #'
-#' \code{MODEL} is an R6 class that defines an object that generates all of the 
+#' \code{Model} is an R6 class that defines an object that generates all of the 
 #' objects of the various classes (e.g., Compartment, CompartmentType) that 
-#' define a simulation model.
+#' define a simulation model.  A \code{Model} object is immutable - it should
+#' not change over the course of simulation.  Instead, we derive a \code{Run}
+#' object class (below) that inherits from a \code{Model}.
 #' 
 #' @param settings: a named list returned by `yaml.load_file()` that contains 
 #' user specifications of the simulation model.
@@ -11,10 +13,6 @@
 #' @field types  vector of CompartmentType objects
 #' @field compartments  vector of Compartment objects
 #' @field lineages  vector of Lineage objects
-#' @field extant.lineages  list of Lineage objects with sampling time t=0 (most recent)
-#' @field locations  a named list of Lineage objects keyed by Compartment
-#' @field choices  list of Lineage pairs that may coalesce per Compartment, 
-#' keyed by index to `locations`
 #' @field fixed.samplings  list of Lineage names and sampling times for plotting
 #' 
 #' @examples 
@@ -22,111 +20,38 @@
 #' # get path to example YAML file
 #' path <- system.file('extdata', 'SI.yaml', package='twt')
 #' 
-#' # load file and parse to construct MODEL object
+#' # load file and parse to construct Model object
 #' settings <- yaml.load_file(path)
-#' mod <- MODEL$new(settings)
+#' mod <- Model$new(settings)
 #' 
-#' # display the first compartment
-#' mod$get.compartments()[1]
+#' # display summary information (calls S3 print method)
+#' mod
 #' 
 #' @export
-MODEL <- R6Class("MODEL",
+Model <- R6Class("Model",
   public = list(
     initialize = function(settings=NA) {
       private$initial.conds <- private$load.initial.conds(settings)
+      
       private$types <- private$load.types(settings)
       private$compartments <- private$load.compartments(settings)
       private$compartments <- private$set.sources()
       private$lineages <- private$load.lineages(settings)
       
-      private$extant.lineages <- private$retrieve.extant.lineages(0)
-      private$locations <- private$init.locations()
-      private$choices <- private$init.pairs()
       private$fixed.samplings <- private$init.fixed.samplings()
     },
     
+    # ACCESSOR FUNCTIONS
     get.initial.conds = function() {private$initial.conds},
+    
     get.types = function() {private$types},
-    get.unsampled.hosts = function() {private$unsampled.hosts},  # populated by sim.outer.tree
     get.compartments = function() {private$compartments},
     get.lineages = function() {private$lineages},
-    
-    get.extant.lineages = function(time) {
-      # returns lineages extant at a given time
-      # @param time = coalescent (cumulative time) of the simulation
-      private$extant.lineages <- private$retrieve.extant.lineages(time)
-      private$extant.lineages
-    },
     
     get.names = function(listR6obj) {
       # returns names of a given list of R6 objects
       # @param listR6obj = list of R6 objects of class CompartmentType, Compartment, or Lineage
       unname(sapply(listR6obj, function(x){x$get.name()}))
-    },
-    
-    get.pairs = function() {
-      # function extracts and returns all the current pairs of pathogen lineages that may coalesce
-      private$choices
-    },
-    
-    add.pair = function(L1, L2, host) {
-      # FIXME: this and subsequent functions involve manipulation of private data
-      # which means that a MODEL changes state after simulation.  Make a derived class?
-      
-      # adds a pair of pathogen lineages that may coalesce within a given compartment into list of `choices`
-        # A. when a Lineage is moved from one compartment to another (transmission or migration)
-        # B. when a Lineage is sampled
-        # C. can also be used to update the location of a pair
-      # @param L1,L2 = Lineage objects
-      # @param host = Compartment object
-      pair <- sort(c(L1, L2))
-      private$choices[[paste(pair[1], pair[2], sep=',')]] <- host
-    },
-    
-    remove.pair = function(L1, L2) {
-      # removes a pair of pathogen lineages that can no longer coalesce from the list of `choices`
-        # A. when a coalescence occurs
-        # B. when Lineages reach a transmission bottleneck, forcing coalescence
-      # @param L1,L2 = Lineage objects
-      pair <- sort(c(L1, L2))
-      private$choices[[paste(pair[1], pair[2], sep=',')]] <- NULL
-    }, 
-    
-    add.lineage = function(ancestral.lineage) {
-      # at a coalescent event, an ancestral lineage must be created
-      private$lineages[[length(private$lineages)+1]] <- ancestral.lineage
-    },
-    
-    remove.lineage = function(lineage) {
-      # at a coalescent event, lineages that coalesce must be removed
-      lin.indices <- which(sapply(private$lineages, function(x){x$get.name() == lineage$get.name()}))
-      private$lineages <- private$lineages[-lin.indices]
-    },
-    
-    get.node.ident = function() {
-      # returns unique identity for internal nodes (inner tree sim, ancestral lineages)
-      private$node.ident
-    },
-    
-    update.node.ident = function() {
-      # generates new unique identity for next `$get.node.ident()` call (inner tree sim, internal ancestral lineages)
-      private$node.ident <- private$node.ident + 1
-    }, 
-    
-    generate.unsampled = function(num.unsampled, t) {
-      # function creates "blank" Compartment objects for Unsampled Hosts (US)
-      # @param num.unsampled = number of unsampled
-      # @param t = CompartmentType object
-      private$unsampled.hosts <- c(private$unsampled.hosts, 
-                                   unlist(sapply(1:num.unsampled, function(blank) {
-        Compartment$new(name=paste0('US_', t$get.name(), '_', blank),
-                        type=t,
-                        unsampled=TRUE)
-      }))) 
-    },
-    
-    clear.unsampled = function() {
-      private$unsampled.hosts <- NULL
     },
     
     get.fixed.samplings = function() {
@@ -139,19 +64,12 @@ MODEL <- R6Class("MODEL",
   
   private = list(
     initial.conds = NULL,
+    
     types = NULL,
-    unsampled.hosts = NULL,
     compartments = NULL,
     lineages = NULL,
     
-    extant.lineages = NULL,
-    
-    locations = NULL,         
-    choices = NULL,
-    node.ident = 1,  # used in simulation of inner tree for generating 
-                     # unique idents for internal nodes of ancestral lineages
     fixed.samplings = NULL,
-
         
     load.initial.conds = function(settings) {
       # Loads initial conditions
@@ -231,7 +149,10 @@ MODEL <- R6Class("MODEL",
         # code below is based directly from Poonlab/Kaphi/pkg/R/smcConfig.R
         sublist <- params$wait.time.distr
         rng.call <- paste('d', sublist$dist, '(x,', sep='')
-        args <- sapply(sublist[['hyperparameters']], function(x) paste(names(x), x, sep='='))
+        args <- sapply(
+          sublist['hyperparameters'], 
+          function(x) paste(names(x), x, sep='=')
+          )
         rng.call <- paste(rng.call, paste(args, collapse=','), ')', sep='')
         
         CompartmentType$new(
@@ -415,15 +336,6 @@ MODEL <- R6Class("MODEL",
     },
     
     
-   
-    retrieve.extant.lineages = function(time) {
-      # intializes list of Lineages with sampling.time t=0
-      unlist(sapply(private$lineages, function(b){
-        if (b$get.sampling.time() <= time) {b}
-      }))
-    },
-    
-    
     
     init.popn.growth.dynamics = function(pieces) {
       # @param pieces, list of linear pieces of a given CompartmentType
@@ -444,16 +356,18 @@ MODEL <- R6Class("MODEL",
         )
       
       for (x in seq_along(pieces)) {
-        if ('startTime' %in% names(unlist(pieces[[x]])) == F) {
+        vec <- unlist(pieces[[x]])  # a named vector
+        
+        if (!is.element('startTime', names(vec)) {
           stop ('Parameter "startTime" not defined for piece "', names(pieces)[[x]], '".')
         } else {
-          mat[x,1] <- unlist(pieces[[x]])['startTime']
+          mat[x,1] <- vec['startTime']
         }
         
-        if ('startPopn' %in% names(unlist(pieces[[x]])) == F) {
+        if (!is.element('startPopn', names(vec)) {
           stop ('Parameter "startPopn" not defined for piece "', names(pieces)[[x]], '".')
         } else {
-          mat[x,2] <- unlist(pieces[[x]])['startPopn']
+          mat[x,2] <- vec['startPopn']
         }
         
         if ('endTime' %in% names(unlist(pieces[[x]])) == F) {
@@ -521,54 +435,6 @@ MODEL <- R6Class("MODEL",
     },
     
     
-    
-    init.locations = function() {
-      # helper function for private$init.pairs()
-      # collect host locations of all extant pathogen lineages into dict 
-      # of host1: [path1, path2, path3, ...]
-      private$locations <- list()      # reset list
-      for (node in private$extant.lineages) {
-        compName <- node$get.location()$get.name()
-        if (compName %in% names(private$locations) == F) {
-          private$locations[[compName]] <- list()
-        }
-        private$locations[[compName]] <- c(private$locations[[compName]], node$get.name())
-      }
-      private$locations
-    },
-    
-    
-    
-    init.pairs = function() {
-      # extract all pairs of pathogen lineages that may coalesce
-      
-      # reset container
-      private$choices <- list()
-      
-      for (hostNum in seq_along(private$locations)) {
-        # retrieve vector of Lineages in this host
-        lineages <- private$locations[[hostNum]]
-        hostname <- names(private$locations)[[hostNum]]
-        
-        if (length(lineages) > 1) {
-          combns <- combn(lineages, 2)
-          
-          for (col in 1:ncol(combns)) {
-            pair <- sort(unlist(combns[,col]))
-            key <- paste(pair, collapse=',')
-            private$choices[[key]] <- hostname
-          }
-          #. <- apply(combns, 2, function(pair) {
-          #  key <- paste(sort(unlist(pair)), collapse=',')
-          #  private$choices[[key]] <- hostname
-          #})
-        }
-      }
-      private$choices
-    },
-    
-    
-    
     init.fixed.samplings = function() {
       # retrieve sampling time and populate tip labels / times in ape:: phylo object 
       # (for plotting Eventlogger function)
@@ -581,13 +447,12 @@ MODEL <- R6Class("MODEL",
       )
     }
     
-    
   )
 )
 
 
-print.MODEL <- function(obj) {
-  cat("twt MODEL object\n\n")
+print.Model <- function(obj) {
+  cat("twt Model\n\n")
   
   cat("Initial conditions:\n")
   init <- obj$get.initial.conds()
@@ -597,5 +462,8 @@ print.MODEL <- function(obj) {
   for (i in 1:length(init$size)) {
     cat(paste0("    ", names(init$size)[i], ": ", init$size[i]))
   }
+  
+  cat("  indexType: ", init$indexType, "\n")
+  
   
 }

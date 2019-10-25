@@ -4,13 +4,10 @@
 \alias{.calc.popn.rates}
 \title{.calc.popn.rates}
 \usage{
-.calc.popn.rates(types, indiv.types)
+.calc.popn.rates(types)
 }
 \arguments{
 \item{types:}{list of CompartmentType objects}
-
-\item{indiv.types:}{list of CompartmentType name of type `character` for each 
-individual Compartment object}
 }
 \value{
 matrix of population transmission rates for each type to type comparison

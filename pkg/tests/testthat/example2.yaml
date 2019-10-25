@@ -1,9 +1,10 @@
 # how would we encode an SI model?
-OriginTimes:
-  'virus':                             # origin time of `virus` epidemic
-    start: 10.0                        # note this is reverse time, cumulative
-    susceptibles:
-      - host: 25                      # number of susceptible at the origin time of the simulation for Type `host`
+InitialConditions:
+  originTime: 10.0  # note this is reverse time, cumulative
+  size:
+    host: 100  # number of susceptible at the origin time of the simulation for Type `host`
+  indexType: host
+
 CompartmentTypes:
   'host':
     branching.rates: (host=0.01)        # named vector of transmission rates to different CompartmentTypes
@@ -23,12 +24,15 @@ CompartmentTypes:
       piece2:
         - startTime: 5
         - startPopn: 10
+
 LineageTypes:
   'virus':
+
 Compartments:
   'I':
     type: host                         # CompartmentType 
     replicates: 10
+
 Lineages:
   'I':
     type: 'virus'

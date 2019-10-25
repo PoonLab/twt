@@ -1,10 +1,10 @@
 # structured SI model with high-risk population
-OriginTimes:
-  'virus':
-    start: 10.0
-    susceptibles:
-      - host1: 49
-      - host2: 50
+InitialConditions:
+  originTime: 10.0
+  size:
+    host1: 50
+    host2: 50
+  indexType: 'host1'
 
 CompartmentTypes:
   'host1':
@@ -15,7 +15,7 @@ CompartmentTypes:
     wait.time.distr:
       distr: 'exp'
       hyperparameters:
-        - rate: 20
+        rate: 20
   'host2':
     branching.rates: (host1=0.02, host2=0.02)
     migration.rates: (host1=0.01, host2=0.01)
@@ -24,10 +24,7 @@ CompartmentTypes:
     wait.time.distr:
       distr: 'exp'
       hyperparameters:
-        - rate: 20
-
-LineageTypes:
-  'virus':
+        rate: 20
 
 Compartments:
   'I1':
