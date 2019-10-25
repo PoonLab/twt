@@ -29,6 +29,8 @@
 #' 
 #' @export
 Model <- R6Class("Model",
+  lock_objects = FALSE,
+  
   public = list(
     initialize = function(settings=NA) {
       private$initial.conds <- private$load.initial.conds(settings)
@@ -42,7 +44,7 @@ Model <- R6Class("Model",
     },
     
     # ACCESSOR FUNCTIONS
-    get.initial.conds = function() {private$initial.conds},
+    get.initial.conds = function() { private$initial.conds },
     
     get.types = function() {private$types},
     get.compartments = function() {private$compartments},
@@ -134,7 +136,7 @@ Model <- R6Class("Model",
       }
       
       required <- c('branching.rates', 'migration.rates', 'bottleneck.size',
-                    'coalescent.rate', 'wait.time.distr')
+                    'wait.time.distr')
       
       unlist(sapply(names(settings$CompartmentTypes), function(x) {
         params <- settings$CompartmentTypes[[x]]
@@ -142,6 +144,13 @@ Model <- R6Class("Model",
         missing <- which( !is.element(required, names(params)) )
         if (length(missing) > 0) {
           stop(paste("CompartmentTypes:", x, " missing required field(s): ", required[missing]))
+        }
+        
+        # Compartmen'tType must specify EITHER coalescent.rate or piecewise linear model
+        if (!is.element('coalescent.rate', names(params)) &&
+            !is.element('popn.growth.dynamics', names(params))) {
+          stop("Either `coalescent.rate` or `popn.growth.dynamics` must be",
+               "declared in CoalescentType", x)
         }
         
         # Generate wait time distribution between Compartment infection time and 
@@ -299,16 +308,19 @@ Model <- R6Class("Model",
         } 
         else {
           vec <- unlist(strsplit(params$sampling.time, split='[`(`|,|`)`]'))
+          
           # exclude empty strings
           sampleTimes <- as.double(vec[nzchar(x=vec)])
           if (any(is.na(sampleTimes))) {
             # failed to parse string as double
-            stop('\nSampling times must all be specified as type `numeric` or type `double`. ', 
-                 'Sampling time "', vec, '" is of type `', typeof(vec), '`.\n')
+            stop('\nSampling times must all be specified as type `numeric`', 
+                 ' or type `double`. Sampling time "', vec, '" is of type `', 
+                 typeof(vec), '`.\n')
           }
           if (length(sampleTimes) != nIndiv) {
             stop('attribute `sampling.time` of Lineage ', label, 
-                 ' does not match number of replicates specified for respective Lineage.')
+                 ' does not match number of replicates specified for',
+                 'respective Lineage.')
           }
         }
 
@@ -358,28 +370,29 @@ Model <- R6Class("Model",
       for (x in seq_along(pieces)) {
         vec <- unlist(pieces[[x]])  # a named vector
         
-        if (!is.element('startTime', names(vec)) {
+        if (!is.element('startTime', names(vec))) {
           stop ('Parameter "startTime" not defined for piece "', names(pieces)[[x]], '".')
         } else {
           mat[x,1] <- vec['startTime']
         }
         
-        if (!is.element('startPopn', names(vec)) {
+        if (!is.element('startPopn', names(vec))) {
           stop ('Parameter "startPopn" not defined for piece "', names(pieces)[[x]], '".')
         } else {
           mat[x,2] <- vec['startPopn']
         }
         
-        if ('endTime' %in% names(unlist(pieces[[x]])) == F) {
+        if (!is.element('endTime', names(vec))) {
           # for the final piece with `inf` time, assumed that population stays constant from startPopn
           mat[x,3] <- NA
-          mat[x,4] <- unlist(pieces[[x]])['startPopn']
-        } else {
-          mat[x,3] <- unlist(pieces[[x]])['endTime']
-          if ('endPopn' %in% names(unlist(pieces[[x]])) == F) {
+          mat[x,4] <- vec['startPopn']
+        } 
+        else {
+          mat[x,3] <- vec['endTime']
+          if (!is.element('endPopn', names(vec))) {
             stop ('Parameter "endPopn" not defined for piece "', names(pieces)[[x]], '".')
           } else {
-            mat[x,4] <- unlist(pieces[[x]])['endPopn']
+            mat[x,4] <- vec['endPopn']
           }
         }
         
@@ -450,7 +463,9 @@ Model <- R6Class("Model",
   )
 )
 
-
+#' print.Model
+#' S3 class function to display contents of a Model object
+#' @export
 print.Model <- function(obj) {
   cat("twt Model\n\n")
   

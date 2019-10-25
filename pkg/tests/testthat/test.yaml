@@ -1,46 +1,46 @@
 # how would we encode an SI model?
-OriginTimes:
-  'virus':
-    start: 10.0                        # note this is reverse time, cumulative
-    susceptibles:
-    - host: 1000
+InitialConditions:
+  originTime: 10.0
+  size:
+    host: 1000
+  indexType: host
+
 CompartmentTypes:
   'host':
-    branching.rates: (host=0.1)        # named vector of transmission rates to different CompartmentTypes
-    migration.rates: ()                # no migration (assume no superinfection)
-    bottleneck.size: 1                 # bottleneck size when transmission event occurs
-    wait.time.distr:                   # distribution of waiting time between infection time and first sampling time of a Compartment
+    branching.rates: (host=0.1)
+    migration.rates: ()
+    bottleneck.size: 1
+    wait.time.distr:
       distr: 'exp'
       hyperparameters:
-        - rate: 20
+        rate: 20
     popn.growth.dynamics:
       piece1:
-        - startTime: 0
-        - startPopn: 1
-        - endTime: 0.75
-        - endPopn: 45
+        startTime: 0
+        startPopn: 1
+        endTime: 0.75
+        endPopn: 45
       piece2:
-        - startTime: 0.75
-        - startPopn: 50
-        - endTime: 1.5
-        - endPopn: 85
+        startTime: 0.75
+        startPopn: 50
+        endTime: 1.5
+        endPopn: 85
       piece3:
-        - startTime: 1.5
-        - startPopn: 100
-        - endTime: 2.25
-        - endPopn: 125
+        startTime: 1.5
+        startPopn: 100
+        endTime: 2.25
+        endPopn: 125
       piece4:
-        - startTime: 2.25              # assumed that piece with no end time goes onwards to infinity at constant population
-        - startPopn: 150
-LineageType:
-  'virus':
-    # no parameters for now -- this class would allow for heterogeneity in transmission dynamics among pathogens
+        startTime: 2.25
+        startPopn: 150
+
 Compartments:
   'I':
-    type: host                         # CompartmentType 
+    type: host
     replicates: 2  
+    
 Lineages:
   'I':
     sampling.time: (0.2,0,0)             
     location: I
-    replicates: 3                      # implied to be per-host
+    replicates: 3

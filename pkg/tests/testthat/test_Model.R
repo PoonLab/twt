@@ -7,21 +7,24 @@ library(twt)
 
 # a system of 2 compartments, 3 sampled lineages each
 settings <- yaml.load_file('test.yaml')
-m <- MODEL$new(settings)
+m <- Model$new(settings)
+r <- Run$new(m)
 
-
-test_that("MODEL loads origin times", {
-  result <- m$get.origin.times()
+test_that("Model loads initial conditions", {
+  result <- m$get.initial.conds()
   
-  expected <- t(as.matrix(unlist(settings$OriginTimes)))
-  row.names(expected) <- 'virus'
-  colnames(expected) <- c('start', 'host')
+  expected <- c('originTime', 'size', 'indexType')
+  expect_equal(names(result), expected)
   
-  expect_equal(result, expected)
+  expect_equal(result$originTime, 10)
+  expect_equal(result$indexType, 'host')
+  
+  expected <- list(host=1000)
+  expect_equal(result$size, expected)
 })
 
 
-test_that("MODEL loads types", {
+test_that("Model loads types", {
   result <- m$get.types()
   
   expect_equal(class(result), 'list')
@@ -48,13 +51,13 @@ test_that("lineages have names", {
   expect_equal(result, expected)
 })
 
-test_that("MODEL assigns sampling times", {
+test_that("Model assigns sampling times", {
   result <- m$get.fixed.samplings()$tip.height
   expected <- rep(c(0.2, 0, 0), times=2)
   expect_equal(result, expected)
 })
 
-test_that("MODEL parse population growth dynamics", {
+test_that("Model parse population growth dynamics", {
   result <- m$get.types()[[1]]$get.popn.growth.dynamics()
   expect_equal(class(result), "matrix")
   expect_equal(nrow(result), 4)
@@ -66,8 +69,11 @@ test_that("MODEL parse population growth dynamics", {
   expect_equal(as.vector(result[,6]), c(1, 15, 50, 150))  # intercept
 })
 
-test_that("MODEL extracts pairs of lineages", {
-  result <- m$get.pairs()
+
+
+
+test_that("Run extracts pairs of lineages", {
+  result <- r$get.pairs()
   
   # there are only one pair per host because the third lineage is not yet extant
   # at time 0 (sampling times = 0.2)

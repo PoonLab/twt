@@ -19,19 +19,20 @@
 #' @export
 Run <- R6Class(
   "Run",
-  inherit = Model,
+  lock_objects = FALSE,
   
   public = list(
- 
+    
     initialize = function(model) {
+      # transfer objects from Model
       private$initial.conds <- model$get.initial.conds()
-      
       private$types <- model$get.types()
       private$compartments <- model$get.compartments()
       private$lineages <- model$get.lineages()
       private$fixed.samplings <- model$get.fixed.samplings()
       
-      private$extant.lineages <- private$get.extant.lineages(0)
+      #private$extant.lineages <- private$get.extant.lineages(0)
+      private$extant.lineages <- private$retrieve.extant.lineages(0)
       private$locations <- private$init.locations()
       private$choices <- private$init.pairs()
       
@@ -43,7 +44,7 @@ Run <- R6Class(
     
     ## ACCESSOR FUNCTIONS
     
-    get.unsampled.hosts = function() {private$unsampled.hosts},
+    get.unsampled.hosts = function() { private$unsampled.hosts },
     
     get.extant.lineages = function(time) {
       # returns lineages extant at a given time
