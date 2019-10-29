@@ -24,6 +24,8 @@ Run <- R6Class(
   public = list(
     
     initialize = function(model) {
+      private$eventlog <- EventLogger$new()
+      
       # transfer objects from Model
       private$initial.conds <- model$get.initial.conds()
       private$types <- model$get.types()
@@ -50,8 +52,11 @@ Run <- R6Class(
 
     
     ## ACCESSOR FUNCTIONS
+    get.eventlog = function() { private$eventlog },
+    
     get.initial.conds = function() { private$initial.conds },
     get.fixed.samplings = function() { private$fixed.samplings },
+    
     get.types = function() { private$types },
     get.compartments = function() { private$compartments },
     get.lineages = function() { private$lineages },

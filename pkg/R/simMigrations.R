@@ -28,15 +28,18 @@
 #' tree2 <- sim.inner.tree(mod, tree)
 #' 
 #' @export
-sim.migrations <- function(model, eventlog) {
-  comps <- model$get.compartments()
-  compnames <- model$get.names(comps)
+sim.migrations <- function(run) {
+  if (!is.element('Run', class(run))) {
+    stop("Argument to sim.migrations ")
+  }
   
-  types <- model$get.types()
+  # unpack Run object
+  comps <- run$get.compartments()
+  types <- run$get.types()
   indiv.types <- sapply(unlist(comps), function(a) {a$get.type()$get.name()})
   
   # record population totals and migration rates for all Types
-  popn.totals <- model$get.origin.times()
+  popn.totals <- run$get.origin.times()
   popn.migration.rates <- .record.migration.rates(types, indiv.types)
 
   # record max sampling time of lineages (the time of the most recent sample)

@@ -152,11 +152,12 @@ init.branching.events <- function(model, eventlog=NA) {
 #' @examples
 #' 
 #' #' # load susceptible-infected (SI) compartmental model
-#' path <- system.file('extdata', 'structSI.yaml', package='twt')
+#' path <- system.file('extdata', 'SI.yaml', package='twt')
 #' settings <- yaml.load_file(path)
 #' model <- Model$new(settings)
 #' 
-#' tree <- sim.outer.tree(model)
+#' run <- sim.outer.tree(model)
+#' run$get.eventlog()
 #' 
 #' @seealso init.branching.events, eventlog.from.tree
 #' @export
@@ -164,7 +165,7 @@ sim.outer.tree <- function(model) {
   run <- Run$new(model)
   
   # initialize a new object as return value
-  eventlog <- EventLogger$new()
+  eventlog <- run$get.eventlog()
   
   # ptm <- proc.time()   # benchmark start time
   
@@ -244,11 +245,6 @@ sim.outer.tree <- function(model) {
     }
   })
   
-  # mark1 <- proc.time() - ptm            # benchmark 1 (generation of transmission events)
-  # cat("GTE:", round(mark1[['elapsed']],5), "s\n")
-  # ptm1 <- proc.time()
-  
-  
   # After transmission times are matched with infected Compartments as recipients, 
   # now have to assign source Compartments
   # Order infection times from most recent to furthest back in time
@@ -283,22 +279,13 @@ sim.outer.tree <- function(model) {
       } 
     })
     
-    s.pop.by.type[sapply(s.pop.by.type, is.null)] <- NULL    # cleanup
-    #s.pop.by.type.names <- sapply(s.pop.by.type, function(z) z$get.name())
+    s.pop.by.type[sapply(s.pop.by.type, is.null)] <- NULL
     source.popns[[specific.type]] <- s.pop.by.type
-    #source.popns.names[[specific.type]] <- s.pop.by.type.names
   }
   
   eventlog <- .assign.source.compartments(eventlog, comps, source.popns, t_events)
-  
-  # mark2 <- proc.time() - ptm1               # benchmark 2 (assignment of sources)
-  # cat("AST:", round(mark2[['elapsed']],5), "s\n")
-  # total <- proc.time() - ptm
-  # cat("Total:", round(total[['elapsed']],5), "s\n")
-  
-  # FIXME: need to return Run object as well?
-  # depends if downstream methods require unsampled Compartment states
-  eventlog
+
+  return(run)
 }
 
 
