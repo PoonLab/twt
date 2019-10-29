@@ -27,8 +27,15 @@ Run <- R6Class(
       # transfer objects from Model
       private$initial.conds <- model$get.initial.conds()
       private$types <- model$get.types()
-      private$compartments <- model$get.compartments()
-      private$lineages <- model$get.lineages()
+      
+      # deep copy of Compartments and Lineages
+      private$compartments <- lapply(model$get.compartments(), function(comp) {
+        comp$clone()
+      })
+      private$lineages <- lapply(model$get.lineages(), function(line) {
+        line$clone()
+      })
+      
       private$fixed.samplings <- model$get.fixed.samplings()
       
       #private$extant.lineages <- private$get.extant.lineages(0)
@@ -43,10 +50,11 @@ Run <- R6Class(
 
     
     ## ACCESSOR FUNCTIONS
-    get.types = function() {private$types},
-    get.compartments = function() {private$compartments},
-    get.lineages = function() {private$lineages},
-    get.fixed.samplings = function() {private$fixed.samplings},
+    get.initial.conds = function() { private$initial.conds },
+    get.fixed.samplings = function() { private$fixed.samplings },
+    get.types = function() { private$types },
+    get.compartments = function() { private$compartments },
+    get.lineages = function() { private$lineages },
     get.unsampled.hosts = function() { private$unsampled.hosts },
     
     get.extant.lineages = function(time) {
@@ -122,19 +130,19 @@ Run <- R6Class(
       # function creates "blank" Compartment objects for Unsampled Hosts (US)
       # @param num.unsampled = number of unsampled
       # @param t = CompartmentType object
-      private$unsampled.hosts <- c(
-        private$unsampled.hosts, 
-        unlist(sapply(
-          1:num.unsampled, 
-          function(blank) {
-            Compartment$new(
-              name=paste0('US_', t$get.name(), '_', blank),
-              type=t,
-              unsampled=TRUE
-              )
-            }))
-        ) 
-      },
+      new.hosts <- unlist(sapply(
+        1:num.unsampled, 
+        function(blank) {
+          Compartment$new(
+            name=paste0('US_', t$get.name(), '_', blank),
+            type=t,
+            unsampled=TRUE
+          )
+        }))
+      names(new.hosts) <- sapply(new.hosts, function(x) x$get.name())
+  
+      private$unsampled.hosts <- c(private$unsampled.hosts, new.hosts)
+    },
     
     clear.unsampled = function() {
       private$unsampled.hosts <- NULL

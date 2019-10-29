@@ -50,9 +50,9 @@ Model <- R6Class("Model",
     # ACCESSOR FUNCTIONS
     get.initial.conds = function() { private$initial.conds },
     
-    get.types = function() {private$types},
-    get.compartments = function() {private$compartments},
-    get.lineages = function() {private$lineages},
+    get.types = function() { private$types },
+    get.compartments = function() { private$compartments },
+    get.lineages = function() { private$lineages },
     
     get.names = function(listR6obj) {
       # returns names of a given list of R6 objects
@@ -198,7 +198,8 @@ Model <- R6Class("Model",
       if (is.null(settings$Compartments)) {
         stop("Missing 'Compartments' field in settings.")
       }
-      unlist(sapply(names(settings$Compartments), function(comp) {
+      
+      res <- unlist(sapply(names(settings$Compartments), function(comp) {
         if (grepl("_", comp)) {
           stop("Error: Underscore characters are reserved, please modify Compartment name", comp)
         }
@@ -234,6 +235,10 @@ Model <- R6Class("Model",
         })
         
       }))
+      
+      # return as named vector
+      names(res) <- sapply(res, function(comp) comp$get.name())
+      res
     },
     
     
@@ -467,6 +472,7 @@ Model <- R6Class("Model",
   )
 )
 
+
 #' print.Model
 #' S3 class function to display contents of a Model object
 #' @export
@@ -483,6 +489,13 @@ print.Model <- function(obj) {
   }
   
   cat("  indexType: ", init$indexType, "\n")
+  
+  cat("CompartmentTypes:\n")
+  types <- obj$get.types()
+  for (i in 1:length(types)) {
+    ct <- types[[i]]
+    cat( sprintf("  %10s ", c(names(types)[i])) )
+  }
 }
 
 #' summary.Model

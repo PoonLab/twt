@@ -26,9 +26,8 @@ test_that("build eventlog from tree string", {
 
 test_that("build eventlog from YAML", {
   settings <- yaml.load_file('example1.yaml')
-  m <- MODEL$new(settings)
-  e <- EventLogger$new()
-  init.branching.events(m, e)
+  m <- Model$new(settings)
+  e <- init.branching.events(m)
   result <- e$get.all.events()
   
   expected <- data.frame(
@@ -48,9 +47,8 @@ test_that("build eventlog from YAML", {
 test_that("simulate outer tree", {
   # SI model with 10 sampled hosts
   settings <- yaml.load_file('example2.yaml')
-  m <- MODEL$new(settings)
-  e <- EventLogger$new()
-  sim.outer.tree(m, e)
+  m <- Model$new(settings)
+  e <- sim.outer.tree(m)
   result <- e$get.all.events()
   
   # TODO: transmission events should define a DAG

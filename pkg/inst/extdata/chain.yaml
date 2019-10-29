@@ -23,9 +23,6 @@ CompartmentTypes:
         startPopn: 100
         endPopn: 100
 
-LineageTypes:
-  'virus':
-
 Compartments:
   'A':
     type: host
