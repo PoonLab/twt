@@ -13,8 +13,9 @@
 #'   events that were extracted from 'tree'.
 #' 
 #' @examples
-#' outer <- eventlog.from.tree('(((A:1,B:1)B:1,C:1)C:1,D:1)D:1;')
-#' outer
+#' e <- eventlog.from.tree('(((A:1,B:1)B:1,C:1)C:1,D:1)D:1;')
+#' e  # print contents
+#' 
 #' 
 #' @seealso sim.outer.tree, init.branching.events
 #' @export
@@ -82,8 +83,8 @@ eventlog.from.tree <- function(tree) {
 #' settings <- yaml.load_file(path)
 #' mod <- Model$new(settings)
 #' 
-#' e <- init.branching.events(mod)
-#' plot(e)
+#' run <- init.branching.events(mod)
+#' plot(run$get.eventlog())
 #' 
 #' @seealso eventlog.from.tree, sim.outer.tree
 #' @export
@@ -91,8 +92,11 @@ init.branching.events <- function(model, eventlog=NA) {
   # initialize Run object from Model
   run <- Run$new(model=model)
   
-  if (!is.environment(eventlog)) {
-    eventlog <- EventLogger$new()
+  if (is.environment(eventlog)) {
+    # bind EventLogger to Run object
+    run$set.eventlog(eventlog)
+  } else {
+    eventlog <- run$get.eventlog()
   }
   
   # store fixed sampling times of the tips for plotting functions
@@ -126,7 +130,7 @@ init.branching.events <- function(model, eventlog=NA) {
     
   })
   
-  eventlog
+  return(run)
 }
 
 

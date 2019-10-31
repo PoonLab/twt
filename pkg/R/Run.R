@@ -53,6 +53,7 @@ Run <- R6Class(
     
     ## ACCESSOR FUNCTIONS
     get.eventlog = function() { private$eventlog },
+    set.eventlog = function(e) { private$eventlog <- e },
     
     get.initial.conds = function() { private$initial.conds },
     get.fixed.samplings = function() { private$fixed.samplings },
