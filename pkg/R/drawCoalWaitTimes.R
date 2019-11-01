@@ -23,7 +23,7 @@ wait.time <- function(k, t1, alpha, beta){
 #' 
 #' Draw waiting times for all compartments that have two or more extant lineages.
 #' 
-#' @param model: object of class 'MODEL'
+#' @param model: object of class 'Model' or 'Run'
 #' @param current.time: current simulation time for inner tree
 #' @return Named numeric vector of waiting times per compartment
 #' 
@@ -41,7 +41,7 @@ wait.time <- function(k, t1, alpha, beta){
 calc.coal.wait.times <- function(model, current.time, dynamic=FALSE){
   # retrieve all compartments
   comps <- c(model$get.compartments(), model$get.unsampled.hosts())
-  compnames <- model$get.names(comps)
+  compnames <- names(comps)
   
   # retrieves compartment names for extant lineages
   ext.lineages.compnames <- sapply(

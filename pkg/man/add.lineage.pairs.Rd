@@ -4,10 +4,10 @@
 \alias{add.lineage.pairs}
 \title{add.lineage.pairs}
 \usage{
-add.lineage.pairs(model, lineage)
+add.lineage.pairs(run, lineage)
 }
 \arguments{
-\item{model}{= MODEL object}
+\item{run}{= R6 Run object}
 
 \item{lineage}{= Lineage object to be added to list of lineage pair choices}
 }

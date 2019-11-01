@@ -20,8 +20,9 @@ An object of class EventLogger initialized with a list of fixed transmission
 into a sequence of transmission events that are stored as an eventlog object
 }
 \examples{
-outer <- eventlog.from.tree('(((A:1,B:1)B:1,C:1)C:1,D:1)D:1;')
-outer
+e <- eventlog.from.tree('(((A:1,B:1)B:1,C:1)C:1,D:1)D:1;')
+e  # print contents
+
 
 }
 \seealso{

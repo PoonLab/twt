@@ -4,19 +4,17 @@
 \alias{generate.migration}
 \title{generate.migration}
 \usage{
-generate.migration(model, eventlog, source, recipient, migrating.lineage,
+generate.migration(run, eventlog, source, recipient, migrating.lineage,
   migration.time)
 }
 \arguments{
-\item{model:}{MODEl object}
+\item{run:}{MODEl object}
 
 \item{eventlog:}{EventLogger object}
 
 \item{migrating.lineage:}{Lineage object; to be migrated}
 
 \item{inf:}{list of Compartment objects as potential migration sources}
-
-\item{inf.names:}{list of Compartment object names of type character (coincides with inf)}
 
 \item{current.time:}{double; time of simulation current to this function call}
 }

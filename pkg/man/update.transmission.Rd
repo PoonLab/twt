@@ -4,17 +4,14 @@
 \alias{update.transmission}
 \title{update.transmission}
 \usage{
-\method{update}{transmission}(model, eventlog, inf, inf.names,
-  transm.event)
+\method{update}{transmission}(run, eventlog, inf, transm.event)
 }
 \arguments{
-\item{model:}{MODEL object}
+\item{run:}{Run object}
 
 \item{eventlog:}{EventLogger object}
 
 \item{inf:}{list of sampled and unsampled infected compartments of type Compartment}
-
-\item{inf.names:}{list of sampled and unsampled infected compartments names of type character}
 
 \item{transm.event:}{list of information specific to the transmission event being resolved}
 }

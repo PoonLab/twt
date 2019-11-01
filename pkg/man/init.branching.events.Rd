@@ -21,10 +21,10 @@ in a YAML file that has been parsed into a MODEL object.
 # load model
 path <- system.file('extdata', 'chain.yaml', package='twt')
 settings <- yaml.load_file(path)
-mod <- MODEL$new(settings)
+mod <- Model$new(settings)
 
-e <- init.branching.events(mod)
-plot(e)
+run <- init.branching.events(mod)
+plot(run$get.eventlog())
 
 }
 \seealso{

@@ -4,7 +4,7 @@
 \alias{sim.migrations}
 \title{sim.migrations}
 \usage{
-sim.migrations(model, eventlog)
+sim.migrations(run)
 }
 \arguments{
 \item{model:}{R6 object from MODEL$new()}
@@ -17,10 +17,10 @@ Annotate and update the EventLogger object with migration events.
 \examples{
 path <- system.file('extdata', 'structSI.yaml', package='twt')
 settings <- yaml.load_file(path)
-mod <- MODEL$new(settings)
+mod <- Model$new(settings)
 
-tree <- sim.outer.tree(mod)
-sim.migrations(mod, tree)
+run <- sim.outer.tree(mod)
+sim.migrations(run)
 tree$get.migration.events()  # display private data frame
 tree2 <- sim.inner.tree(mod, tree)
 

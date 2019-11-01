@@ -4,10 +4,10 @@
 \alias{remove.lineage.pairs}
 \title{remove.lineage.pairs}
 \usage{
-remove.lineage.pairs(model, lineage)
+remove.lineage.pairs(run, lineage)
 }
 \arguments{
-\item{model}{= MODEL object, one per simulation}
+\item{run}{= R6 Run object, one per simulation}
 
 \item{lineage}{= Lineage object, to be removed from list of lineage pair choices}
 }

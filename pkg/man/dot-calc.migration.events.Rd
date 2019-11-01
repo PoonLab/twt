@@ -4,12 +4,12 @@
 \alias{.calc.migration.events}
 \title{.calc.migration.events}
 \usage{
-.calc.migration.events(popn.totals, popn.migration.rates,
-  max.sampling.time, possible.source.types, transmission.events)
+.calc.migration.events(init.conds, popn.migration.rates, max.sampling.time,
+  transmission.events)
 }
 \arguments{
-\item{popn.totals:}{totals at time `t=0` of susceptible and infected specific 
-to each CompartmentType}
+\item{init.conds:}{initial conditions specified in model settings, i.e., 
+originTime and size (per CompartmentType)}
 
 \item{popn.migration.rates:}{rates of migration between different 
 CompartmentTypes}
@@ -21,8 +21,8 @@ this function (type numeric)}
 type can receive a migrating lineage from}
 }
 \value{
-m_events = data frame of migration events, each made up of: time, 
-recipient Type, and source Type
+data frame of migration events, each made up of: time, 
+        recipient Type, and source Type
 }
 \description{
 Generates migration events only, based on population dynamics of the MODEL.

@@ -29,7 +29,7 @@
 sim.inner.tree <- function(mod, e=NA) {
   if ( is.element('Run', class(mod)) ) {
     run <- mod
-    if ( nrow(run$get.eventlog())==0 ) {
+    if ( nrow(run$get.eventlog()$get.all.events()) ==0 ) {
       stop("Error in sim.inner.tree(): empty EventLogger in Run object. ",
            "Did you run sim.outer.tree() before calling this function?")
     }
@@ -132,7 +132,7 @@ sim.inner.tree <- function(mod, e=NA) {
         
       }
       
-      extant.lineages <- model$get.extant.lineages(current.time)
+      extant.lineages <- run$get.extant.lineages(current.time)
       num.extant <- length(extant.lineages)
       
       next
@@ -159,9 +159,9 @@ sim.inner.tree <- function(mod, e=NA) {
       current.time <- min(setdiff( all.new.transm, old.transm )) 
       
       transm.event <- transm.events[which(transm.times == current.time),]
-      update.transmission(model, eventlog, inf, transm.event)
+      update.transmission(run, eventlog, inf, transm.event)
       
-      extant.lineages <- model$get.extant.lineages(current.time)
+      extant.lineages <- run$get.extant.lineages(current.time)
       num.extant <- length(extant.lineages)
       
       next
@@ -207,7 +207,7 @@ sim.inner.tree <- function(mod, e=NA) {
       
       coal.comp.lineages[sapply(coal.comp.lineages, is.null)] <- NULL   # cleanup
       lineages.to.coalesce <- sample(coal.comp.lineages, 2)
-      generate.coalescent(model, eventlog, lineages.to.coalesce, coal.comp, new.time)
+      generate.coalescent(run, eventlog, lineages.to.coalesce, coal.comp, new.time)
       
 
       if (length(which(transm.times <= new.time)) > num.transm.occurred) {
@@ -218,20 +218,20 @@ sim.inner.tree <- function(mod, e=NA) {
         current.time <- min(union( all.new.transm, old.transm ))
         
         transm.event <- transm.events[which(transm.times == new.time),]     # this is new.time instead of current.time (compared to the outermost if statement)
-        update.transmission(model, eventlog, inf, transm.event)
+        update.transmission(run, eventlog, inf, transm.event)
         
       }
       
       # update current time and extant lineages
       current.time <- new.time
-      extant.lineages <- model$get.extant.lineages(current.time)
+      extant.lineages <- run$get.extant.lineages(current.time)
       num.extant <- length(extant.lineages)
       
     }
     
   }
   
-  eventlog
+  return(run)  # contains updated eventlog 
 }
 
 
@@ -240,18 +240,18 @@ sim.inner.tree <- function(mod, e=NA) {
 #' \code{update.transmission} resolves lineages associated with a transmission event 
 #' between compartments and updates the eventlog.
 #'
-#' @param model: MODEL object
+#' @param run: Run object
 #' @param eventlog: EventLogger object
 #' @param inf: list of sampled and unsampled infected compartments of type Compartment
 #' @param transm.event: list of information specific to the transmission event being resolved
 #' 
-#' @export
-update.transmission <- function(model, eventlog, inf, transm.event) {
+#' @export update.transmission
+update.transmission <- function(run, eventlog, inf, transm.event) {
   comp.2.bottle <- inf[[which(names(inf) == transm.event$compartment1)]]
   comp.2.receive <- inf[[which(names(inf) == transm.event$compartment2)]]
   
   # call bottleneck function to mass coalesce lineages in (first) new transmission event newly included
-  survivor.lineages <- generate.bottleneck(model, eventlog, comp.2.bottle, transm.event$time)
+  survivor.lineages <- generate.bottleneck(run, eventlog, comp.2.bottle, transm.event$time)
   new.comp.location <- comp.2.receive$get.name()
   
   # for the survivor lineage(s), the each lineage needs to update its location to the source of the transmission event
@@ -265,9 +265,9 @@ update.transmission <- function(model, eventlog, inf, transm.event) {
   # also need to remove all lineage pairs in the bottlenecking compartment, and update/add all lineage pairs into the receiving compartment
   sapply(survivor.lineages, function(x) {
     comp.2.bottle$remove.lineage(x)
-    remove.lineage.pairs(model, x)
+    remove.lineage.pairs(run, x)
     comp.2.receive$add.lineage(x)
-    add.lineage.pairs(model, x)
+    add.lineage.pairs(run, x)
   })
   
   # the transmission event's `lineage` column can now be updated to included the names of the 'survivors'
@@ -280,13 +280,13 @@ update.transmission <- function(model, eventlog, inf, transm.event) {
 #' 
 #' function resolves a potential migration event generated from `sim.migrations()`
 #'
-#' @param model: MODEL object
+#' @param run: Run object
 #' @param eventlog: EventLogger object
 #' @param inf: list of sampled and unsampled infected compartments of type Compartment
 #' @param migration.event: list of information specific to the migration event being resolved
 #' 
 #' @export
-resolve.migration <- function(model, eventlog, inf, migration.event) {
+resolve.migration <- function(run, eventlog, inf, migration.event) {
   
   # first, draw a random recipient compartment with a matching recipientType of the 
   # migration event to be resolved
@@ -318,7 +318,7 @@ resolve.migration <- function(model, eventlog, inf, migration.event) {
 
       # draw a lineage to be migrated
       migrating.lineage <- sample(chosen.recipient$get.lineages(), 1)[[1]]
-      generate.migration(model, eventlog, chosen.source, chosen.recipient, 
+      generate.migration(run, eventlog, chosen.source, chosen.recipient, 
                          migrating.lineage, migration.event$time)
     }
     
@@ -331,7 +331,7 @@ resolve.migration <- function(model, eventlog, inf, migration.event) {
 #' 
 #' function records a migration event with a given lineage from a source to recipient migration
 #'
-#' @param model: MODEl object
+#' @param run: MODEl object
 #' @param eventlog: EventLogger object
 #' @param migrating.lineage: Lineage object; to be migrated
 #' @param inf: list of Compartment objects as potential migration sources
@@ -487,26 +487,26 @@ generate.bottleneck <- function(run, eventlog, comp, current.time) {
     
     sapply(lineage.group, function(x) {
       # remove lineages undergoing bottleneck
-      model$remove.lineage(x)
+      run$remove.lineage(x)
       comp$remove.lineage(x)
       # remove pairs containing bottleneck lineages from list of pair choices
-      remove.lineage.pairs(model, x)
+      remove.lineage.pairs(run, x)
     })
     
     # create a new ancestral lineage 
     # label internal nodes iteratively from 1 --> inf by convention
-    ancestral.lineage <- Lineage$new(name = model$get.node.ident(),
+    ancestral.lineage <- Lineage$new(name = run$get.node.ident(),
                                      sampling.time = current.time,
                                      location = comp)
     
     # add ancestral lineage resulting from bottleneck
-    model$add.lineage(ancestral.lineage)
+    run$add.lineage(ancestral.lineage)
     comp$add.lineage(ancestral.lineage)
-    model$update.node.ident()
+    run$update.node.ident()
     
     # add pairs with new ancestral lineage into list of pair choices (unnecessary for 
     # bottleneck.size of 1)
-    add.lineage.pairs(model, ancestral.lineage)
+    add.lineage.pairs(run, ancestral.lineage)
     
     # record the bottleneck event
     eventlog$add.event('bottleneck', current.time, bottleneck.lineages, NA, 
@@ -525,15 +525,15 @@ generate.bottleneck <- function(run, eventlog, comp, current.time) {
 #' this function removes lineage pairs in MODEL obj attr `choices`: list of lineage 
 #' pair choices to coalesce
 #'
-#' @param model = MODEL object, one per simulation
+#' @param run = R6 Run object, one per simulation
 #' @param lineage = Lineage object, to be removed from list of lineage pair choices
 #'
 #' @export
-remove.lineage.pairs <- function(model, lineage) {
+remove.lineage.pairs <- function(run, lineage) {
 
   
   # extract all the pairs
-  current.pairs <- model$get.pairs()
+  current.pairs <- run$get.pairs()
   
   # narrow down to only the compartment with lineage of interest
   compname <- lineage$get.location()$get.name()
@@ -550,7 +550,7 @@ remove.lineage.pairs <- function(model, lineage) {
       split.names <- unlist(strsplit(y, '\\,'))
       if (lineage$get.name() %in% split.names) {
         # remove this pair of names from list attr `choices`
-        model$remove.pair(split.names[1], split.names[2])
+        run$remove.pair(split.names[1], split.names[2])
       }
     })
   }
@@ -563,15 +563,15 @@ remove.lineage.pairs <- function(model, lineage) {
 #' this function adds lineage pairs in MODEL obj attr `choices`: list of lineage 
 #' pair choices to coalesce
 #'
-#' @param model = MODEL object
+#' @param run = R6 Run object
 #' @param lineage = Lineage object to be added to list of lineage pair choices
 #' 
 #' @export
-add.lineage.pairs <- function(model, lineage) {
+add.lineage.pairs <- function(run, lineage) {
   
   host.comp <- lineage$get.location()$get.name()
   # find other lineages in this (host.comp) location
-  other.lineages <- unlist(sapply(model$get.lineages(), function(x) {
+  other.lineages <- unlist(sapply(run$get.lineages(), function(x) {
     if (x$get.location()$get.name() == host.comp) {
       if (x$get.name() == lineage$get.name()) {NULL}
       else {x$get.name()}
@@ -580,6 +580,6 @@ add.lineage.pairs <- function(model, lineage) {
   
   # generate pairs with this new lineage and other lineages
   sapply(other.lineages, function(y) {
-    model$add.pair(lineage$get.name(), y, host.comp)
+    run$add.pair(lineage$get.name(), y, host.comp)
   })
 }

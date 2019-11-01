@@ -7,7 +7,7 @@
 .assign.transmission.times(infected, events, initial.samplings, type)
 }
 \arguments{
-\item{infected:}{list of Compartment objects to be assigned transmission times}
+\item{infected:}{named list of Compartment objects to be assigned transmission times}
 
 \item{events:}{list of possible transmission events for the infected}
 

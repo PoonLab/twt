@@ -32,9 +32,10 @@ timeline of lineage sampled events.
 #' # load susceptible-infected (SI) compartmental model
 path <- system.file('extdata', 'SI.yaml', package='twt')
 settings <- yaml.load_file(path)
-mod <- MODEL$new(settings)
+model <- Model$new(settings)
 
-tree <- sim.outer.tree(mod)
+run <- sim.outer.tree(model)
+run$get.eventlog()
 
 }
 \seealso{

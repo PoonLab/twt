@@ -4,20 +4,17 @@
 \alias{.calc.transmission.events}
 \title{.calc.transmission.events}
 \usage{
-.calc.transmission.events(popn.totals, popn.rates, init.samplings,
-  possible.sources, max.attempts = 10)
+.calc.transmission.events(init.conds, popn.rates, init.samplings,
+  max.attempts = 10)
 }
 \arguments{
-\item{popn.totals:}{(named matrix) numbers of susceptible and infected 
-Lineages at time t=0, specific to each LineageType (rows) and 
-CompartmentType (columns)}
+\item{init.conds:}{initial conditions, comprising (1) time scale of simulation
+(2) initial population size per CompartmentType and (3) Type
+of index case}
 
 \item{popn.rates:}{rates of transmission between different CompartmentTypes}
 
 \item{init.samplings:}{list of first sampling times for each Compartment}
-
-\item{possible.sources:}{list of possible Sources that each recipient Type can 
-receive a transmission from}
 
 \item{max.attempts:}{number of tries to sample transmission events}
 }

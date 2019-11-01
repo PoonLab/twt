@@ -4,11 +4,11 @@
 \alias{generate.coalescent}
 \title{generate.coalescent}
 \usage{
-generate.coalescent(model, eventlog, lineages.to.coalesce, coalescing.comp,
+generate.coalescent(run, eventlog, lineages.to.coalesce, coalescing.comp,
   current.time)
 }
 \arguments{
-\item{model}{= MODEL object}
+\item{run}{= R6 Run object}
 
 \item{eventlog}{= EventLogger object}
 

@@ -7,7 +7,7 @@
 calc.coal.wait.times(model, current.time, dynamic = FALSE)
 }
 \arguments{
-\item{model:}{object of class 'MODEL'}
+\item{model:}{object of class 'Model' or 'Run'}
 
 \item{current.time:}{current simulation time for inner tree}
 }

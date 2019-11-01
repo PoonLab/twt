@@ -4,10 +4,10 @@
 \alias{resolve.migration}
 \title{resolve.migration}
 \usage{
-resolve.migration(model, eventlog, inf, migration.event)
+resolve.migration(run, eventlog, inf, migration.event)
 }
 \arguments{
-\item{model:}{MODEL object}
+\item{run:}{Run object}
 
 \item{eventlog:}{EventLogger object}
 

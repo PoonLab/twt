@@ -4,10 +4,10 @@
 \alias{generate.bottleneck}
 \title{generate.bottleneck}
 \usage{
-generate.bottleneck(model, eventlog, comp, current.time)
+generate.bottleneck(run, eventlog, comp, current.time)
 }
 \arguments{
-\item{model}{= MODEL object}
+\item{run}{= R6 Run object}
 
 \item{eventlog}{= EventLogger object}
 

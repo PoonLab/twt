@@ -4,18 +4,17 @@
 \alias{.store.initial.samplings}
 \title{.store.initial.samplings}
 \usage{
-.store.initial.samplings(infected, types, lineages)
+.store.initial.samplings(infected, lineages, popn.rates)
 }
 \arguments{
-\item{infected}{= list of sampled infected Compartment objects}
+\item{infected:}{list of sampled infected Compartment objects}
 
-\item{types}{= list of CompartmentType objects}
+\item{lineages:}{list of Lineage objects}
 
-\item{lineages}{= list of Lineage objects}
+\item{popn.rates:}{named matrix of transmission rates (row = source)}
 }
 \value{
-named list of possible Types of `source` with recipient types as names
-and list of first Lineage sampling times for each Compartment
+named vector of first Lineage sampling times for each Compartment
 }
 \description{
 Stores first sampling time of a Lineage for each sampled infected 
