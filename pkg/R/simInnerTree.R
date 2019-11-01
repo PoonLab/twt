@@ -110,11 +110,11 @@ sim.inner.tree <- function(mod, e=NA) {
     
     # record number of transmission events already included in simulation at 
     # this current.time
-    num.transm.occurred <- length(which(transm.times <= current.time))
+    num.transm.occurred <- sum(transm.times <= current.time)
     
     # record number of migration events already included in simulation at this 
     # current.time
-    num.migrations.occurred <- length(which(migration.times <= current.time))
+    num.migrations.occurred <- sum(migration.times <= current.time)
       
     if (length(coal.wait.times) == 0) {
       # no coalescent events possible at this point in time (all Compartments carry 
@@ -122,15 +122,26 @@ sim.inner.tree <- function(mod, e=NA) {
       # move up to the next transmission or migration event in the EventLogger
       
       # minimum time to next transmission event
-      current.time <- min(transm.times[which(transm.times > current.time)])           # min next transmission time event
+      current.time <- min(transm.times[which(transm.times > current.time)])
+      is.transmission.next <- TRUE
       if (!is.null(migration.times)) {
         # minimum time to next migration event
-        migration.time <- min(migration.times[which(migration.times > current.time)])     # min next migration time event
-        current.time <- min(c(migration.time, current.time))
+        migration.time <- min(migration.times[which(migration.times > current.time)])
+        if (migration.time < current.time) {
+          is.transmission.next <- FALSE
+          current.time <- migration.time
+        }
+        else if (migration.time == current.time) {
+          # handle edge case where migration and transmission events occur
+          # at same instant
+          is.transmission.next <- sample(c(TRUE, FALSE), 1)
+          current.time <- ifelse(is.transmission.next, current.time, migration.time)
+        }
       }
       
+      
       # must resolve transmission event or migration event (issue #53)
-      if (current.time %in% transm.times) {
+      if (is.transmission.next) {
         # transmission event to be resolved
         transm.event <- transm.events[which(transm.times == current.time),]
         update.transmission(run, eventlog, inf, transm.event)
@@ -139,35 +150,31 @@ sim.inner.tree <- function(mod, e=NA) {
         # migration event to be resolved
         migration.event <- migration.events[which(migration.times == current.time),]
         resolve.migration(run, eventlog, inf, migration.event)
-        
       }
       
       extant.lineages <- run$get.extant.lineages(current.time)
       num.extant <- length(extant.lineages)
       
-      next
-      
+      next  # go to next iteration
     } 
-    else {
-      # at least coalescent event could occur
-      # retrieve the minimum waiting time of the calculated coalescent event 
-      # waiting times
-      chosen.time <- min(coal.wait.times)
-    }
-  
-    new.time <- chosen.time + current.time
     
+    
+    # get waiting time to next coalescent event and evaluate this time interval
+    wait.time.to.next.coal <- min(coal.wait.times)
+    new.time <- current.time + wait.time.to.next.coal
     
     
     # check to see if the minimum waiting time is not exceeded by other fixed events:
+    skipped.transm.times <- transm.times[which(
+      (transm.times > current.time) && (transm.times <= new.time)
+      )]
     
-    if (length(which(transm.times <= new.time)) > num.transm.occurred) {
-      # if minimum waiting time exceeds a transmission event not previously included in sim
-      # update the current time to the earlier transmission time (coalesc. time) of all newly included transmission events and start again
+    if ( length(skipped.transm.times) > 0 ) {
+      # if minimum waiting time to coalescent exceeds a transmission event not 
+      # previously included in sim, update the current time to the earlier 
+      # transmission time of all newly included transmission events and start again
+      current.time <- min(skipped.transm.times) 
       
-      old.transm <- transm.times[which(transm.times <= current.time)]
-      all.new.transm <- transm.times[which(transm.times <= new.time)]
-      current.time <- min(setdiff( all.new.transm, old.transm )) 
       
       transm.event <- transm.events[which(transm.times == current.time),]
       update.transmission(run, eventlog, inf, transm.event)
@@ -208,7 +215,9 @@ sim.inner.tree <- function(mod, e=NA) {
       # checks have been made, move forward with generating a coalescent event with the new time
       
       # choose a 'bin' from compartment with new.time
-      coal.comp.name <- names(coal.wait.times)[which(coal.wait.times == chosen.time)]   # name of the compartment with the min coal wait time
+      # name of the compartment with the min coal wait time
+      coal.comp.name <- names(coal.wait.times)[which(coal.wait.times == wait.time.to.next.coal)]   
+      
       coal.comp <- inf[[which(names(inf) == coal.comp.name)]]
       
       coal.comp.lineages <- sapply(extant.lineages, function(x){
@@ -228,7 +237,8 @@ sim.inner.tree <- function(mod, e=NA) {
         all.new.transm <- which(transm.times <= new.time)
         current.time <- min(union( all.new.transm, old.transm ))
         
-        transm.event <- transm.events[which(transm.times == new.time),]     # this is new.time instead of current.time (compared to the outermost if statement)
+        # this is new.time instead of current.time (compared to the outermost if statement)
+        transm.event <- transm.events[which(transm.times == new.time),]     
         update.transmission(run, eventlog, inf, transm.event)
         
       }
@@ -258,22 +268,48 @@ sim.inner.tree <- function(mod, e=NA) {
 #' 
 #' @export update.transmission
 update.transmission <- function(run, eventlog, inf, transm.event) {
+
+  recipient <- inf[[ transm.event$compartment1 ]]
+  if (is.null(recipient)) {
+    stop("update.transmission() failed to locate recipient Compartment ",
+         transm.event$compartment2)
+  }
+
+  source <- inf[[ transm.event$compartment2 ]]
+  if (is.null(source)) {
+    stop("update.transmission() failed to locate source Compartment ", 
+         transm.event$compartment1)
+  }
+
+  # coalesce Lineages in 
+  survivor.lineages <- generate.bottleneck(run, eventlog, recipient, transm.event$time)
+  for (lineage in survivor.lineages) {
+    lineage$set.location(source$get.name())  # move Lineage to source Compartment
+  }
+  
+  
   comp.2.bottle <- inf[[which(names(inf) == transm.event$compartment1)]]
   comp.2.receive <- inf[[which(names(inf) == transm.event$compartment2)]]
   
-  # call bottleneck function to mass coalesce lineages in (first) new transmission event newly included
-  survivor.lineages <- generate.bottleneck(run, eventlog, comp.2.bottle, transm.event$time)
+  # call bottleneck function to mass coalesce lineages in (first) new transmission 
+  # event newly included
+  survivor.lineages <- generate.bottleneck(
+    run, eventlog, comp.2.bottle, transm.event$time
+    )
   new.comp.location <- comp.2.receive$get.name()
   
-  # for the survivor lineage(s), the each lineage needs to update its location to the source of the transmission event
+  # for the survivor lineage(s), the each lineage needs to update its location to 
+  # the source of the transmission event
   survivor.names <- sapply(survivor.lineages, function(x) {
     x$set.location(inf, new.comp.location)
     x$get.name()
   })
   survivors <- paste0(survivor.names, collapse=',')
   
-  # need to remove survivor lineages from comp.2.bottle, and add those same survivor lineages to new.comp.location
-  # also need to remove all lineage pairs in the bottlenecking compartment, and update/add all lineage pairs into the receiving compartment
+  # need to remove survivor lineages from comp.2.bottle, and add those same survivor 
+  # lineages to new.comp.location also need to remove all lineage pairs in the 
+  # bottlenecking compartment, and update/add all lineage pairs into the receiving 
+  # compartment
   sapply(survivor.lineages, function(x) {
     comp.2.bottle$remove.lineage(x)
     remove.lineage.pairs(run, x)
@@ -281,7 +317,8 @@ update.transmission <- function(run, eventlog, inf, transm.event) {
     add.lineage.pairs(run, x)
   })
   
-  # the transmission event's `lineage` column can now be updated to included the names of the 'survivors'
+  # the transmission event's `lineage` column can now be updated to included the 
+  # names of the 'survivors'
   eventlog$modify.event(transm.event$time, survivors)
   
 }
@@ -418,8 +455,8 @@ generate.migration <- function(run, eventlog, source, recipient, migrating.linea
 #' @param current.time = double; time of simulation current to this function call
 #' 
 #' @export
-generate.coalescent <- function(run, eventlog, lineages.to.coalesce, coalescing.comp, current.time) {
-
+generate.coalescent <- function(
+  run, eventlog, lineages.to.coalesce, coalescing.comp, current.time) {
   
   names.coal.lineages <- sapply(lineages.to.coalesce, function(x) x$get.name())
   
@@ -457,8 +494,9 @@ generate.coalescent <- function(run, eventlog, lineages.to.coalesce, coalescing.
 
 #' generate.bottleneck
 #' 
-#' function coalesces lineages currently extant in given Compartment to the given Compartment's bottleneck size
-#' bottleneck size of Compartment is user determined by CompartmentType
+#' function coalesces lineages currently extant in given Compartment to the given 
+#' Compartment's bottleneck size bottleneck size of Compartment is user determined 
+#' by CompartmentType
 #'
 #' @param run = R6 Run object
 #' @param eventlog = EventLogger object
@@ -473,7 +511,8 @@ generate.bottleneck <- function(run, eventlog, comp, current.time) {
   
   bottleneck.size <- comp$get.type()$get.bottleneck.size()
   
-  # randomly separate lineages into "bottleneck groups", equal number of groups to the bottleneck size
+  # randomly separate lineages into "bottleneck groups", equal number of groups to 
+  # the bottleneck size
   bottleneck.groups <- suppressWarnings(
     # NOTE: suppressWarnings is used to remove warning message when "data length is not a 
     # multiple of split variable"
@@ -483,7 +522,10 @@ generate.bottleneck <- function(run, eventlog, comp, current.time) {
     # This must mean that there are other unsampled infected lineages that passed through 
     # the bottleneck event, but we aren't keeping track of them
     if (length(comp$get.lineages()) <= bottleneck.size) {
-      split(sample(comp$get.lineages()), 1:length(comp$get.lineages()))   # FIXME: in these instances, ensures that there is NO forced coalescence from the bottleneck event, when in reality, technically could still coalesce at this point in time
+      split(sample(comp$get.lineages()), 1:length(comp$get.lineages()))   
+      # FIXME: in these instances, ensures that there is NO forced coalescence from 
+      # the bottleneck event, when in reality, technically could still coalesce at 
+      # this point in time
     } else {
       split(sample(comp$get.lineages()), 1:bottleneck.size)
     }

@@ -45,15 +45,15 @@ Lineages:
     type: virus
     sampling.time: 0.0
     location: A
-    replicates: 1
+    replicates: 3
   '2': 
     type: virus
     sampling.time: 0.0
     location: B
-    replicates: 1
+    replicates: 3
   '3': 
     type: virus
     sampling.time: 0.0
     location: C
-    replicates: 1
+    replicates: 3
 
