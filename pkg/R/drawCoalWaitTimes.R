@@ -23,7 +23,7 @@ wait.time <- function(k, t1, alpha, beta){
 #' 
 #' Draw waiting times for all compartments that have two or more extant lineages.
 #' 
-#' @param model: object of class 'Model' or 'Run'
+#' @param run: an R6 object of class Run'
 #' @param current.time: current simulation time for inner tree
 #' @return Named numeric vector of waiting times per compartment
 #' 
@@ -33,19 +33,20 @@ wait.time <- function(k, t1, alpha, beta){
 #' path <- system.file('extdata', 'SI.yaml', package='twt')
 #' settings <- yaml.load_file(path)
 #' mod <- MODEL$new(settings)
+#' run <- Run$new(mod)
 #' 
 #' # these should average 0.333
-#' calc.coal.wait.times(mod, 0)
+#' calc.coal.wait.times(run, 0)
 #' 
 #' @export
-calc.coal.wait.times <- function(model, current.time, dynamic=FALSE){
+calc.coal.wait.times <- function(run, current.time, dynamic=FALSE){
   # retrieve all compartments
-  comps <- c(model$get.compartments(), model$get.unsampled.hosts())
+  comps <- c(run$get.compartments(), run$get.unsampled.hosts())
   compnames <- names(comps)
   
   # retrieves compartment names for extant lineages
   ext.lineages.compnames <- sapply(
-    model$get.extant.lineages(current.time),
+    run$get.extant.lineages(current.time),
     function(x) {
       x$get.location()$get.name()
     }

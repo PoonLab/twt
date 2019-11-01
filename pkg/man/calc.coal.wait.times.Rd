@@ -4,10 +4,10 @@
 \alias{calc.coal.wait.times}
 \title{calc.coal.wait.times}
 \usage{
-calc.coal.wait.times(model, current.time, dynamic = FALSE)
+calc.coal.wait.times(run, current.time, dynamic = FALSE)
 }
 \arguments{
-\item{model:}{object of class 'Model' or 'Run'}
+\item{run:}{an R6 object of class Run'}
 
 \item{current.time:}{current simulation time for inner tree}
 }
@@ -23,8 +23,9 @@ Draw waiting times for all compartments that have two or more extant lineages.
 path <- system.file('extdata', 'SI.yaml', package='twt')
 settings <- yaml.load_file(path)
 mod <- MODEL$new(settings)
+run <- Run$new(mod)
 
 # these should average 0.333
-calc.coal.wait.times(mod, 0)
+calc.coal.wait.times(run, 0)
 
 }

@@ -64,14 +64,17 @@ sim.inner.tree <- function(mod, e=NA) {
   
   # check that compartment names in transmission events match model
   transm.names <- unique(c(transm.events$compartment1, transm.events$compartment2))
-  if ( all(!is.element(transm.names, names(inf))) ) {
-    stop("None of compartment names in eventlog match model.")
+  if ( !all(is.element(transm.names, names(inf))) ) {
+    missing <- setdiff(transm.names, names(inf))
+    stop("Mismatch between compartment names in transmission events and Compartment ",
+         "names in Run object: ", missing)
   }
   
   # retrieve migration events **to be resolved** and times
   migration.events <- eventlog$get.migration.events()
   migration.times <- migration.events$time
   
+  # intitialize simulation at time of most recently sampled Lineage
   current.time <- 0.0
   
   # collect extant lineages at time t=0 and store into a vector
@@ -84,34 +87,44 @@ sim.inner.tree <- function(mod, e=NA) {
   
   while (num.extant >= 1) {
     
-    # issue 54, case where there is 1 extant lineage remaining, but final transmission event further back in time still unresolved
+    # issue 54, case where there is 1 extant lineage remaining, but final 
+    # transmission event further back in time still unresolved
     if (num.extant == 1) {
       
       # check if any of the transmission events are still left unresolved
       t_events <- eventlog$get.events('transmission')
-      if (any(is.na(t_events$lineage1))) {
-        final.t.time <- t_events[which(is.na(t_events$lineage1)), 'time']
-        eventlog$modify.event(final.t.time, extant.lineages[[1]]$get.name())
+      unresolved <- is.na(t_events$lineage1)
+      
+      if ( any(unresolved) ) {
+        final.t.time <- t_events[which(unresolved), 'time']
+        last.lineage <- extant.lineages[[1]]$get.name()
+        eventlog$modify.event(final.t.time, last.lineage)
       }
       
       break
     }
     
-    # calculate waiting times for coalescent events for each compartment with 2 or more lineages
+    # calculate waiting times for coalescent events for each compartment 
+    # with 2 or more lineages
     coal.wait.times <- calc.coal.wait.times(run, current.time)
     
-    # record number of transmission events already included in simulation at this current.time
+    # record number of transmission events already included in simulation at 
+    # this current.time
     num.transm.occurred <- length(which(transm.times <= current.time))
     
-    # record number of migration events already included in simulation at this current.time
+    # record number of migration events already included in simulation at this 
+    # current.time
     num.migrations.occurred <- length(which(migration.times <= current.time))
       
     if (length(coal.wait.times) == 0) {
-      # no coalescent events possible at this point in time
-      # move up to the earliest event (transmission or migration) in the 
-      # EventLogger
+      # no coalescent events possible at this point in time (all Compartments carry 
+      # no more than one Lineage)
+      # move up to the next transmission or migration event in the EventLogger
+      
+      # minimum time to next transmission event
       current.time <- min(transm.times[which(transm.times > current.time)])           # min next transmission time event
-      if (is.null(migration.times) == F) {
+      if (!is.null(migration.times)) {
+        # minimum time to next migration event
         migration.time <- min(migration.times[which(migration.times > current.time)])     # min next migration time event
         current.time <- min(c(migration.time, current.time))
       }
@@ -136,6 +149,7 @@ sim.inner.tree <- function(mod, e=NA) {
       
     } 
     else {
+      # at least coalescent event could occur
       # retrieve the minimum waiting time of the calculated coalescent event 
       # waiting times
       chosen.time <- min(coal.wait.times)
