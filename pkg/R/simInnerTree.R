@@ -108,18 +108,15 @@ sim.inner.tree <- function(mod, e=NA) {
       
     if (length(coal.wait.times) == 0) {
       # no coalescent events possible at this point in time
-      # move up to the earliest event (transmission or migration) in the EventLogger
-      
-      option1.time <- min(transm.times[which(transm.times > current.time)])           # min next transmission time event
+      # move up to the earliest event (transmission or migration) in the 
+      # EventLogger
+      current.time <- min(transm.times[which(transm.times > current.time)])           # min next transmission time event
       if (is.null(migration.times) == F) {
-        option2.time <- min(migration.times[which(migration.times > current.time)])     # min next migration time event
-        current.time <- min(c(option1.time, option2.time))
-      } else {
-        current.time <- option1.time
+        migration.time <- min(migration.times[which(migration.times > current.time)])     # min next migration time event
+        current.time <- min(c(migration.time, current.time))
       }
       
       # must resolve transmission event or migration event (issue #53)
-      
       if (current.time %in% transm.times) {
         # transmission event to be resolved
         transm.event <- transm.events[which(transm.times == current.time),]
