@@ -281,46 +281,19 @@ update.transmission <- function(run, eventlog, inf, transm.event) {
          transm.event$compartment1)
   }
 
-  # coalesce Lineages in 
+  # apply bottleneck in recipient
   survivor.lineages <- generate.bottleneck(run, eventlog, recipient, transm.event$time)
+  name.str <- c()
   for (lineage in survivor.lineages) {
-    lineage$set.location(source$get.name())  # move Lineage to source Compartment
+    # move "surviving" Lineages to source Compartment
+    recipient$remove.lineage(lineage)
+    lineage$set.location(inf, source$get.name())
+    source$add.lineage(lineage)
+    
+    name.str <- c(name.str, lineage$get.name())
   }
   
-  
-  comp.2.bottle <- inf[[which(names(inf) == transm.event$compartment1)]]
-  comp.2.receive <- inf[[which(names(inf) == transm.event$compartment2)]]
-  
-  # call bottleneck function to mass coalesce lineages in (first) new transmission 
-  # event newly included
-  survivor.lineages <- generate.bottleneck(
-    run, eventlog, comp.2.bottle, transm.event$time
-    )
-  new.comp.location <- comp.2.receive$get.name()
-  
-  # for the survivor lineage(s), the each lineage needs to update its location to 
-  # the source of the transmission event
-  survivor.names <- sapply(survivor.lineages, function(x) {
-    x$set.location(inf, new.comp.location)
-    x$get.name()
-  })
-  survivors <- paste0(survivor.names, collapse=',')
-  
-  # need to remove survivor lineages from comp.2.bottle, and add those same survivor 
-  # lineages to new.comp.location also need to remove all lineage pairs in the 
-  # bottlenecking compartment, and update/add all lineage pairs into the receiving 
-  # compartment
-  sapply(survivor.lineages, function(x) {
-    comp.2.bottle$remove.lineage(x)
-    remove.lineage.pairs(run, x)
-    comp.2.receive$add.lineage(x)
-    add.lineage.pairs(run, x)
-  })
-  
-  # the transmission event's `lineage` column can now be updated to included the 
-  # names of the 'survivors'
-  eventlog$modify.event(transm.event$time, survivors)
-  
+  eventlog$modify.event(transm.event$time, paste0(name.str, collapse=','))
 }
 
 

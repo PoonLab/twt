@@ -36,6 +36,7 @@ Run <- R6Class(
       })
       private$lineages <- lapply(model$get.lineages(), function(line) {
         line$clone()
+        # FIXME: repair links to Compartments?
       })
       
       private$fixed.samplings <- model$get.fixed.samplings()
