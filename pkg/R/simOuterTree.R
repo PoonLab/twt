@@ -112,20 +112,28 @@ init.branching.events <- function(model, eventlog=NA) {
     
     if (is.numeric(branching.time)) {
       
-      if (is.R6(comp$get.source())) {
+      if ( is.element('R6', class(comp$get.source())) ) {
         source <- comp$get.source()$get.name()
-        # find all lineages that are located in this compartment
-        my.lines <- which(locations == comp$get.name())
-        
-        lineage <- lineages[[ my.lines ]]$get.name()
-      } else {
+      } 
+      else {
+        # FIXME: why is this necessary?
         source <- comp$get.source()
-        lineage <- NA
       }
       
       # add transmission event to EventLogger object
-      eventlog$add.event('transmission',  branching.time, lineage, NA, 
+      eventlog$add.event('transmission',  branching.time, NA, NA, 
                          comp$get.name(), source)
+    }
+    else {
+      
+      if (branching.time == 'NA' && comp$get.source() == 'NA') {
+        # the index case will have no branching time specified
+      } 
+      else {
+        stop ("Error in init.branching.events(): cannot parse Compartment ",
+              "with branching.time ", branching.time, 
+              " and source ", comp$get.source())
+      }
     }
     
   })

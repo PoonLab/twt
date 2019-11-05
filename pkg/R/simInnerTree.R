@@ -422,16 +422,26 @@ generate.migration <- function(run, eventlog, source, recipient, migrating.linea
 #' Compartment into an ancestral lineage
 #'
 #' @param run = R6 Run object
-#' @param eventlog = EventLogger object
 #' @param lineages.to.coalesce = vector of Lineage objects of length 2
 #' @param coalescing.comp = Compartment object
 #' @param current.time = double; time of simulation current to this function call
 #' 
 #' @export
-generate.coalescent <- function(
-  run, eventlog, lineages.to.coalesce, coalescing.comp, current.time) {
+generate.coalescent <- function(run, lineages, current.time) {
+  if (length(lineages) != 2) {
+    stop("Error in generate.coalescent: lineages should be a vector of length 2.")
+  }
+  line1 <- lineages[1]
+  line2 <- lineages[2]
   
-  names.coal.lineages <- sapply(lineages.to.coalesce, function(x) x$get.name())
+  comp <- line1$get.location()
+  if (comp != line2$get.location()) {
+    stop("Error in generate.coalescent: lineages must be in the same Compartment.")
+  }
+  
+  names(lineages) <- sapply(lineages, function(x) x$get.name())
+  
+  eventlog <- run$get.eventlog()
   
   # create a new ancestral lineage 
   ancestral.lineage <- Lineage$new(
@@ -474,18 +484,48 @@ generate.coalescent <- function(
 #' @param run = R6 Run object
 #' @param eventlog = EventLogger object
 #' @param comp = Compartment object
-#' @param current.time = double; time of simulation current to this function call
 #' 
 #' @return  lineages that 'survive' the bottleneck on towards source of transmission 
 #' in coalescent time
 #' 
 #' @export
-generate.bottleneck <- function(run, eventlog, comp, current.time) {
+generate.bottleneck <- function(run, comp) {
+  eventlog <- run$get.eventlog()
+  if (!is.environment(eventlog)) {
+    stop("Error in generate.bottleneck: EventLogger of Run not initialized.")
+  }
+  
+  current.time <- comp$get.branching.time()
+  if (!is.numeric(current.time)) {
+    stop("Error in generate.bottleneck: Compartment ", comp$get.name(), 
+         " has no assigned branching time.")
+  }
   
   bottleneck.size <- comp$get.type()$get.bottleneck.size()
+  if (!is.numeric(bottleneck.size)) {
+    stop("Error in generate.bottleneck: Compartment ", comp$get.name(),
+         " has no bottleneck size specified.")
+  }
   
   # randomly separate lineages into "bottleneck groups", equal number of groups to 
-  # the bottleneck size
+  # the bottleneck size  
+  lineages <- comp$get.lineages()
+  if (length(lineages) == 0) {
+    stop("Error in generate.bottleneck: Compartment ", comp$get.name(),
+         " has no Lineages to bottleneck!")
+  }
+  
+  
+  while (length(lineages) > bottleneck.size) {
+    pair <- sample(1:length(lineages), 2, replace=FALSE)
+    lineage1 <- lineages[[pair[1]]]
+    lineage2 <- lineages[[pair[2]]]
+    
+
+    
+  }
+  
+  
   bottleneck.groups <- suppressWarnings(
     # NOTE: suppressWarnings is used to remove warning message when "data length is not a 
     # multiple of split variable"
@@ -494,8 +534,10 @@ generate.bottleneck <- function(run, eventlog, comp, current.time) {
     # size, but what if there are not enough lineages?
     # This must mean that there are other unsampled infected lineages that passed through 
     # the bottleneck event, but we aren't keeping track of them
-    if (length(comp$get.lineages()) <= bottleneck.size) {
-      split(sample(comp$get.lineages()), 1:length(comp$get.lineages()))   
+    
+    if (length(lineages) <= bottleneck.size) {
+      # fewer Lineages than bottleneck - 
+      split( sample(lineages, 1:length(lineages)) )   
       # FIXME: in these instances, ensures that there is NO forced coalescence from 
       # the bottleneck event, when in reality, technically could still coalesce at 
       # this point in time

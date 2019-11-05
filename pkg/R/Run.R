@@ -30,14 +30,24 @@ Run <- R6Class(
       private$initial.conds <- model$get.initial.conds()
       private$types <- model$get.types()
       
+      
       # deep copy of Compartments and Lineages
       private$compartments <- lapply(model$get.compartments(), function(comp) {
-        comp$clone()
+        comp$clone(deep=TRUE)
       })
-      private$lineages <- lapply(model$get.lineages(), function(line) {
-        line$clone()
-        # FIXME: repair links to Compartments?
-      })
+      
+      for (comp in private$compartments) {
+        lineages <- comp$get.lineages()
+        for (lineage in lineages) {
+          lclone <- lineage$clone()
+          comp$remove.lineage(lineage)
+          comp$add.lineage(lclone)
+        }
+      }
+      private$lineages <- unlist(
+        lapply(private$compartments, function(x) x$get.lineages())
+        )
+      
       
       private$fixed.samplings <- model$get.fixed.samplings()
       

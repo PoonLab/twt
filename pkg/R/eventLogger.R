@@ -62,12 +62,14 @@ EventLogger <- R6Class("EventLogger",
       # in a transmission/migration/coalescent event
       
       if (is.element(type, c('transmission', 'migration'))) {
-        e <- list(event.type=type, time=time, lineage1=line1, lineage2=NA,
+        e <- list(event.type=type, time=time, lineage1=NA, lineage2=NA,
                   compartment1=comp1, compartment2=comp2)
-      } else if (is.element(type, c('coalescent', 'bottleneck'))) {
+      } 
+      else if (is.element(type, c('coalescent', 'bottleneck'))) {
         e <- list(event.type=type, time=time, lineage1=line1, lineage2=line2,
                   compartment1=comp1, compartment2=NA)
-      } else {
+      } 
+      else {
         stop("Error, unrecognized type argument in add.event()")
       }
       
@@ -92,6 +94,9 @@ EventLogger <- R6Class("EventLogger",
       # when inner tree simulation has reached a transmission event, 
       # need to fill in the lineage column w/ the lineages that are present 
       # at transmission time
+      #
+      # @param transmission.time:  time of event
+      # @param lineages:  
       
       # in the case of bottleneck events, will have same time so have to isolate 
       # transmission event times

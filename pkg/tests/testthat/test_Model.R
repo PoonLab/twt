@@ -8,7 +8,7 @@ library(twt)
 # a system of 2 compartments, 3 sampled lineages each
 settings <- yaml.load_file('test.yaml')
 m <- Model$new(settings)
-r <- Run$new(m)
+
 
 test_that("Model loads initial conditions", {
   result <- m$get.initial.conds()
@@ -70,18 +70,4 @@ test_that("Model parse population growth dynamics", {
 })
 
 
-
-
-test_that("Run extracts pairs of lineages", {
-  result <- r$get.pairs()
-  
-  # there are only one pair per host because the third lineage is not yet extant
-  # at time 0 (sampling times = 0.2)
-  expected <- list(
-    'I_1__I_2,I_1__I_3'='I_1',
-    'I_2__I_2,I_2__I_3'='I_2'
-    )
-  
-  expect_equal(result, expected)
-})
 

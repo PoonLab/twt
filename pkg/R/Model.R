@@ -272,6 +272,7 @@ Model <- R6Class("Model",
         stop("'Lineages' is a required field in settings.")
       }
       
+      # return object will be concatenated vector of Lineage objects
       unlist(sapply(names(settings$Lineages), function(label) {
         if (grepl("_", label)) {
           stop("Error: underscore characters are reserved, please modify Lineage name",

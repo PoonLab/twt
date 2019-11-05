@@ -292,6 +292,7 @@ Lineage <- R6Class("Lineage",
       private$location
     },
     
+    # FIXME: I'd rather use the actual Compartment object as a single argument
     set.location = function(locationList, new.locationName) {
       new.locationObj <- locationList[[ 
         which(sapply(locationList, function(x) {x$get.name()}) == new.locationName) 

@@ -1,5 +1,5 @@
 require(twt)
-#setwd('~/git/treeswithintrees')
+setwd('~/git/twt/pkg/tests/testthat/')
 #source('pkg/R/simOuterTree.R')
 
 file1 <- yaml.load_file('example2.yaml')
@@ -27,13 +27,13 @@ test_that("build eventlog from tree string", {
 test_that("build eventlog from YAML", {
   settings <- yaml.load_file('example1.yaml')
   m <- Model$new(settings)
-  e <- init.branching.events(m)
-  result <- e$get.all.events()
+  run <- init.branching.events(m)
+  result <- run$get.eventlog()$get.all.events()
   
   expected <- data.frame(
     event.type=rep('transmission', 2),
     time=c(3.0, 1.0),
-    lineage1=c('B_1__2_1', 'C_1__3_1'),
+    lineage1=rep(NA, 2),
     lineage2=rep(NA, 2),
     compartment1=c('B_1', 'C_1'),  # recipient (reverse time)
     compartment2=c('A_1', 'B_1'),  # source
@@ -48,7 +48,8 @@ test_that("simulate outer tree", {
   # SI model with 10 sampled hosts
   settings <- yaml.load_file('example2.yaml')
   m <- Model$new(settings)
-  e <- sim.outer.tree(m)
+  r <- sim.outer.tree(m)
+  e <- r$get.eventlog()
   result <- e$get.all.events()
   
   # TODO: transmission events should define a DAG
