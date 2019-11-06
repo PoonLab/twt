@@ -18,7 +18,7 @@ test_that('get.all.events returns correct df', {
   expected <- data.frame(
     event.type=rep('transmission', 5),
     time=c(1, 2, 3, 4, 6),
-    lineage1=rep('NA', 5),
+    lineage1=rep(NA, 5),
     lineage2=rep(NA, 5),
     compartment1=c('I_97', 'I_94', 'I_20', 'I_95', 'I_73'),
     compartment2=c('I_20', 'I_20', 'I_73', 'I_63', 'I_95'),

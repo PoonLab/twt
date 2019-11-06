@@ -282,7 +282,7 @@ update.transmission <- function(run, eventlog, inf, transm.event) {
   }
 
   # apply bottleneck in recipient
-  survivor.lineages <- generate.bottleneck(run, eventlog, recipient, transm.event$time)
+  survivor.lineages <- generate.bottleneck(run, recipient)
   name.str <- c()
   for (lineage in survivor.lineages) {
     # move "surviving" Lineages to source Compartment
@@ -421,57 +421,58 @@ generate.migration <- function(run, eventlog, source, recipient, migrating.linea
 #' function records the coalescent of 2 given lineages currently extant in given 
 #' Compartment into an ancestral lineage
 #'
-#' @param run = R6 Run object
-#' @param lineages.to.coalesce = vector of Lineage objects of length 2
-#' @param coalescing.comp = Compartment object
-#' @param current.time = double; time of simulation current to this function call
+#' @param run:  R6 Run object
+#' @param line1:  Lineage object
+#' @param line2:  Lineage object
+#' @param comp:  Compartment object
+#' @param current.time:  double; time of simulation current to this function call
+#' 
+#' @return R6 Compartment object updated by coalescent event
 #' 
 #' @export
-generate.coalescent <- function(run, lineages, current.time) {
-  if (length(lineages) != 2) {
-    stop("Error in generate.coalescent: lineages should be a vector of length 2.")
-  }
-  line1 <- lineages[1]
-  line2 <- lineages[2]
-  
+generate.coalescent <- function(run, line1, line2, current.time, is.bottleneck=FALSE) {
   comp <- line1$get.location()
-  if (comp != line2$get.location()) {
+  if (comp$get.name() != line2$get.location()$get.name()) {
     stop("Error in generate.coalescent: lineages must be in the same Compartment.")
   }
-  
-  names(lineages) <- sapply(lineages, function(x) x$get.name())
-  
-  eventlog <- run$get.eventlog()
   
   # create a new ancestral lineage 
   ancestral.lineage <- Lineage$new(
     name = run$get.node.ident(),  # label internal nodes from 1..inf by convention
     sampling.time = current.time,
-    location = coalescing.comp
+    location = comp
     )
   
   # remove lineages undergoing coalescence
-  run$remove.lineage(lineages.to.coalesce[[1]])
-  run$remove.lineage(lineages.to.coalesce[[2]])
-  coalescing.comp$remove.lineage(lineages.to.coalesce[[1]])
-  coalescing.comp$remove.lineage(lineages.to.coalesce[[2]])
+  run$remove.lineage(line1)
+  run$remove.lineage(line2)
+  comp$remove.lineage(line1)
+  comp$remove.lineage(line2)
   
   # add ancestral lineage resulting from coalescence
   run$add.lineage(ancestral.lineage)
-  coalescing.comp$add.lineage(ancestral.lineage)
-  run$update.node.ident()
+  comp$add.lineage(ancestral.lineage)
   
   # remove pairs containing coalesced lineages from list of pair choices
-  remove.lineage.pairs(run, lineages.to.coalesce[[1]])
-  remove.lineage.pairs(run, lineages.to.coalesce[[2]])
+  . <- remove.lineage.pairs(run, line1)
+  . <- remove.lineage.pairs(run, line2)
   
   # add pairs with new ancestral lineage into list of pair choices
-  add.lineage.pairs(run, ancestral.lineage)
+  . <- add.lineage.pairs(run, ancestral.lineage)
   
-  eventlog$add.event('coalescent', current.time, names.coal.lineages[1], 
-                     names.coal.lineages[2], ancestral.lineage$get.name(), 
-                     coalescing.comp$get.name())
   
+  # update event log
+  eventlog <- run$get.eventlog()
+  
+  eventlog$add.event(type = ifelse(is.bottleneck, 'bottleneck', 'coalescent'), 
+                     time = current.time, line1 = line1$get.name(), 
+                     line2 = ancestral.lineage$get.name(), comp1 = comp$get.name())
+  
+  eventlog$add.event(type = ifelse(is.bottleneck, 'bottleneck', 'coalescent'), 
+                     time = current.time, line1 = line2$get.name(), 
+                     line2 = ancestral.lineage$get.name(), comp1 = comp$get.name())
+  
+  return(comp)
 }
 
 
@@ -482,7 +483,6 @@ generate.coalescent <- function(run, lineages, current.time) {
 #' by CompartmentType
 #'
 #' @param run = R6 Run object
-#' @param eventlog = EventLogger object
 #' @param comp = Compartment object
 #' 
 #' @return  lineages that 'survive' the bottleneck on towards source of transmission 
@@ -517,74 +517,18 @@ generate.bottleneck <- function(run, comp) {
   
   
   while (length(lineages) > bottleneck.size) {
-    pair <- sample(1:length(lineages), 2, replace=FALSE)
-    lineage1 <- lineages[[pair[1]]]
-    lineage2 <- lineages[[pair[2]]]
+    pair <- sample(lineages, 2, replace=FALSE)
+    comp <- generate.coalescent(run, pair[[1]], pair[[2]], current.time, is.bottleneck=TRUE)
     
-
-    
+    # update lineages
+    lineages <- comp$get.lineages()
   }
   
-  
-  bottleneck.groups <- suppressWarnings(
-    # NOTE: suppressWarnings is used to remove warning message when "data length is not a 
-    # multiple of split variable"
-    # (or in this function call's terms, the bottleneck size is not a multiple of the 
-    # number of lineages to randomly split) can be split up to a max of the bottleneck 
-    # size, but what if there are not enough lineages?
-    # This must mean that there are other unsampled infected lineages that passed through 
-    # the bottleneck event, but we aren't keeping track of them
-    
-    if (length(lineages) <= bottleneck.size) {
-      # fewer Lineages than bottleneck - 
-      split( sample(lineages, 1:length(lineages)) )   
-      # FIXME: in these instances, ensures that there is NO forced coalescence from 
-      # the bottleneck event, when in reality, technically could still coalesce at 
-      # this point in time
-    } else {
-      split(sample(comp$get.lineages()), 1:bottleneck.size)
-    }
-  )
-  
-  # for each of the bottleneck groups, generate a bottleneck event leading back to a 
-  # unique ancestral lineage
-  for (lineage.group in bottleneck.groups) {
-    
-    bottleneck.lineages <- paste0(sapply(lineage.group, function(x) {x$get.name()}), 
-                                  collapse=',')
-    
-    sapply(lineage.group, function(x) {
-      # remove lineages undergoing bottleneck
-      run$remove.lineage(x)
-      comp$remove.lineage(x)
-      # remove pairs containing bottleneck lineages from list of pair choices
-      remove.lineage.pairs(run, x)
-    })
-    
-    # create a new ancestral lineage 
-    # label internal nodes iteratively from 1 --> inf by convention
-    ancestral.lineage <- Lineage$new(name = run$get.node.ident(),
-                                     sampling.time = current.time,
-                                     location = comp)
-    
-    # add ancestral lineage resulting from bottleneck
-    run$add.lineage(ancestral.lineage)
-    comp$add.lineage(ancestral.lineage)
-    run$update.node.ident()
-    
-    # add pairs with new ancestral lineage into list of pair choices (unnecessary for 
-    # bottleneck.size of 1)
-    add.lineage.pairs(run, ancestral.lineage)
-    
-    # record the bottleneck event
-    eventlog$add.event('bottleneck', current.time, bottleneck.lineages, NA, 
-                       ancestral.lineage$get.name(), comp$get.name())
-    
+  if (length(lineages) != bottleneck.size) {
+    stop("Error in generate.bottleneck: @artpoon can't write while loops.")
   }
- 
-  # return lineage(s) that 'survive' the bottleneck (coalescent time) onwards to source 
-  # of transmission 
-  comp$get.lineages()
+  
+  return(lineages)
 }
 
 
@@ -613,8 +557,7 @@ remove.lineage.pairs <- function(run, lineage) {
     }))
     
     # narrow down to only ones with given lineage in the name
-    sapply(comp.lineage.pairs, function(y) {
-      # split each pair of names and look for the lineage name
+    . <- sapply(comp.lineage.pairs, function(y) {
       split.names <- unlist(strsplit(y, '\\,'))
       if (lineage$get.name() %in% split.names) {
         # remove this pair of names from list attr `choices`

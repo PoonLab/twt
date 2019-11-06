@@ -4,19 +4,19 @@
 \alias{generate.coalescent}
 \title{generate.coalescent}
 \usage{
-generate.coalescent(run, eventlog, lineages.to.coalesce, coalescing.comp,
-  current.time)
+generate.coalescent(run, line1, line2, current.time,
+  is.bottleneck = FALSE)
 }
 \arguments{
-\item{run}{= R6 Run object}
+\item{run:}{R6 Run object}
 
-\item{eventlog}{= EventLogger object}
+\item{line1:}{Lineage object}
 
-\item{lineages.to.coalesce}{= vector of Lineage objects of length 2}
+\item{line2:}{Lineage object}
 
-\item{coalescing.comp}{= Compartment object}
+\item{comp:}{Compartment object}
 
-\item{current.time}{= double; time of simulation current to this function call}
+\item{current.time:}{double; time of simulation current to this function call}
 }
 \description{
 function records the coalescent of 2 given lineages currently extant in given 

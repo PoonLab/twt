@@ -39,7 +39,7 @@ Run <- R6Class(
       for (comp in private$compartments) {
         lineages <- comp$get.lineages()
         for (lineage in lineages) {
-          lclone <- lineage$clone()
+          lclone <- lineage$clone(deep=TRUE)
           comp$remove.lineage(lineage)
           comp$add.lineage(lclone)
         }
@@ -75,7 +75,10 @@ Run <- R6Class(
     get.unsampled.hosts = function() { private$unsampled.hosts },
     
     get.extant.lineages = function(time) {
-      # returns lineages extant at a given time
+      # Retrieves a list of Lineage objects that are extant at the 
+      # specified time.
+      # Caches the result in member variable 'extant.lineages'
+      # 
       # @param time = coalescent (cumulative time) of the simulation
       private$extant.lineages <- private$retrieve.extant.lineages(time)
       private$extant.lineages
@@ -111,36 +114,45 @@ Run <- R6Class(
       # the list of `choices`
       # A. when a coalescence occurs
       # B. when Lineages reach a transmission bottleneck, forcing coalescence
-      # @param L1, L2 = Lineage objects
+      # 
+      # @param L1, L2 = <character> names of Lineage objects
+      
+      if (!is.character(L1) || !is.character(L2)) {
+        stop("Error in remove.pair(): arguments must be character values.")
+      }
       pair <- sort(c(L1, L2))
       private$choices[[paste(pair[1], pair[2], sep=',')]] <- NULL
     }, 
     
-    add.lineage = function(ancestral.lineage) {
-      # at a coalescent event, an ancestral lineage must be created
-      private$lineages[[length(private$lineages)+1]] <- ancestral.lineage
+    add.lineage = function(lineage) {
+      # @param lineage: an R6 object of class Lineage
+      if ( !is.element('Lineage', class(lineage)) ) {
+        stop("Error in add.lineage(): <lineage> must be R6 class Lineage object.")
+      }
+      private$lineages[[length(private$lineages)+1]] <- lineage
     },
     
     remove.lineage = function(lineage) {
-      # at a coalescent event, lineages that coalesce must be removed
-      lin.indices <- which(sapply(
-        private$lineages, 
-        function(x) { x$get.name() == lineage$get.name() }
-        ))
-      private$lineages <- private$lineages[-lin.indices]
+      if ( !is.element('Lineage', class(lineage)) ) {
+        stop("Error in remove.lineage: argument 'lineage' must be R6 class Lineage.")
+      }
+      temp <- sapply(private$lineages, function(x) x$get.name())
+      target <- lineage$get.name()
+      if (!is.element(target, temp)) {
+        stop("Error in remove.lineage(): ", target, " not in Run lineages:\n",
+             paste(temp, collapse=','))
+      }
+      
+      private$lineages <- private$lineages[-which(temp==target)]
     },
     
     
     get.node.ident = function() {
       # returns unique identity for internal nodes (inner tree sim, ancestral lineages)
-      private$node.ident
-    },
-    
-    update.node.ident = function() {
-      # generates new unique identity for next `$get.node.ident()` call 
-      # (inner tree sim, internal ancestral lineages)
+      result <- paste("Node", private$node.ident, sep='')
       private$node.ident <- private$node.ident + 1
-    }, 
+      return(result)
+    },
     
     
     generate.unsampled = function(num.unsampled, t) {
@@ -191,9 +203,10 @@ Run <- R6Class(
     
     
     init.locations = function() {
-      # helper function for private$init.pairs()
-      # collect host locations of all extant pathogen lineages into dict 
-      # of host1: [path1, path2, path3, ...]
+      # Helper function for private$init.pairs()
+      # collect host locations of all extant lineages into a list 
+      # of host1: [line1, line2, line3, ...]
+      
       private$locations <- list()      # reset list
       for (node in private$extant.lineages) {
         compName <- node$get.location()$get.name()
@@ -207,7 +220,10 @@ Run <- R6Class(
     
     
     init.pairs = function() {
-      # extract all pairs of pathogen lineages that may coalesce
+      # Extract all pairs of extant lineages that may coalesce
+      # 
+      # @return:  list keyed by Lineage name tuples that are associated
+      # to host names.
       
       # reset container
       private$choices <- list()

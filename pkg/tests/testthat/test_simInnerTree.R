@@ -13,17 +13,58 @@ model <- Model$new(settings)
 # ______________________
 #        3   2   1   0  time
 
-test_that("generate coalescent") {
-  run <- init.branching.events(model)
-  
-}
 
-test_that("generate bottleneck") {
+
+test_that("generate coalescent", {
+  run <- init.branching.events(model)
+  comp <- run$get.compartments()[[1]]
+  lineages <- comp$get.lineages()
+  line1 <- lineages[[1]]
+  line2 <- lineages[[2]]
+  
+  generate.coalescent(run, line1, line2, 0.5)
+  
+  result <- run$get.lineages()
+  expect_equal(8, length(result))
+  expect_equal(9, length(model$get.lineages()))  # confirm deep copy
+  
+  result <- run$get.eventlog()$get.events('coalescent')
+  rownames(result) <- NULL  # ignore row names
+  
+  expected <- data.frame(
+    event.type=rep('coalescent', 2),
+    time=rep(0.5, 2),
+    lineage1=c(line1$get.name(), line2$get.name()),
+    lineage2=rep('Node1', 2),
+    compartment1=rep(comp$get.name(), 2),
+    compartment2=rep(NA, 2),
+    stringsAsFactors = FALSE
+  )
+  expected$compartment2 <- as.character(expected$compartment2)
+  
+  expect_equal(expected, result)
+  
+  # is Run a deep copy of Model?
+  comp <- model$get.compartments()[[1]]
+  model.lineages <- comp$get.lineages()
+  expect_equal(3, length(model.lineages))
+    
+  run2 <- init.branching.events(model)
+  comp <- run$get.compartments()[[1]]
+  run2.lineages <- comp$get.lineages()
+  expect_equal(3, length(run2.lineages))
+})
+
+
+test_that("generate bottleneck", {
   run <- init.branching.events(model)
   comp <- run$get.compartments()[[3]]
+  expect_equal(1, comp$get.type()$get.bottleneck.size())
   
   result <- generate.bottleneck(run, comp)
-}
+  expect_equal(1, length(result))
+})
+
 
 test_that("update transmission", {
   run <- init.branching.events(model)
@@ -31,7 +72,7 @@ test_that("update transmission", {
   eventlog <- run$get.eventlog()
   
   transm.events <- eventlog$get.events('transmission')
-  event <- transm.events[which.min(transm.events$time),]
+  event <- transm.events[which.min(transm.events$time), ]
   
   update.transmission(run, eventlog, inf, event)
   

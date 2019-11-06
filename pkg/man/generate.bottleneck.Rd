@@ -4,22 +4,19 @@
 \alias{generate.bottleneck}
 \title{generate.bottleneck}
 \usage{
-generate.bottleneck(run, eventlog, comp, current.time)
+generate.bottleneck(run, comp)
 }
 \arguments{
 \item{run}{= R6 Run object}
 
-\item{eventlog}{= EventLogger object}
-
 \item{comp}{= Compartment object}
-
-\item{current.time}{= double; time of simulation current to this function call}
 }
 \value{
 lineages that 'survive' the bottleneck on towards source of transmission 
 in coalescent time
 }
 \description{
-function coalesces lineages currently extant in given Compartment to the given Compartment's bottleneck size
-bottleneck size of Compartment is user determined by CompartmentType
+function coalesces lineages currently extant in given Compartment to the given 
+Compartment's bottleneck size bottleneck size of Compartment is user determined 
+by CompartmentType
 }

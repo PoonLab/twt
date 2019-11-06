@@ -42,6 +42,7 @@ test_that("Run is deep copy of Model lineages", {
 })
 
 
+
 test_that("Run extracts pairs of lineages", {
   result <- r$get.pairs()
   
