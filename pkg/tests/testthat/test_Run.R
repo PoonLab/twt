@@ -8,6 +8,7 @@ settings <- yaml.load_file('test.yaml')
 m <- Model$new(settings)
 r <- Run$new(m)
 
+
 test_that("Run is deep copy of Model compartments", {
   m.comps <- m$get.compartments()
   r.comps <- r$get.compartments()
@@ -33,7 +34,7 @@ test_that("Run is deep copy of Model lineages", {
   
   # move one Lineage from I_1 to I_2
   r.l1 <- r.lines[[1]]
-  r.l1$set.location(r$get.compartments(), "I_2")
+  r.l1$set.location.by.name(r$get.compartments(), "I_2")
   expect_equal(r.l1$get.location()$get.name(), "I_2")
   
   # this should be unchanged

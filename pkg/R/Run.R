@@ -33,17 +33,9 @@ Run <- R6Class(
       
       # deep copy of Compartments and Lineages
       private$compartments <- lapply(model$get.compartments(), function(comp) {
-        comp$clone(deep=TRUE)
+        comp$copy(deep=TRUE)
       })
       
-      for (comp in private$compartments) {
-        lineages <- comp$get.lineages()
-        for (lineage in lineages) {
-          lclone <- lineage$clone(deep=TRUE)
-          comp$remove.lineage(lineage)
-          comp$add.lineage(lclone)
-        }
-      }
       private$lineages <- unlist(
         lapply(private$compartments, function(x) x$get.lineages())
         )
@@ -210,6 +202,7 @@ Run <- R6Class(
       private$locations <- list()      # reset list
       for (node in private$extant.lineages) {
         compName <- node$get.location()$get.name()
+        
         if (compName %in% names(private$locations) == F) {
           private$locations[[compName]] <- list()
         }

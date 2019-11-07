@@ -262,13 +262,13 @@ sim.inner.tree <- function(mod, e=NA) {
 #' between compartments and updates the eventlog.
 #'
 #' @param run: Run object
-#' @param eventlog: EventLogger object
 #' @param inf: list of sampled and unsampled infected compartments of type Compartment
 #' @param transm.event: list of information specific to the transmission event being resolved
 #' 
 #' @export update.transmission
-update.transmission <- function(run, eventlog, inf, transm.event) {
+update.transmission <- function(run, inf, transm.event) {
 
+  # retrieve Compartment objects
   recipient <- inf[[ transm.event$compartment1 ]]
   if (is.null(recipient)) {
     stop("update.transmission() failed to locate recipient Compartment ",
@@ -287,12 +287,13 @@ update.transmission <- function(run, eventlog, inf, transm.event) {
   for (lineage in survivor.lineages) {
     # move "surviving" Lineages to source Compartment
     recipient$remove.lineage(lineage)
-    lineage$set.location(inf, source$get.name())
+    lineage$set.location(source)
     source$add.lineage(lineage)
     
     name.str <- c(name.str, lineage$get.name())
   }
   
+  eventlog <- run$get.eventlog()
   eventlog$modify.event(transm.event$time, paste0(name.str, collapse=','))
 }
 
@@ -404,10 +405,7 @@ generate.migration <- function(run, eventlog, source, recipient, migrating.linea
   remove.lineage.pairs(run, migrating.lineage)
 
   # set location of migrating lineage to source compartment
-  migrating.lineage$set.location(
-    c(run$get.compartments(), run$get.unsampled.hosts()), 
-    source$get.name()
-    )
+  migrating.lineage$set.location(source)
 
   # add migration event to EventLogger
   eventlog$add.event('migration', migration.time, l_name, NA, 
@@ -490,10 +488,6 @@ generate.coalescent <- function(run, line1, line2, current.time, is.bottleneck=F
 #' 
 #' @export
 generate.bottleneck <- function(run, comp) {
-  eventlog <- run$get.eventlog()
-  if (!is.environment(eventlog)) {
-    stop("Error in generate.bottleneck: EventLogger of Run not initialized.")
-  }
   
   current.time <- comp$get.branching.time()
   if (!is.numeric(current.time)) {

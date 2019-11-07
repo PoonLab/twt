@@ -170,13 +170,26 @@ CompartmentType  <- R6Class("CompartmentType",
 #' @export 
 Compartment <- R6Class("Compartment",
   public = list(
-    initialize = function(name=NA, type=NA, source=NA, branching.time=NA, unsampled=FALSE, lineages=list()) {
+    initialize = function(name=NA, type=NA, source=NA, branching.time=NA, 
+                          unsampled=FALSE, lineages=list()) {
       private$name <- name
       private$type <- type
       private$source <- source
       private$branching.time <- branching.time
       private$unsampled <- unsampled                   # attr req later when identifying new US Comps to be promoted in mig events
       private$lineages <- lineages
+    },
+    
+    copy = function(deep=FALSE) {
+      # see https://github.com/r-lib/R6/issues/110
+      cloned <- self$clone(deep)  # calls deep_clone method
+      if (deep) {
+        # attach new Lineages to new Compartment
+        for (lineage in cloned$get.lineages()) {
+          lineage$set.location(cloned)
+        }
+      }
+      cloned  # return
     },
     
     # accessor functions
@@ -235,7 +248,17 @@ Compartment <- R6Class("Compartment",
     source = NULL,
     branching.time = NULL,
     unsampled = NULL,
-    lineages = NULL
+    lineages = NULL,
+    
+    deep_clone = function(name, value) {
+      if (name == 'lineages') {
+        # map deep clone to Lineage copy() method
+        lapply(value, function(lineage) lineage$copy(deep=TRUE))
+      } 
+      else {
+        value
+      }
+    }
   )
 )
 
@@ -279,11 +302,29 @@ Lineage <- R6Class("Lineage",
       private$location <- location
     },
     
+    parent = NULL,
+    
+    copy = function(deep=FALSE) {
+      # see https://github.com/r-lib/R6/issues/110
+      if (deep) {
+        parent <- private$location
+        private$location <- NULL  # temporarily erase before cloning!
+      }
+      
+      cloned <- self$clone(deep)
+      
+      if (deep) {
+        private$location <- parent  # restore original reference
+      }
+      
+      cloned
+    },
+    
     get.name = function() {
       private$name
     },
     
-    get.type = function() {                                     # in the future, will be a pointer to a LineageType object
+    get.type = function() {  # in the future, will be a pointer to a LineageType object
       private$type
     },
     
@@ -295,8 +336,11 @@ Lineage <- R6Class("Lineage",
       private$location
     },
     
-    # FIXME: I'd rather use the actual Compartment object as a single argument
-    set.location = function(locationList, new.locationName) {
+    set.location = function(comp) {
+      private$location <- comp
+    },
+    
+    set.location.by.name = function(locationList, new.locationName) {
       new.locationObj <- locationList[[ 
         which(sapply(locationList, function(x) {x$get.name()}) == new.locationName) 
         ]]

@@ -4,12 +4,10 @@
 \alias{update.transmission}
 \title{update.transmission}
 \usage{
-\method{update}{transmission}(run, eventlog, inf, transm.event)
+\method{update}{transmission}(run, inf, transm.event)
 }
 \arguments{
 \item{run:}{Run object}
-
-\item{eventlog:}{EventLogger object}
 
 \item{inf:}{list of sampled and unsampled infected compartments of type Compartment}
 

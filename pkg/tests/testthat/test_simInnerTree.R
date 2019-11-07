@@ -17,6 +17,8 @@ model <- Model$new(settings)
 
 test_that("generate coalescent", {
   run <- init.branching.events(model)
+  
+  # cause the first two Lineages in Compartment 1 to coalesce
   comp <- run$get.compartments()[[1]]
   lineages <- comp$get.lineages()
   line1 <- lineages[[1]]
@@ -47,10 +49,12 @@ test_that("generate coalescent", {
   # is Run a deep copy of Model?
   comp <- model$get.compartments()[[1]]
   model.lineages <- comp$get.lineages()
-  expect_equal(3, length(model.lineages))
+  expect_equal(3, length(model.lineages))  # should be unchanged
     
+  # if we re-initialize a Run from the same Model, these
+  # lineages should be unchanged
   run2 <- init.branching.events(model)
-  comp <- run$get.compartments()[[1]]
+  comp <- run2$get.compartments()[[1]]
   run2.lineages <- comp$get.lineages()
   expect_equal(3, length(run2.lineages))
 })
@@ -67,22 +71,24 @@ test_that("generate bottleneck", {
 
 
 test_that("update transmission", {
+  #model <- Model$new(settings)
+  
   run <- init.branching.events(model)
+  
   inf <- c(run$get.compartments(), run$get.unsampled.hosts())
   eventlog <- run$get.eventlog()
   
   transm.events <- eventlog$get.events('transmission')
-  event <- transm.events[which.min(transm.events$time), ]
+  transm.event <- transm.events[which.min(transm.events$time), ]
   
-  update.transmission(run, eventlog, inf, event)
+  # first transmission event is B->C
+  update.transmission(run, inf, transm.event)
+  result <- run$get.eventlog()$get.all.events()
   
-  expected <- data.frame(
-    event.type=c('transmission', 'transmission', 'bottleneck'),
-    time=c(),
-    lineage1=c(),
-    lineage2=c(),
-    compartment1=c(),
-    compartment2=c()
-    )
+  expected <- c(rep('transmission', 2), rep('bottleneck', 4))
+  expect_equal(expected, result$event.type)  
+  
+  expected <- c(3, 1, rep(1, 4))
+  expect_equal(expected, result$time)
 })
 

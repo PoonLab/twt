@@ -100,11 +100,11 @@ init.branching.events <- function(model, eventlog=NA) {
   }
   
   # store fixed sampling times of the tips for plotting functions
-  eventlog$store.fixed.samplings(model$get.fixed.samplings())
+  eventlog$store.fixed.samplings(run$get.fixed.samplings())
   
   # if the user input includes a tree (host tree) then add transmission events
-  comps <- model$get.compartments()
-  lineages <- model$get.lineages()
+  comps <- run$get.compartments()
+  lineages <- run$get.lineages()
   locations <- sapply(lineages, function(l) l$get.location()$get.name())
 
   . <- sapply(comps, function(comp) {

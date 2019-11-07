@@ -18,6 +18,9 @@ generate.coalescent(run, line1, line2, current.time,
 
 \item{current.time:}{double; time of simulation current to this function call}
 }
+\value{
+R6 Compartment object updated by coalescent event
+}
 \description{
 function records the coalescent of 2 given lineages currently extant in given 
 Compartment into an ancestral lineage
