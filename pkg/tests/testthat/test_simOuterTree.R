@@ -1,9 +1,18 @@
 require(twt)
-setwd('~/git/twt/pkg/tests/testthat/')
+#setwd('~/git/twt/pkg/tests/testthat/')
 #source('pkg/R/simOuterTree.R')
 
-file1 <- yaml.load_file('example2.yaml')
-file2 <- yaml.load_file('example3.yaml')
+# chain
+model.chain <- Model$new(yaml.load_file('example1.yaml'))
+
+# SI model with 10 sampled hosts
+model.SI <- Model$new(yaml.load_file('example2.yaml'))
+
+# load test fixtures
+path <- system.file('extdata', 'structSI.yaml', package='twt')
+settings <- yaml.load_file(path)
+model.structSI <- Model$new(settings)
+
 
 test_that("build eventlog from tree string", {
   tree <- "((A:0.1,B:0.2)A:0.3,C:0.4)A:0.5;"
@@ -25,9 +34,7 @@ test_that("build eventlog from tree string", {
 
 
 test_that("build eventlog from YAML", {
-  settings <- yaml.load_file('example1.yaml')
-  m <- Model$new(settings)
-  run <- init.branching.events(m)
+  run <- init.branching.events(model.chain)
   result <- run$get.eventlog()$get.all.events()
   
   expected <- data.frame(
@@ -45,10 +52,7 @@ test_that("build eventlog from YAML", {
 
 
 test_that("simulate outer tree", {
-  # SI model with 10 sampled hosts
-  settings <- yaml.load_file('example2.yaml')
-  m <- Model$new(settings)
-  r <- sim.outer.tree(m)
+  r <- sim.outer.tree(model.SI)
   e <- r$get.eventlog()
   result <- e$get.all.events()
   
@@ -60,3 +64,39 @@ test_that("simulate outer tree", {
   
 })
 
+
+test_that("calculate population rates", {
+  run <- Run$new(model.structSI)
+  expect_equal(2, length(run$get.types()))
+  result <- .calc.popn.rates(run$get.types())
+  
+  expected <- matrix(c(0.01, 0.01, 0.02, 0.02), byrow=T, nrow=2, 
+                     dimnames=list(c('host1', 'host2'), 
+                                   c('host1', 'host2')))
+  expect_equal(expected, result)
+})
+
+
+test_that("store initial samplings", {
+  # Compartment "A" has 3 Lineages sampled at t=0, 2 and 3
+  run <- Run$new(model.chain)
+  infected <- run$get.compartments()
+  lineages <- run$get.lineages()
+  popn.rates <- .calc.popn.rates(run$get.types())
+  
+  result <- .store.initial.samplings(infected, lineages, popn.rates)
+  expected <- c("A_1"=3.0, "B_1"=0, "C_1"=0)
+  expect_equal(expected, result)
+})
+
+
+test_that("calculate transmission events", {
+  
+  model <- Model$new(settings)
+  run <- Run$new(model)
+  
+  #t.events <- .calc.transmission.events(
+  #  run$get.initial.conds(), 
+  #  )
+  
+})

@@ -62,7 +62,7 @@ EventLogger <- R6Class("EventLogger",
       # in a transmission/migration/coalescent event
       
       if (is.element(type, c('transmission', 'migration'))) {
-        e <- list(event.type=type, time=time, lineage1=NA, lineage2=NA,
+        e <- list(event.type=type, time=time, lineage1=line1, lineage2=NA,
                   compartment1=comp1, compartment2=comp2)
       } 
       else if (is.element(type, c('coalescent', 'bottleneck'))) {

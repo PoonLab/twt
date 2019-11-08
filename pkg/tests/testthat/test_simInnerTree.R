@@ -92,3 +92,113 @@ test_that("update transmission", {
   expect_equal(expected, result$time)
 })
 
+
+
+test_that("remove lineage pairs", {
+  run <- init.branching.events(model)
+  lineage <- run$get.lineages()[[1]]  # A_1__1_1
+
+  remove.lineage.pairs(run, lineage)
+  result <- run$get.pairs()  # list keyed by Lineage name tuples
+  
+  expected <- list(
+    'A_1__1_2,A_1__1_3' = "A_1",
+    'B_1__2_1,B_1__2_2' = "B_1",
+    'B_1__2_1,B_1__2_3' = "B_1",
+    'B_1__2_2,B_1__2_3' = "B_1",
+    'C_1__3_1,C_1__3_2' = "C_1",
+    'C_1__3_1,C_1__3_3' = "C_1",
+    'C_1__3_2,C_1__3_3' = "C_1"
+    )
+  expect_equal(expected, result)
+})
+
+
+test_that("add lineage pairs", {
+  run <- init.branching.events(model)
+  comp <- run$get.compartments()[[1]]
+  lineage <- Lineage$new(name="test", sampling.time=0, location=comp)
+  comp$add.lineage(lineage)
+  
+  add.lineage.pairs(run, lineage)
+  result <- run$get.pairs()
+  
+  expect_equal(12, length(result))
+  expect_true(is.element(list('A_1__1_1,test'='A_1'), result))
+  expect_true(is.element(list('A_1__1_2,test'='A_1'), result))
+  expect_true(is.element(list('A_1__1_3,test'='A_1'), result))
+})
+
+
+test_that("generate migration between sampled Compartments", {
+  run <- init.branching.events(model)
+  compartments <- run$get.compartments()
+  source <- compartments[[1]]  # A_1
+  recipient <- compartments[[2]]  # B_1
+  lineage <- recipient$get.lineages()[[1]]  # B_1__2_1
+  
+  # note, source *gains* a Lineage because we're going back in time!
+  generate.migration(run, source, recipient, lineage, 2)
+  
+  result <- run$get.eventlog()$get.events('migration')
+  expect_equal(1, nrow(result))
+  
+  row.names(result) <- NULL
+  expected <- data.frame(
+    event.type='migration', 
+    time=2.0, 
+    lineage1='B_1__2_1', 
+    lineage2=NA, 
+    compartment1='B_1', 
+    compartment2='A_1',
+    stringsAsFactors = FALSE)
+  expect_equal(expected, result)
+})
+
+
+test_that("incorrect migration", {
+  run <- init.branching.events(model)
+  compartments <- run$get.compartments()
+  source <- compartments[[1]]  # A_1
+  recipient <- compartments[[2]]  # B_1
+  lineage <- source$get.lineages()[[1]]  # A_1__1_1
+  
+  
+  expect_error(generate.migration(run, source, recipient, lineage, 2))
+})
+
+
+test_that("generate migration from unsampled Compartment", {
+  set.seed(1)
+  run <- sim.outer.tree(model)
+  
+  eventlog <- run$get.eventlog()
+  print(eventlog)
+  
+  source <- run$get.unsampled.hosts()[[1]]
+  
+  recipient <- run$get.compartments()[[2]]  # B_1
+  lineage <- recipient$get.lineages()[[1]]  # B_1__2_1
+  
+  generate.migration(run, source, recipient, lineage, 2)
+  
+  result <- run$get.eventlog()$get.events('migration')
+  expect_equal(1, nrow(result))
+  
+  row.names(result) <- NULL
+  expected <- data.frame(
+    event.type='migration', 
+    time=2.0, 
+    lineage1='B_1__2_1', 
+    lineage2=NA, 
+    compartment1='B_1', 
+    compartment2='US_host_1',
+    stringsAsFactors = FALSE)
+  expect_equal(expected, result)
+})
+
+
+
+test_that("resolve migration", {
+  
+})

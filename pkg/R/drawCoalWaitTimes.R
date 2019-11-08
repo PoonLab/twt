@@ -11,8 +11,8 @@
 #' @param alpha: intercept, population size at t=0
 #' @param beta: slope of linear growth interval
 #' 
-#' @return
-#'   Random variate from waiting time distribution.
+#' @return  Random variate from waiting time distribution.
+#' @keywords internal
 wait.time <- function(k, t1, alpha, beta){
   u <- runif(1)
   (1-(1-u)^(beta/choose(k,2)))*(alpha+beta*t1)/beta

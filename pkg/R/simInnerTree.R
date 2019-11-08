@@ -300,30 +300,32 @@ update.transmission <- function(run, inf, transm.event) {
 
 #' resolve.migration
 #' 
-#' function resolves a potential migration event generated from `sim.migrations()`
+#' function resolves a potential migration event generated from 
+#' `sim.migrations()`
 #'
 #' @param run: Run object
-#' @param eventlog: EventLogger object
-#' @param inf: list of sampled and unsampled infected compartments of type Compartment
-#' @param migration.event: list of information specific to the migration event being resolved
+#' @param inf: list of sampled and unsampled infected compartments 
+#'        of type Compartment
+#' @param migration.event: list of information specific to the migration 
+#'        event being resolved
 #' 
 #' @export
-resolve.migration <- function(run, eventlog, inf, migration.event) {
+resolve.migration <- function(run, inf, migration.event) {
   
-  # first, draw a random recipient compartment with a matching recipientType of the 
-  # migration event to be resolved
+  # first, draw a random recipient compartment with a matching recipientType 
+  # of the migration event to be resolved
   possible.recipients <- sapply(inf, function(x) {
     if (x$get.type()$get.name() == migration.event$r_type) {x}
   })
-  possible.recipients[sapply(possible.recipients, is.null)] <- NULL    # cleanup
+  possible.recipients[sapply(possible.recipients, is.null)] <- NULL
   chosen.recipient <- sample(possible.recipients, 1)[[1]]
   
   # does this compartment involve one of our sampled infected compartments?
-  if (chosen.recipient$is.unsampled() != TRUE) {
+  if ( !chosen.recipient$is.unsampled() ) {
     
     # if so, does this migration event involve one of our sampled lineages?
-    # probability of the migration involving a sampled lineage is (number of extant sampled 
-    # lineages / N ), where N = 1/coal.rate
+    # probability of the migration involving a sampled lineage is (number of 
+    # extant sampled lineages / N ), where N = 1/coal.rate
     prob.samp.lin <- length(chosen.recipient$get.lineages()) * 
       chosen.recipient$get.type()$get.coalescent.rate()
     
@@ -340,7 +342,7 @@ resolve.migration <- function(run, eventlog, inf, migration.event) {
 
       # draw a lineage to be migrated
       migrating.lineage <- sample(chosen.recipient$get.lineages(), 1)[[1]]
-      generate.migration(run, eventlog, chosen.source, chosen.recipient, 
+      generate.migration(run, chosen.source, chosen.recipient, 
                          migrating.lineage, migration.event$time)
     }
     
@@ -351,42 +353,55 @@ resolve.migration <- function(run, eventlog, inf, migration.event) {
 
 #' generate.migration
 #' 
-#' function records a migration event with a given lineage from a source to recipient migration
+#' Function to record a migration event of a given Lineage from a source to 
+#' recipient compartment.
 #'
-#' @param run: MODEl object
-#' @param eventlog: EventLogger object
+#' @param run: Run object
 #' @param migrating.lineage: Lineage object; to be migrated
 #' @param inf: list of Compartment objects as potential migration sources
 #' @param current.time: double; time of simulation current to this function call
 #' 
 #' @export
-generate.migration <- function(run, eventlog, source, recipient, migrating.lineage, 
+generate.migration <- function(run, source, recipient, migrating.lineage, 
                                migration.time) {
 
+  if ( !identical(migrating.lineage$get.location(), recipient) ) {
+    stop("Error in generate.migration: Lineage ", migrating.lineage.$get.name(),
+         " is not located in Compartment ", recipient$get.name())
+  }
   l_name <- migrating.lineage$get.name()  # lineage name
-  
+
+  eventlog <- run$get.eventlog()  
   outer.tree.events <- eventlog$get.events('transmission')
   outer.tree.comps <- union(outer.tree.events$compartment1, 
                             outer.tree.events$compartment2)
 
-  if (source$get.name() %in% outer.tree.comps == FALSE) {
-    # issue 32: if migration of lineages from US individual not already included 
-    # in outer tree, have to graft another branch to the outer tree.
+  if ( !is.element(source$get.name(), outer.tree.comps) ) {
+    # issue #32: if migration of lineages from unsampled (US) individual not 
+    # already included in outer tree (via transmission event), have to graft 
+    # another branch to the outer tree.
+    # 
     # Source of migration is from US individual not already included in outer 
-    # tree --> sample a time from stored vector of used & unused times.
+    # tree --> sample a transmission time from stored vector of used & unused 
+    # times.
     
     t.times <- source$get.type()$get.transmission.times()
+    print(t.times)
+    index <- which(t.times[names(t.times)==T] >= migration.time)
+    if (length(index) == 0) {
+      stop("Error in generate.migration(): CompartmentType ", source$get.type()$get.name(),
+           " has no unused transmission times >= migration time ", migration.time)
+    }
 
     # sample an available time
-    avail.t.time <- t.times[ sample(
-      which(t.times[names(t.times)==T] >= migration.time), 1) 
-      ]
+    avail.t.time <- t.times[ sample(index, 1) ]
 
     # reset the vector to make the sampled time now unavailable
     # CONFIRMED: the type's vector of available t.times is updated for every 
     # compartment under this Compartment Type
     sampled.t.time.ind <- which(t.times == avail.t.time)
     names(t.times)[sampled.t.time.ind] <- FALSE
+    
     types <- run$get.types()
     master.comp.type <- which( names(types) == source$get.type()$get.name() )
     types[[master.comp.type]]$set.transmission.times(t.times)
@@ -528,15 +543,15 @@ generate.bottleneck <- function(run, comp) {
 
 #' remove.lineage.pairs
 #' 
-#' this function removes lineage pairs in MODEL obj attr `choices`: list of lineage 
-#' pair choices to coalesce
+#' This function removes lineage pairs in Run obj attr `choices`: list of lineage 
+#' pair choices to coalesce.
 #'
 #' @param run = R6 Run object, one per simulation
 #' @param lineage = Lineage object, to be removed from list of lineage pair choices
 #'
 #' @export
 remove.lineage.pairs <- function(run, lineage) {
-
+  # FIXME: should this be a member of Run object class?
   
   # extract all the pairs
   current.pairs <- run$get.pairs()
