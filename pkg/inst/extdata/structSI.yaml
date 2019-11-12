@@ -8,8 +8,9 @@ InitialConditions:
 
 CompartmentTypes:
   'host1':
-    branching.rates: (host1=0.01, host2=0.01)
-    migration.rates: (host1=0.01, host2=0.01)
+    branching.rates: (host1=0.011, host2=0.012)
+    transition.rates: (host1=0.013, host2=0.014)
+    migration.rates: (host1=0.001, host2=0.002)
     coalescent.rate: 0.1
     bottleneck.size: 1
     wait.time.distr:
@@ -17,8 +18,9 @@ CompartmentTypes:
       hyperparameters:
         rate: 20
   'host2':
-    branching.rates: (host1=0.02, host2=0.02)
-    migration.rates: (host1=0.01, host2=0.01)
+    branching.rates: (host1=0.021, host2=0.022)
+    transition.rates: (host1=0.023, host2=0.024)
+    migration.rates: (host1=0.003, host2=0.004)
     coalescent.rate: 0.1
     bottleneck.size: 1
     wait.time.distr:

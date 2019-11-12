@@ -155,8 +155,19 @@ init.branching.events <- function(model, eventlog=NA) {
 #' 3. No host tree provided, transmission events need to be simulated under
 #'    user-specified model (`sim.outer.tree`).
 #'    
-#' \code{sim.outer.tree} simulates transmission events and fixes them to the 
-#' timeline of lineage sampled events.
+#' \code{sim.outer.tree} simulates transmission, migration and transition events 
+#' and fixes them to the timeline of lineage sampled events.  
+#' 
+#' A *transmission* is the passage of one or more Lineages from a source 
+#' Compartment to an uninfected recipient Compartment that did not carry any 
+#' Lineages.  
+#' 
+#' A *migration* is the passage of one or more Lineages from a source Compartment
+#' to a recipient Compartment that has already been infected (it already carries
+#' one or more Lineages).
+#' 
+#' A *transition* occurs when a Compartment switches to another Type.  This 
+#' is useful for handling host death events, for example.
 #' 
 #' @param model: object of class 'MODEL'
 #' @return object of class 'EventLogger'
@@ -164,7 +175,7 @@ init.branching.events <- function(model, eventlog=NA) {
 #' @examples
 #' 
 #' #' # load susceptible-infected (SI) compartmental model
-#' path <- system.file('extdata', 'SI.yaml', package='twt')
+#' path <- system.file('extdata', 'structSI.yaml', package='twt')
 #' settings <- yaml.load_file(path)
 #' model <- Model$new(settings)
 #' 
@@ -179,8 +190,6 @@ sim.outer.tree <- function(model) {
   # initialize a new object as return value
   eventlog <- run$get.eventlog()
   
-  # ptm <- proc.time()   # benchmark start time
-  
   # store fixed sampling times of Lineages as specified by model
   eventlog$store.fixed.samplings(model$get.fixed.samplings())
   
@@ -191,20 +200,19 @@ sim.outer.tree <- function(model) {
   # maps Compartments to CompartmentTypes by index
   indiv.types <- sapply(unlist(comps), function(a){a$get.type()$get.name()})
   
-  
   # record population totals and transmission rates for all Types
   init.conds <- run$get.initial.conds()
-  popn.totals <- init.conds$size
-  popn.rates <- .calc.popn.rates(types)  # matrix of transmission rates
+  popn.totals <- init.conds$size  # list of CompartmentType->size
   
-  
+  # extract transmission, migration and transition rates as convenient named matrices
+  popn.rates <- .calc.popn.rates(types)
+
   # record max sampling times (furthest back in time) of lineages for each Compartment
-  time.bands <- .store.initial.samplings(comps, model$get.lineages(), popn.rates)
-  
+  time.bands <- .store.initial.samplings(comps, run$get.lineages(), popn.rates)
   
   # generate transmission events based on population dynamics and Compartments' 
   # (time, recipient Type, source Type)
-  t_events <- .calc.transmission.events(init.conds, popn.rates, time.bands)
+  events <- .calc.outer.events(types, init.conds, popn.rates, time.bands)
   
   
   # generate unsampled hosts
@@ -395,24 +403,40 @@ sim.outer.tree <- function(model) {
 #' .calc.popn.rates
 #' 
 #' Stores population rates for each CompartmentType specified by the user.
+#' Handle unspecified rate parameters.
 #
-#' @param types:  list of CompartmentType objects
-#' @return matrix of population transmission rates for each type to type comparison
+#' @param types:  list of CompartmentType objects as returned by Run$get.types()
+#' @return  list of named matrices of transmission and migration rates for each 
+#'          CompartmentType to CompartmentType
+#'          
 #' @keywords internal
 .calc.popn.rates <- function(types) {
-  popn.rates <- matrix(nrow=length(types),  # source types
-                       ncol=length(types),  # recipient types
-                       dimnames=list(names(types), names(types)))
+  n <- length(types)
+  dimnames <- list(names(types), names(types))
   
-  for (source in types) {                                                      
-    for (recipient in names(types)) {
-      # store instrinsic transmission rates for all x->y pairs
-      rate <- source$get.branching.rate(recipient)
-      popn.rates[source$get.name(), recipient] <- rate
+  # transmission, transition and migration
+  t.rates <- matrix(nrow=n, ncol=n, dimnames=dimnames)
+  s.rates <- matrix(nrow=n, ncol=n, dimnames=dimnames)
+  m.rates <- matrix(nrow=n, ncol=n, dimnames=dimnames)
+  
+  for (source in types) {
+    # row = source
+    s.name <- source$get.name()
+    for (r.name in names(types)) {
+      # column = recipient
+      t.rate <- source$get.branching.rate(r.name)
+      # default to zero if null (unspecified)
+      t.rates[s.name, r.name] <- ifelse(is.null(t.rate), 0, t.rate)
+      
+      s.rate <- source$get.transition.rate(r.name)
+      s.rates[s.name, r.name] <- ifelse(is.null(s.rate), 0, s.rate)
+      
+      m.rate <- source$get.migration.rate(r.name)
+      m.rates[s.name, r.name] <- ifelse(is.null(m.rate), 0, m.rate)
     }
   }
   
-  popn.rates
+  list(transmission=t.rates, transition=s.rates, migration=m.rates)
 }
 
 
@@ -431,19 +455,21 @@ sim.outer.tree <- function(model) {
 .store.initial.samplings <- function(infected, lineages, popn.rates) {
   # Compartment name for each Lineage
   lineage.locations <- sapply(lineages, function(x) {x$get.location()$get.name()})
+  t.rates <- popn.rates[['transmission']]
   
   # iterate over every sampled infected compartment
   sapply(infected, function(comp) {
     my.type <- comp$get.type()$get.name()
     
     # all rates *to* this recipient's CompartmentType
-    my.rates <- popn.rates[,which(colnames(popn.rates) == my.type)]
+    my.rates <- t.rates[ , which(colnames(t.rates) == my.type)]
     if (all(my.rates==0)) {
       # not possible for this compartment to be a recipient
       # sampling Lineage must be from migration event
       NULL
+      # FIXME: we are refactoring to handle transitions - is this still needed?
     }
-    else{
+    else {
       my.lineages <- lineages[which(lineage.locations == comp$get.name())]
       sampling.times <- sapply(my.lineages, function(x) x$get.sampling.time())
       max(sampling.times)  # furthest back in time
@@ -453,28 +479,88 @@ sim.outer.tree <- function(model) {
 
 
 
-#' .calc.transmission.events
+.resolve.rates <- function(mx, size) {
+  temp <- t(apply(mx, 1, function(row) row*size))
+  apply(temp, 2, function(col) col*size)
+}
+
+
+#' .calc.outer.events
 #' 
-#' Support function for sim.outer.tree.  Generates transmission events only, 
-#' based on population dynamics of the Model.
+#' Support function for sim.outer.tree.  Samples transmission, transition and
+#' migration events based on population dynamics of the Model.
 #' 
+#' @param types:  list of CompartmentTypes as returned by Run$get.types()
 #' @param init.conds: initial conditions, comprising (1) time scale of simulation
-#'                    (2) initial population size per CompartmentType and (3) Type
-#'                    of index case
-#' @param popn.rates: rates of transmission between different CompartmentTypes
+#'        (2) initial population size per CompartmentType and (3) Type
+#'        of index case
+#' @param popn.rates:  names matrices for transmission, transition and migration
+#'        rates.
 #' @param init.samplings: list of first sampling times for each Compartment
-#' @param max.attempts: number of tries to sample transmission events
+#' @param max.attempts: number of tries to sample events
 #'        
-#' @return data frame of transmission events, each made up of: time, 
-#'         recipient Type, source Type, and LineageType (not yet implemented)
+#' @return data frame of outer tree events, each made up of: time, 
+#'         event type, recipient CompartmentType and source CompartmentType
+#'         
 #' @keywords internal
-.calc.transmission.events <- function(init.conds, popn.rates, init.samplings, 
-                                      max.attempts=10) {
+.calc.outer.events <- function(types, init.conds, popn.rates, init.samplings, 
+                               max.attempts=10) {
+  
+  # initialize populations at origin (named vector)
+  counts <- unlist(init.conds$size)
   
   # prepare outcome container
-  types <- colnames(popn.rates)
-  t_events <- data.frame(time=numeric(), r_type=character(), s_type=character(), 
-                         stringsAsFactors = FALSE)
+  events <- data.frame(time=numeric(), event.type=character(), r.type=character(), 
+                       s.type=character(), stringsAsFactors = FALSE)
+  
+  # simulate trajectories in forward time (indexed in reverse, ha ha!)
+  current.time <- init.conds$originTime
+  
+  while (current.time >= 0) {
+    # calculate population rates
+    t.rates <- .resolve.rates(popn.rates[['transmission']], counts)
+    s.rates <- .resolve.rates(popn.rates[['transition']], counts)
+    m.rates <- .resolve.rates(popn.rates[['migration']], counts)
+    
+    # draw waiting time to next event
+    total.rate <- sum(t.rates, s.rates, m.rates)
+    wait <- rexp(1, rate=total.rate)
+
+    # which event?
+    if ( runif(1, max=total.rate) < sum(t.rates) ) {
+      # it's a transmission event
+      row <- sample(1:nrow(t.rates), 1, prob=apply(t.rates, 1, sum))
+      source <- types[[row]]
+      recipient <- sample(types, 1, prob=t.rates[row,])[[1]]
+      
+      # update counts
+      counts[recipient$get.name()] <- counts[recipient$get.name()] - 1
+      counts[source$get.name()] <- counts[source$get.name()] + 1
+    }
+    else {
+      if (runif(1, max=total.s.rate+total.m.rate) < total.s.rate) {
+        # it's a transition event
+        source <- sample(types, 1, prob=apply(s.rates, 1, sum))[[1]]
+        recipient <- sample(types, 1, prob=source$get.transition.rates())[[1]]
+      }
+      else {
+        # it's a migration event
+        source <- sample(types, 1, prob=apply(m.rates, 1, sum))[[1]]
+        recipient <- sample(types, 1, prob=source$get.migration.rates())[[1]]
+      }
+    }
+    
+    # update time
+    current.time <- current.time - wait
+    if (current.time < 0) {
+      # end of simulation
+      break
+    }
+  }
+  
+  
+  
+  
   
   for (attempt in 1:max.attempts) {
     

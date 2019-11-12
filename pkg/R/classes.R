@@ -11,6 +11,8 @@
 #' sampled or unsampled lineages.
 #' @param branching.rates: a named vector of transmission rates *to* other
 #' CompartmentTypes.
+#' @param transition.rates: a named vector of transition rates *to* other
+#' CompartmentTypes.
 #' @param migration.rates: a named vector of migration rates *to* other 
 #' CompartmentTypes.
 #' @param bottleneck.size: the maximum number of lineages that can be transmitted
@@ -42,7 +44,7 @@
 CompartmentType  <- R6Class("CompartmentType",
   public = list(
     initialize = function(name=NA, unsampled = NA,
-                          susceptible=NA, branching.rates=NA,
+                          susceptible=NA, branching.rates=NA, transition.rates=NA,
                           migration.rates=NA, bottleneck.size=NA,
                           coalescent.rate=NA, death.rate.distr=NA, wait.time.distr=NA,
                           popn.growth.dynamics=NA, transmission.times=NA) {
@@ -52,6 +54,7 @@ CompartmentType  <- R6Class("CompartmentType",
       
       # named vector of transmission rates corresponding to different Compartment objects
       private$branching.rates <- branching.rates
+      private$transition.rates <- transition.rates
       private$migration.rates <- migration.rates
       private$bottleneck.size <- bottleneck.size
       
@@ -89,6 +92,14 @@ CompartmentType  <- R6Class("CompartmentType",
     
     get.branching.rate = function(name.type) {
       private$branching.rates[[name.type]]
+    },
+    
+    get.transition.rates = function() {
+      private$transition.rates
+    },
+    
+    get.transition.rate = function(name.type) {
+      private$transition.rates[[name.type]]
     },
     
     get.migration.rates = function() {
@@ -133,6 +144,7 @@ CompartmentType  <- R6Class("CompartmentType",
     unsampled = NULL,
     susceptible = NULL,
     branching.rates = NULL,
+    transition.rates = NULL,
     migration.rates = NULL,
     bottleneck.size = NULL,
     coalescent.rate = NULL,
