@@ -210,6 +210,8 @@ sim.outer.tree <- function(model) {
   # generate unsampled hosts
   last.indiv <- T  # FIXME: what is the role of this flag?
   for (t in types) {
+    # difference between number of recipient Compartments and 
+    #  number of sampled Compartments of this Type
     num.unsampled <- length(which(t_events$r_type == t$get.name())) - 
       length(which(indiv.types == t$get.name()))
     
@@ -227,7 +229,7 @@ sim.outer.tree <- function(model) {
   }
   
   
-  # update `time.bands` to include unsampled hosts
+  # expand `time.bands` to include unsampled hosts
   time.bands <- c(time.bands, rep(NA, length(run$get.unsampled.hosts())))
   names(time.bands) <- c(
     names(time.bands)[nzchar(x=names(time.bands))], 
@@ -417,8 +419,8 @@ sim.outer.tree <- function(model) {
 
 #' .store.initial.samplings
 #' 
-#' Stores first sampling time of a Lineage for each sampled infected 
-#' Compartment.
+#' Support function for sim.outer.tree.  Stores first sampling time of a Lineage 
+#' for each sampled infected Compartment.
 #'
 #' @param infected:  list of sampled infected Compartment objects
 #' @param lineages:  list of Lineage objects
@@ -453,8 +455,8 @@ sim.outer.tree <- function(model) {
 
 #' .calc.transmission.events
 #' 
-#' Generates transmission events only, based on population dynamics of the
-#' MODEL
+#' Support function for sim.outer.tree.  Generates transmission events only, 
+#' based on population dynamics of the Model.
 #' 
 #' @param init.conds: initial conditions, comprising (1) time scale of simulation
 #'                    (2) initial population size per CompartmentType and (3) Type
@@ -553,7 +555,8 @@ sim.outer.tree <- function(model) {
 
 #' .assign.transmission.times
 #' 
-#' Assignment of transmission times specific to each type.
+#' Support function for sim.outer.tree.  Assignment of transmission times specific 
+#' to each type.
 #'
 #' @param infected:  named list of Compartment objects to be assigned transmission times
 #' @param events:  list of possible transmission events for the infected

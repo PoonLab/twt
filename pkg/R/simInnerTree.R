@@ -144,12 +144,12 @@ sim.inner.tree <- function(mod, e=NA) {
       if (is.transmission.next) {
         # transmission event to be resolved
         transm.event <- transm.events[which(transm.times == current.time),]
-        update.transmission(run, eventlog, inf, transm.event)
+        update.transmission(run, inf, transm.event)
       } 
       else {
         # migration event to be resolved
         migration.event <- migration.events[which(migration.times == current.time),]
-        resolve.migration(run, eventlog, inf, migration.event)
+        resolve.migration(run, inf, migration.event)
       }
       
       extant.lineages <- run$get.extant.lineages(current.time)
@@ -177,7 +177,7 @@ sim.inner.tree <- function(mod, e=NA) {
       
       
       transm.event <- transm.events[which(transm.times == current.time),]
-      update.transmission(run, eventlog, inf, transm.event)
+      update.transmission(run, inf, transm.event)
       
       extant.lineages <- run$get.extant.lineages(current.time)
       num.extant <- length(extant.lineages)
@@ -192,7 +192,7 @@ sim.inner.tree <- function(mod, e=NA) {
       current.time <- min(setdiff(all.new.migrations, old.migrations))
       
       migration.event <- migration.events[which(migration.times == current.time),]
-      resolve.migration(run, eventlog, inf, migration.event)
+      resolve.migration(run, inf, migration.event)
       
       # TODO : maybe don't "restart" this simulation, rather, go straight to the next checks
       current.time <- new.time
@@ -239,7 +239,7 @@ sim.inner.tree <- function(mod, e=NA) {
         
         # this is new.time instead of current.time (compared to the outermost if statement)
         transm.event <- transm.events[which(transm.times == new.time),]     
-        update.transmission(run, eventlog, inf, transm.event)
+        update.transmission(run, inf, transm.event)
         
       }
       
