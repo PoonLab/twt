@@ -91,12 +91,23 @@ test_that("store initial samplings", {
 
 
 test_that("calculate transmission events", {
+  run <- Run$new(model.SI)
   
-  model <- Model$new(settings)
-  run <- Run$new(model)
+  popn.rates <- .calc.popn.rates(run$get.types())
   
-  #t.events <- .calc.transmission.events(
-  #  run$get.initial.conds(), 
-  #  )
+  init.samplings <- .store.initial.samplings(
+    infected = run$get.compartments(),
+    lineages = run$get.lineages(),
+    popn.rates = popn.rates)
   
+  set.seed(1)
+  result <- .calc.transmission.events(
+    init.conds = run$get.initial.conds(), 
+    popn.rates = popn.rates,
+    init.samplings = init.samplings)
+  
+  expect_true(all(result$event.type=='transmission'))
+  
+  # waiting time to earliest transmission events
+  # should be approximately 1/(0.01*100) = 1.0
 })

@@ -90,7 +90,7 @@ eventlog.from.tree <- function(tree) {
 #' @export
 init.branching.events <- function(model, eventlog=NA) {
   # initialize Run object from Model
-  run <- Run$new(model=model)
+  run <- Run$new(model)
   
   if (is.environment(eventlog)) {
     # bind EventLogger to Run object
@@ -121,7 +121,7 @@ init.branching.events <- function(model, eventlog=NA) {
       }
       
       # add transmission event to EventLogger object
-      eventlog$add.event('transmission',  branching.time, NA, NA, 
+      eventlog$add.event('transmission', branching.time, NA, NA, 
                          comp$get.name(), source)
     }
     else {
@@ -465,6 +465,7 @@ sim.outer.tree <- function(model) {
 #'        
 #' @return data frame of transmission events, each made up of: time, 
 #'         recipient Type, source Type, and LineageType (not yet implemented)
+#'         
 #' @keywords internal
 .calc.transmission.events <- function(init.conds, popn.rates, init.samplings, 
                                       max.attempts=10) {
