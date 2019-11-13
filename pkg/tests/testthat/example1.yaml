@@ -13,6 +13,7 @@ CompartmentTypes:
   'host':                           # option to have more than one host type with different parameters
     branching.rates: (host=0.2)     # only one CompartmentType, in this case represents transmission rates
     migration.rates: ()             # assume no migration
+    transition.rates: ()
     coalescent.rate: 1.5
     bottleneck.size: 1              # bottleneck size when transmission event occurs
     wait.time.distr:

@@ -208,11 +208,15 @@ sim.outer.tree <- function(model) {
   popn.rates <- .calc.popn.rates(types)
 
   # record max sampling times (furthest back in time) of lineages for each Compartment
-  time.bands <- .store.initial.samplings(comps, run$get.lineages(), popn.rates)
+  init.samplings <- .get.initial.samplings(comps)
+  
   
   # generate transmission events based on population dynamics and Compartments' 
   # (time, recipient Type, source Type)
-  events <- .calc.outer.events(types, init.conds, popn.rates, time.bands)
+  events <- .sample.outer.events(
+    types, init.conds, popn.rates, 
+    split(init.samplings$init.sample, init.samplings$type)
+    )
   
   
   # generate unsampled hosts
@@ -220,7 +224,7 @@ sim.outer.tree <- function(model) {
   for (t in types) {
     # difference between number of recipient Compartments and 
     #  number of sampled Compartments of this Type
-    num.unsampled <- length(which(t_events$r_type == t$get.name())) - 
+    num.unsampled <- length(which(events$r.type == t$get.name())) - 
       length(which(indiv.types == t$get.name()))
     
     if (num.unsampled > 0) {
@@ -238,15 +242,13 @@ sim.outer.tree <- function(model) {
   
   
   # expand `time.bands` to include unsampled hosts
-  time.bands <- c(time.bands, rep(NA, length(run$get.unsampled.hosts())))
-  names(time.bands) <- c(
-    names(time.bands)[nzchar(x=names(time.bands))], 
-    model$get.names(run$get.unsampled.hosts())
-    )
+  unsampled <- run$get.unsampled.hosts()
+  time.bands <- c( init.samplings$init.sample, rep(NA, length(unsampled)) )
+  names(time.bands) <- c( row.names(init.samplings), run$get.names(unsampled) )
   
   
   # unsampled infected now calculated and generated, set source population
-  infected <- c(comps, run$get.unsampled.hosts())
+  infected <- c(comps, unsampled)
   
   # assign transmission times
   recipient.types <- names(apply(popn.rates, 2, sum) > 0)
@@ -257,7 +259,7 @@ sim.outer.tree <- function(model) {
       }) )
     r.comps <- infected[r.indices]
     r.init.samplings <- time.bands[ which(names(time.bands) %in% names(infected)[r.indices]) ]
-    r.events <- t_events[ which(t_events$r_type == rtype), ]
+    r.events <- events[ which(events$r.type == rtype), ]
     
     if (nrow(r.events) > 0) {
       type.comp <- types[[ which(sapply(types, function(t) t$get.name() == rtype)) ]]
@@ -305,7 +307,7 @@ sim.outer.tree <- function(model) {
     source.popns[[specific.type]] <- s.pop.by.type
   }
   
-  eventlog <- .assign.source.compartments(eventlog, comps, source.popns, t_events)
+  eventlog <- .assign.source.compartments(eventlog, comps, source.popns, events)
 
   return(run)
 }
@@ -441,51 +443,52 @@ sim.outer.tree <- function(model) {
 
 
 
-#' .store.initial.samplings
+#' .get.initial.samplings
 #' 
-#' Support function for sim.outer.tree.  Stores first sampling time of a Lineage 
+#' Support function for sim.outer.tree.  Retrieves first sampling time of a Lineage 
 #' for each sampled infected Compartment.
 #'
-#' @param infected:  list of sampled infected Compartment objects
-#' @param lineages:  list of Lineage objects
-#' @param popn.rates:  named matrix of transmission rates (row = source)
+#' @param compartments:  list of sampled infected Compartment objects
 #'
 #' @return named vector of first Lineage sampling times for each Compartment
 #' @keywords internal
-.store.initial.samplings <- function(infected, lineages, popn.rates) {
-  # Compartment name for each Lineage
-  lineage.locations <- sapply(lineages, function(x) {x$get.location()$get.name()})
-  t.rates <- popn.rates[['transmission']]
-  
-  # iterate over every sampled infected compartment
-  sapply(infected, function(comp) {
-    my.type <- comp$get.type()$get.name()
-    
-    # all rates *to* this recipient's CompartmentType
-    my.rates <- t.rates[ , which(colnames(t.rates) == my.type)]
-    if (all(my.rates==0)) {
-      # not possible for this compartment to be a recipient
-      # sampling Lineage must be from migration event
-      NULL
-      # FIXME: we are refactoring to handle transitions - is this still needed?
-    }
-    else {
-      my.lineages <- lineages[which(lineage.locations == comp$get.name())]
-      sampling.times <- sapply(my.lineages, function(x) x$get.sampling.time())
-      max(sampling.times)  # furthest back in time
-    }
-  })
+.get.initial.samplings <- function(compartments) {
+  data.frame(
+    type=sapply(compartments, function(comp) comp$get.type()$get.name()),
+    init.sample=sapply(compartments, function(comp) {
+      max( sapply(comp$get.lineages(), function(l) l$get.sampling.time()) )
+    })
+  )
 }
 
 
-
+#' .resolve.rates
+#' 
+#' Helper function for .sample.outer.events - calculate population rates 
+#' given per-contact rate (\beta) and population sizes of source and
+#' recipient populations, *i.e.*, \beta*S*I
+#' 
+#' @param mx:  rate matrix for source->recipient events
+#' @param size:  vector of subpopulation sizes
+#' @return  matrix of same dimensions as 'mx'
+#' 
+#' @keywords internal
 .resolve.rates <- function(mx, size) {
+  if (nrow(mx) != ncol(mx)) {
+    stop("Error in .resolve.rates: argument 'mx' must be square matrix, ",
+         "dimension is ", dim(mx))
+  }
+  if (nrow(mx) != length(size)) {
+    stop("Error in .resolve.rates: dimension of matrix must equal length ",
+         "of size vector.")
+  }
+  
   temp <- t(apply(mx, 1, function(row) row*size))
   apply(temp, 2, function(col) col*size)
 }
 
 
-#' .calc.outer.events
+#' .sample.outer.events
 #' 
 #' Support function for sim.outer.tree.  Samples transmission, transition and
 #' migration events based on population dynamics of the Model.
@@ -496,146 +499,135 @@ sim.outer.tree <- function(model) {
 #'        of index case
 #' @param popn.rates:  names matrices for transmission, transition and migration
 #'        rates.
-#' @param init.samplings: list of first sampling times for each Compartment
+#' @param init.samplings: list of first Lineage sampling times per Compartment,
+#'        grouped by CompartmentType
 #' @param max.attempts: number of tries to sample events
 #'        
 #' @return data frame of outer tree events, each made up of: time, 
 #'         event type, recipient CompartmentType and source CompartmentType
 #'         
 #' @keywords internal
-.calc.outer.events <- function(types, init.conds, popn.rates, init.samplings, 
-                               max.attempts=10) {
+.sample.outer.events <- function(types, init.conds, popn.rates, init.samplings, 
+                                 max.attempts=10) {
   
-  # initialize populations at origin (named vector)
-  counts <- unlist(init.conds$size)
-  
-  # prepare outcome container
-  events <- data.frame(time=numeric(), event.type=character(), r.type=character(), 
-                       s.type=character(), stringsAsFactors = FALSE)
-  
-  # simulate trajectories in forward time (indexed in reverse, ha ha!)
-  current.time <- init.conds$originTime
-  
-  while (current.time >= 0) {
-    # calculate population rates
-    t.rates <- .resolve.rates(popn.rates[['transmission']], counts)
-    s.rates <- .resolve.rates(popn.rates[['transition']], counts)
-    m.rates <- .resolve.rates(popn.rates[['migration']], counts)
+  attempt <- 1
+  while (attempt < max.attempts) {
     
-    # draw waiting time to next event
-    total.rate <- sum(t.rates, s.rates, m.rates)
-    wait <- rexp(1, rate=total.rate)
-
-    # which event?
-    if ( runif(1, max=total.rate) < sum(t.rates) ) {
-      # it's a transmission event
-      row <- sample(1:nrow(t.rates), 1, prob=apply(t.rates, 1, sum))
-      source <- types[[row]]
-      recipient <- sample(types, 1, prob=t.rates[row,])[[1]]
+    # initialize populations at origin (named vector)
+    counts <- unlist(init.conds$size)
+    
+    # prepare outcome container
+    events <- data.frame(time=numeric(), event.type=character(), r.type=character(), 
+                         s.type=character(), stringsAsFactors = FALSE)
+    
+    # simulate trajectories in forward time (indexed in reverse, ha ha!)
+    current.time <- init.conds$originTime
+    
+    while (current.time >= 0) {
+      # calculate population rates
+      t.rates <- .resolve.rates(popn.rates[['transmission']], counts)
+      s.rates <- .resolve.rates(popn.rates[['transition']], counts)
+      m.rates <- .resolve.rates(popn.rates[['migration']], counts)
       
-      # update counts
-      counts[recipient$get.name()] <- counts[recipient$get.name()] - 1
-      counts[source$get.name()] <- counts[source$get.name()] + 1
-    }
-    else {
-      if (runif(1, max=total.s.rate+total.m.rate) < total.s.rate) {
-        # it's a transition event
-        source <- sample(types, 1, prob=apply(s.rates, 1, sum))[[1]]
-        recipient <- sample(types, 1, prob=source$get.transition.rates())[[1]]
+      # draw waiting time to next event
+      total.rate <- sum(t.rates, s.rates, m.rates)
+      wait <- rexp(1, rate=total.rate)
+      current.time <- current.time - wait
+      if (current.time < 0) {
+        # end of simulation
+        break
+      }
+      
+      # which event?
+      if ( runif(1, max=total.rate) < sum(t.rates) ) {
+        event.type <- 'transmission'
+        
+        if (length(t.rates) == 1) {
+          source <- types[[1]]
+          recipient <- types[[1]]
+        }
+        else {
+          row <- sample(1:nrow(t.rates), 1, prob=apply(t.rates, 1, sum))
+          source <- types[[row]]
+          recipient <- sample(types, 1, prob=t.rates[row, ])[[1]]
+        }
+        
+        # update counts (recipient becomes source type)
+        counts[recipient$get.name()] <- counts[recipient$get.name()] - 1
+        counts[source$get.name()] <- counts[source$get.name()] + 1
       }
       else {
-        # it's a migration event
-        source <- sample(types, 1, prob=apply(m.rates, 1, sum))[[1]]
-        recipient <- sample(types, 1, prob=source$get.migration.rates())[[1]]
+        total.s.rate <- sum(s.rates)
+        total.m.rate <- sum(m.rates)
+        
+        if (runif(1, max=total.s.rate+total.m.rate) < total.s.rate) {
+          event.type <- 'transition'
+          
+          if (length(s.rates) == 1) {
+            source <- types[[1]]
+            recipient <- types[[1]]
+          }
+          else {
+            row <- sample(1:nrow(s.rates), 1, prob=apply(s.rates, 1, sum))
+            source <- types[[row]]
+            recipient <- sample(types, 1, prob=s.rates[row, ])[[1]]            
+          }
+          
+          counts[recipient$get.name()] <- counts[recipient$get.name()] + 1
+          counts[source$get.name()] <- counts[source$get.name()] - 1
+        }
+        else {
+          event.type <- 'migration'
+          
+          if (length(s.rates) == 1) {
+            source <- types[[1]]
+            recipient <- types[[1]]
+          }
+          else {
+            row <- sample(1:nrow(m.rates), 1, prob=apply(m.rates, 1, sum))
+            source <- types[[row]]
+            recipient <- sample(types, 1, prob=m.rates[row, ])[[1]]
+          }
+          
+          # migration does not affect counts
+        }
       }
-    }
-    
-    # update time
-    current.time <- current.time - wait
-    if (current.time < 0) {
-      # end of simulation
-      break
-    }
-  }
-  
-  
-  
-  
-  
-  for (attempt in 1:max.attempts) {
-    
-    # current time starts at user-specified time for each epidemic
-    current.time <- as.numeric(init.conds['originTime'])
-    
-    # prepare count vectors
-    susceptible <- unlist(init.conds$size)
-    susceptible[init.conds$indexType] <- susceptible[init.conds$indexType] - 1
-    
-    infected <- lapply(init.conds$size, function(x) 0)
-    infected[init.conds$indexType] <- 1
-    infected <- unlist(infected)
-    
-    # check sampling times with epidemic start time
-    if (any(init.samplings > current.time)) {
-      stop ('Not possible to have Compartment initial sampling time(s) precede the start time of the ', 
-            'epidemic. Please set the start time of the epidemic further back in time.')
-    }
-    
-    # note, this is forward-time simulation on a reverse-time scale
-    # FIXME: need to implement Compartment death events here
-    while (current.time > min(init.samplings) && sum(susceptible) > 0) {
+      
+      # append event
+      events <- rbind(events, c(
+        time=current.time, 
+        event.type=event.type,
+        r.type=recipient$get.name(),
+        s.type=source$get.name()
+      ))
 
-      rates <- t(t(infected * popn.rates) * susceptible)
-      delta.t <- rexp(1, sum(rates))  # draw waiting time to any event
-      
-      current.time <- current.time - delta.t
-      # transmission event is more recent than the most recent sampling time
-      # this event, and any subsequent transmissions, are irrelevant
-      if (current.time <= min(init.samplings)) { break }
-      
-      
-      which.evt <- sample(1:length(rates), size=1, prob=as.vector(rates))
-      r <- floor((which.evt-1) / nrow(rates)) + 1  # source Type
-      s <- ((which.evt-1) %% nrow(rates)) + 1  # recipient Type
-      
-      # store time, source and recipient types of transmission
-      t_events <- rbind(t_events, 
-                        list(time=current.time, r_type=types[r], s_type=types[s]),
-                        stringsAsFactors=FALSE)
-      
-      # update counts
-      susceptible[r] <- susceptible[r] - 1
-      infected[r] <- infected[r] + 1
-    }
+    } 
     
-
-    
-    # check if viable # of transmission times @ each unique user-given Compartment 
-    # `sampling.time`
-    checks <- sapply(unique(init.samplings), function(x) {
-      if (sum(init.samplings==x) > length(t_events$time > x)) {
-        # not enough viable transmission times at this `sampling.time`
-        # regenerate transmission times up to max.attempts
-        FALSE
-      } else {
-        TRUE
+    # check that there are enough Compartments of each Type to be sampled
+    checks <- sapply(1:length(counts), function(i) {
+      ctype <- names(counts)[i]
+      count <- counts[ctype]
+      samp.times <- init.samplings[[ctype]]
+      if (is.null(samp.times)) {
+        stop("Error in .sample.outer.events: CompartmentType ", ctype, 
+             " not found in init.samplings")
       }
+      length(samp.times) <= count
     })
     
-    if (attempt == max.attempts && any(checks) == FALSE) {
-      stop ('Transmission times generated overshoots given `sampling.times` of ', 
-            'Compartments. Some options to fix this error include: changing the', 
-            'origin time of the "', v.name, '" epidemic to be further back in ', 
-            'time or increasing transmission rates.')
-    } else if (any(checks) == FALSE) {
-      next
-    } else {
+    if (all(checks)) {
       break
     }
-  
+  }
+ 
+  if (attempt == max.attempts && !all(checks)) {
+    stop ('Transmission times generated overshoots given `sampling.times` of ', 
+          'Compartments. Some options to fix this error include: changing the ', 
+          'origin time of the epidemic to be further back in time or increasing ',
+          'transmission rates.')
   }
   
-  t_events
+  events
 }
 
 

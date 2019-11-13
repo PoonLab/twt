@@ -14,6 +14,7 @@ settings <- yaml.load_file(path)
 model.structSI <- Model$new(settings)
 
 
+
 test_that("build eventlog from tree string", {
   tree <- "((A:0.1,B:0.2)A:0.3,C:0.4)A:0.5;"
   e <- eventlog.from.tree(tree)
@@ -70,22 +71,24 @@ test_that("calculate population rates", {
   expect_equal(2, length(run$get.types()))
   result <- .calc.popn.rates(run$get.types())
   
-  expected <- matrix(c(0.01, 0.01, 0.02, 0.02), byrow=T, nrow=2, 
+  expected <- matrix(c(0.011, 0.012, 0.021, 0.022), byrow=T, nrow=2, 
                      dimnames=list(c('host1', 'host2'), 
                                    c('host1', 'host2')))
-  expect_equal(expected, result)
+  expect_equal(expected, result[['transmission']])
 })
 
 
-test_that("store initial samplings", {
+test_that("get initial samplings", {
   # Compartment "A" has 3 Lineages sampled at t=0, 2 and 3
   run <- Run$new(model.chain)
   infected <- run$get.compartments()
-  lineages <- run$get.lineages()
-  popn.rates <- .calc.popn.rates(run$get.types())
   
-  result <- .store.initial.samplings(infected, lineages, popn.rates)
-  expected <- c("A_1"=3.0, "B_1"=0, "C_1"=0)
+  result <- .get.initial.samplings(infected)
+  expected <- data.frame(
+    type=rep('host', 3),
+    init.sample=c(3.0, 0, 0)
+    )
+  row.names(expected) <- c('A_1', 'B_1', 'C_1')
   expect_equal(expected, result)
 })
 
