@@ -1,5 +1,5 @@
 require(twt)
-#setwd('~/git/twt/pkg/tests/testthat/')
+setwd('~/git/twt/pkg/tests/testthat/')
 #source('pkg/R/simOuterTree.R')
 
 # chain
@@ -53,6 +53,7 @@ test_that("build eventlog from YAML", {
 
 
 test_that("simulate outer tree", {
+  skip("not yet implemented")
   r <- sim.outer.tree(model.SI)
   e <- r$get.eventlog()
   result <- e$get.all.events()
@@ -66,15 +67,27 @@ test_that("simulate outer tree", {
 })
 
 
-test_that("calculate population rates", {
+test_that("get rate matrices", {
   run <- Run$new(model.structSI)
   expect_equal(2, length(run$get.types()))
-  result <- .calc.popn.rates(run$get.types())
+  result <- .get.rate.matrices(run$get.types())
   
   expected <- matrix(c(0.011, 0.012, 0.021, 0.022), byrow=T, nrow=2, 
                      dimnames=list(c('host1', 'host2'), 
                                    c('host1', 'host2')))
   expect_equal(expected, result[['transmission']])
+  
+  # function should zero out diagonal
+  expected <- matrix(c(0.0, 0.014, 0.023, 0.0), byrow=T, nrow=2, 
+                     dimnames=list(c('host1', 'host2'), 
+                                   c('host1', 'host2')))
+  expect_equal(expected, result[['transition']])
+  
+  expected <- matrix(c(0.001, 0.002, 0.003, 0.004), byrow=T, nrow=2, 
+                     dimnames=list(c('host1', 'host2'), 
+                                   c('host1', 'host2')))
+  expect_equal(expected, result[['migration']])
+  
 })
 
 
@@ -93,13 +106,69 @@ test_that("get initial samplings", {
 })
 
 
-test_that("calculate transmission events", {
+test_that("sample outer events", {
+  run <- Run$new(model.structSI)
+  types <- run$get.types()
+  init.conds <- run$get.initial.conds()
+  init.conds$originTime <- 20  # make simulation longer
+  popn.rates <- .get.rate.matrices(types)
+  init.samplings <- .get.initial.samplings(run$get.compartments())
   
-  model <- Model$new(settings)
-  run <- Run$new(model)
+  result <- .sample.outer.events(types, init.conds, popn.rates, init.samplings)
   
-  #t.events <- .calc.transmission.events(
-  #  run$get.initial.conds(), 
-  #  )
+  # kind of a dumb test
+  expect_true(all(is.element(result$event.type, 
+                             c('transmission', 'transition', 'migration'))))
+  
+  # epidemic starts with 1 infected, 99 susceptible
+  result <- sum(result$event.type == 'transmission')
+  expect_equal(99, result)  # IF enough time in simulation
+})
+
+
+test_that("check simple SI model", {
+  run <- Run$new(model.SI)
+  types <- run$get.types()
+  expect_equal(1, length(types))
+  
+  init.conds <- run$get.initial.conds()
+  popn.rates <- .get.rate.matrices(types)
+  init.samplings <- .get.initial.samplings(run$get.compartments())
+  expect_true(all(init.samplings$init.sample==0))
+  
+  # no migration, no transition)
+  expect_equal(0, as.vector(popn.rates[['transition']]))
+  expect_equal(0, as.vector(popn.rates[['migration']]))
+  
+  # look at distribution of waiting times to first transmission
+  ot <- init.conds$originTime
+  result <- sapply(1:100, function(i) {
+    sim <- .sample.outer.events(types, init.conds, popn.rates, init.samplings)
+    c(ot - sim$time[sim$event.type=='transmission'][1],
+      ot - sim$time[49])
+  })
+  # some tolerance due to low number of replicates
+  expect_gt( 0.2, abs((1/(0.01*99)) - mean(result[1,])) )
+  
+  
+  # exact solution of deterministic SI model from 
+  # https://davidearn.github.io/math4mb/2018/lectures/4mbl05_2018.pdf
+  solve.SI <- function(t, i0, n, beta) {
+    (i0*exp(n*beta*t)) / (1+(i0/n)*(exp(n*beta*t)-1))
+  }
+  det.sol <- solve.SI(t=seq(0, 10, 0.2), i0=1, n=sum(unlist(init.conds$size)), 
+                      beta=as.vector(popn.rates[['transmission']]))
+  # time that I reaches 50
+  expected <- approx(x=det.sol, y=seq(0, 10, 0.2), xout=50)$y
+  
+  # re-use simulations from before to save time
+  expect_gt( 1.0, abs(expected - mean(result[2,], na.rm=T)) )
   
 })
+  
+
+
+
+
+
+

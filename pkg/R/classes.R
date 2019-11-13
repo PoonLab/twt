@@ -11,7 +11,7 @@
 #' sampled or unsampled lineages.
 #' @param branching.rates: a named vector of transmission rates *to* other
 #' CompartmentTypes.
-#' @param transition.rates: a named vector of transition rates *to* other
+#' @param tranistion.rates: a named vector of transition rates to other 
 #' CompartmentTypes.
 #' @param migration.rates: a named vector of migration rates *to* other 
 #' CompartmentTypes.
@@ -34,14 +34,16 @@
 #' # load CompartmentTypes from a YAML object
 #' path <- system.file('extdata', 'SI.yaml', package='twt')
 #' settings <- yaml.load_file(path)
-#' mod <- MODEL$new(settings)
+#' mod <- Model$new(settings)
 #' mod$get.types()
 #' 
 #' # manually specify a CompartmentType object (usually done by YAML)
-#' host <- CompartmentType$new(name='host', branching.rates=c(host=0.1), bottleneck.size=1, coalescent.rate=1, wait.time.distr='rexp(1,1)')
+#' host <- CompartmentType$new(name='host', branching.rates=c(host=0.1), 
+#' bottleneck.size=1, coalescent.rate=1, wait.time.distr='rexp(1,1)')
 #' 
 #' @export
-CompartmentType  <- R6Class("CompartmentType",
+CompartmentType  <- R6Class(
+  "CompartmentType",
   public = list(
     initialize = function(name=NA, unsampled = NA,
                           susceptible=NA, branching.rates=NA, transition.rates=NA,
@@ -52,7 +54,8 @@ CompartmentType  <- R6Class("CompartmentType",
       private$unsampled <- unsampled
       private$susceptible <- susceptible
       
-      # named vector of transmission rates corresponding to different Compartment objects
+      # named vector of transmission rates corresponding to different Compartment 
+      # objects
       private$branching.rates <- branching.rates
       private$transition.rates <- transition.rates
       private$migration.rates <- migration.rates
@@ -64,8 +67,8 @@ CompartmentType  <- R6Class("CompartmentType",
       private$wait.time.distr <- wait.time.distr
       private$popn.growth.dynamics <- popn.growth.dynamics
       
-      # populated after outer.tree.sim, tracked used and unused for migration events in 
-      # inner.tree.sim
+      # populated after outer.tree.sim, tracked used and unused for migration 
+      # events in inner.tree.sim
       private$transmission.times <- transmission.times
     },
     
@@ -94,20 +97,20 @@ CompartmentType  <- R6Class("CompartmentType",
       private$branching.rates[[name.type]]
     },
     
-    get.transition.rates = function() {
-      private$transition.rates
-    },
-    
-    get.transition.rate = function(name.type) {
-      private$transition.rates[[name.type]]
-    },
-    
     get.migration.rates = function() {
       private$migration.rates
     },
     
     get.migration.rate = function(name.type) {
       private$migration.rates[[name.type]]
+    },
+    
+    get.transition.rates = function() {
+      private$transition.rates
+    },
+    
+    get.transition.rate = function(name.type) {
+      private$transition.rates[[name.type]]
     },
     
     get.coalescent.rate = function() {
@@ -256,10 +259,10 @@ Compartment <- R6Class("Compartment",
       lin.ind <- which(sapply(
         private$lineages, 
         function(x) { x$get.name() == ex.lineage$get.name() } 
-        ))
+      ))
       private$lineages <- private$lineages[-lin.ind]
     }
-  
+    
   ),
   private = list(
     name = NULL,
@@ -322,43 +325,43 @@ Lineage <- R6Class("Lineage",
     },
     
     parent = NULL,
-    
+   
     copy = function(deep=FALSE) {
       # see https://github.com/r-lib/R6/issues/110
       if (deep) {
         parent <- private$location
         private$location <- NULL  # temporarily erase before cloning!
       }
-      
+     
       cloned <- self$clone(deep)
-      
+     
       if (deep) {
         private$location <- parent  # restore original reference
       }
-      
+     
       cloned
     },
-    
+   
     get.name = function() {
       private$name
     },
-    
+   
     get.type = function() {  # in the future, will be a pointer to a LineageType object
       private$type
     },
-    
+   
     get.sampling.time = function() {
       private$sampling.time
     },
-    
+   
     get.location = function() {
       private$location
     },
-    
+     
     set.location = function(comp) {
       private$location <- comp
     },
-    
+   
     set.location.by.name = function(locationList, new.locationName) {
       new.locationObj <- locationList[[ 
         which(sapply(locationList, function(x) {x$get.name()}) == new.locationName) 

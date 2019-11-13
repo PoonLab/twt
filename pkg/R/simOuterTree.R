@@ -205,7 +205,7 @@ sim.outer.tree <- function(model) {
   popn.totals <- init.conds$size  # list of CompartmentType->size
   
   # extract transmission, migration and transition rates as convenient named matrices
-  popn.rates <- .calc.popn.rates(types)
+  popn.rates <- .get.rate.matrices(types)
 
   # record max sampling times (furthest back in time) of lineages for each Compartment
   init.samplings <- .get.initial.samplings(comps)
@@ -402,7 +402,7 @@ sim.outer.tree <- function(model) {
 
 
 
-#' .calc.popn.rates
+#' .get.rate.matrices
 #' 
 #' Stores population rates for each CompartmentType specified by the user.
 #' Handle unspecified rate parameters.
@@ -412,7 +412,7 @@ sim.outer.tree <- function(model) {
 #'          CompartmentType to CompartmentType
 #'          
 #' @keywords internal
-.calc.popn.rates <- function(types) {
+.get.rate.matrices <- function(types) {
   n <- length(types)
   dimnames <- list(names(types), names(types))
   
@@ -427,15 +427,46 @@ sim.outer.tree <- function(model) {
     for (r.name in names(types)) {
       # column = recipient
       t.rate <- source$get.branching.rate(r.name)
+      if (is.null(t.rate)) {
+        # user did not specify transmission rate
+        t.rate <- 0
+      }
+      if (t.rate < 0) {
+        stop("Error in .get.rate.matrices: detected negative transmission rate for ",
+             "CompartmentType ", source$get.name(), " to ", r.name)
+      }
+      
       # default to zero if null (unspecified)
       t.rates[s.name, r.name] <- ifelse(is.null(t.rate), 0, t.rate)
       
+      
       s.rate <- source$get.transition.rate(r.name)
+      if (is.null(s.rate)) {
+        s.rate <- 0
+      }
+      if (s.rate < 0) {
+        stop("Error in .get.rate.matrices: detected negative transition rate for ",
+             "CompartmentType ", source$get.name(), " to ", r.name)
+      }
       s.rates[s.name, r.name] <- ifelse(is.null(s.rate), 0, s.rate)
       
+      
       m.rate <- source$get.migration.rate(r.name)
+      if (is.null(m.rate)) {
+        m.rate <- 0
+      }
+      if (m.rate < 0) {
+        stop("Error in .get.rate.matrices: detected negative migration rate for ",
+             "CompartmentType ", source$get.name(), " to ", r.name)
+      }
       m.rates[s.name, r.name] <- ifelse(is.null(m.rate), 0, m.rate)
     }
+  }
+  
+  # check diagonal of transition rate matrix
+  if ( any(diag(s.rates) > 0) ) {
+    warning("Detected positive transition rates to self, zeroing out.")
+    diag(s.rates) <- 0
   }
   
   list(transmission=t.rates, transition=s.rates, migration=m.rates)
@@ -462,7 +493,7 @@ sim.outer.tree <- function(model) {
 }
 
 
-#' .resolve.rates
+#' .scale.contact.rates
 #' 
 #' Helper function for .sample.outer.events - calculate population rates 
 #' given per-contact rate (\beta) and population sizes of source and
@@ -473,18 +504,19 @@ sim.outer.tree <- function(model) {
 #' @return  matrix of same dimensions as 'mx'
 #' 
 #' @keywords internal
-.resolve.rates <- function(mx, size) {
+.scale.contact.rates <- function(mx, susceptible, infected) {
   if (nrow(mx) != ncol(mx)) {
-    stop("Error in .resolve.rates: argument 'mx' must be square matrix, ",
+    stop("Error in .scale.contact.rates: argument 'mx' must be square matrix, ",
          "dimension is ", dim(mx))
   }
-  if (nrow(mx) != length(size)) {
-    stop("Error in .resolve.rates: dimension of matrix must equal length ",
-         "of size vector.")
+  if (nrow(mx) != length(infected) || 
+      nrow(mx) != length(susceptible)) {
+    stop("Error in .scale.contact.rates: dimension of matrix must equal length ",
+         "of susceptible/infected vectors.")
   }
   
-  temp <- t(apply(mx, 1, function(row) row*size))
-  apply(temp, 2, function(col) col*size)
+  temp <- t(apply(mx, 1, function(row) row*susceptible))
+  apply(temp, 2, function(col) col*infected)
 }
 
 
@@ -510,11 +542,17 @@ sim.outer.tree <- function(model) {
 .sample.outer.events <- function(types, init.conds, popn.rates, init.samplings, 
                                  max.attempts=10) {
   
+  # convert data frame into list
+  init.by.type <- split(init.samplings$init.sample, init.samplings$type)
+  
   attempt <- 1
   while (attempt < max.attempts) {
     
     # initialize populations at origin (named vector)
-    counts <- unlist(init.conds$size)
+    susceptible <- unlist(init.conds$size)
+    infected <- sapply(susceptible, function(x) 0)
+    susceptible[init.conds$indexType] <- susceptible[init.conds$indexType] - 1
+    infected[init.conds$indexType] <- 1
     
     # prepare outcome container
     events <- data.frame(time=numeric(), event.type=character(), r.type=character(), 
@@ -524,13 +562,21 @@ sim.outer.tree <- function(model) {
     current.time <- init.conds$originTime
     
     while (current.time >= 0) {
-      # calculate population rates
-      t.rates <- .resolve.rates(popn.rates[['transmission']], counts)
-      s.rates <- .resolve.rates(popn.rates[['transition']], counts)
-      m.rates <- .resolve.rates(popn.rates[['migration']], counts)
+      # scale per-contact rates
+      t.rates <- .scale.contact.rates(popn.rates[['transmission']], susceptible, infected)
+      m.rates <- .scale.contact.rates(popn.rates[['migration']], susceptible, infected)
+      
+      # scale non-contact rates
+      s.rates <- popn.rates[['transition']] * (susceptible+infected)
+      
+      total.rate <- sum(t.rates, s.rates, m.rates)
+      if (total.rate == 0) {
+        # nothing can happen, simulation over
+        break
+      }
+      
       
       # draw waiting time to next event
-      total.rate <- sum(t.rates, s.rates, m.rates)
       wait <- rexp(1, rate=total.rate)
       current.time <- current.time - wait
       if (current.time < 0) {
@@ -539,13 +585,14 @@ sim.outer.tree <- function(model) {
       }
       
       # which event?
-      if ( runif(1, max=total.rate) < sum(t.rates) ) {
+      if ( runif(1, max=total.rate) <= sum(t.rates) ) {
         event.type <- 'transmission'
         
         if (length(t.rates) == 1) {
+          # only one CompartmentType
           source <- types[[1]]
           recipient <- types[[1]]
-        }
+        } 
         else {
           row <- sample(1:nrow(t.rates), 1, prob=apply(t.rates, 1, sum))
           source <- types[[row]]
@@ -553,8 +600,8 @@ sim.outer.tree <- function(model) {
         }
         
         # update counts (recipient becomes source type)
-        counts[recipient$get.name()] <- counts[recipient$get.name()] - 1
-        counts[source$get.name()] <- counts[source$get.name()] + 1
+        susceptible[recipient$get.name()] <- susceptible[recipient$get.name()] - 1
+        infected[source$get.name()] <- infected[source$get.name()] + 1
       }
       else {
         total.s.rate <- sum(s.rates)
@@ -573,8 +620,17 @@ sim.outer.tree <- function(model) {
             recipient <- sample(types, 1, prob=s.rates[row, ])[[1]]            
           }
           
-          counts[recipient$get.name()] <- counts[recipient$get.name()] + 1
-          counts[source$get.name()] <- counts[source$get.name()] - 1
+          # susceptible or infected?
+          sus <- susceptible[source$get.name()]
+          inf <- infected[source$get.name()]
+          if (runif(1, max=sus+inf) < sus) {
+            susceptible[source$get.name()] <- sus - 1
+            susceptible[recipient$get.name()] <- susceptible[recipient$get.name()] + 1
+          } 
+          else {
+            infected[source$get.name()] <- inf - 1
+            infected[recipient$get.name()] <- infected[recipient$get.name()] + 1
+          }
         }
         else {
           event.type <- 'migration'
@@ -594,20 +650,21 @@ sim.outer.tree <- function(model) {
       }
       
       # append event
-      events <- rbind(events, c(
+      events <- rbind(events, data.frame(
         time=current.time, 
         event.type=event.type,
         r.type=recipient$get.name(),
-        s.type=source$get.name()
+        s.type=source$get.name(),
+        stringsAsFactors=FALSE
       ))
 
     } 
     
     # check that there are enough Compartments of each Type to be sampled
-    checks <- sapply(1:length(counts), function(i) {
-      ctype <- names(counts)[i]
-      count <- counts[ctype]
-      samp.times <- init.samplings[[ctype]]
+    checks <- sapply(1:length(infected), function(i) {
+      ctype <- names(infected)[i]
+      count <- infected[ctype]
+      samp.times <- init.by.type[[ctype]]
       if (is.null(samp.times)) {
         stop("Error in .sample.outer.events: CompartmentType ", ctype, 
              " not found in init.samplings")
