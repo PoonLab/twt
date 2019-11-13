@@ -4,24 +4,19 @@
 InitialConditions:
   originTime: 10.0
   size:
-    host: 1000
+    host: 100
   indexType: 'host'
 
 CompartmentTypes:
   'host':
-    branching.rates: (host=0.2)
+    branching.rates: (host=0.01)
     migration.rates: ()
-    coalescent.rate: 1.5
+    coalescent.rate: 0.1
     bottleneck.size: 1
     wait.time.distr:
       distr: 'exp'
       hyperparameters:
         rate: 20
-    popn.growth.dynamics:
-      piece1:
-        startTime: 0
-        startPopn: 100
-        endPopn: 100
 
 Compartments:
   'A':

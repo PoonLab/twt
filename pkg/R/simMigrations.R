@@ -132,12 +132,13 @@ sim.migrations <- function(run) {
 #'        this function (type numeric)
 #' @param possible.source.types: list of possible Sources that each recipient 
 #'        type can receive a migrating lineage from
+#' @param transmission.events: 
 #'        
 #' @return data frame of migration events, each made up of: time, 
 #'         recipient Type, and source Type
 #' @keywords internal
-.calc.migration.events <- function(init.conds, popn.migration.rates, 
-                                   max.sampling.time, transmission.events) {
+.calc.migration.events <- function(init.conds, popn.migration.rates, max.sampling.time, 
+                                   possible.source.types, transmission.events) {
   # prepare outcome container
   m_events <- data.frame(time=numeric(), r_type=character(), s_type=character(), 
                          v_type=character(), stringsAsFactors = FALSE)

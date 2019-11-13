@@ -49,14 +49,21 @@ CompartmentType  <- R6Class("CompartmentType",
       private$name <- name
       private$unsampled <- unsampled
       private$susceptible <- susceptible
-      private$branching.rates <- branching.rates               # named vector of transmission rates corresponding to different Compartment objects
+      
+      # named vector of transmission rates corresponding to different Compartment objects
+      private$branching.rates <- branching.rates
       private$migration.rates <- migration.rates
       private$bottleneck.size <- bottleneck.size
-      private$coalescent.rate <- coalescent.rate               # named vector of migration rates of different Compartments
+      
+      # named vector of migration rates of different Compartments
+      private$coalescent.rate <- coalescent.rate
       private$death.rate.distr <- death.rate.distr
       private$wait.time.distr <- wait.time.distr
       private$popn.growth.dynamics <- popn.growth.dynamics
-      private$transmission.times <- transmission.times         # populated after outer.tree.sim, tracked used and unused for migration events in inner.tree.sim
+      
+      # populated after outer.tree.sim, tracked used and unused for migration events in 
+      # inner.tree.sim
+      private$transmission.times <- transmission.times
     },
     
     # accessor functions

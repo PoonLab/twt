@@ -178,9 +178,9 @@ test_that("generate migration from unsampled Compartment", {
   source <- run$get.unsampled.hosts()[[1]]
   
   recipient <- run$get.compartments()[[2]]  # B_1
-  lineage <- recipient$get.lineages()[[1]]  # B_1__2_1
+  migrating.lineage <- recipient$get.lineages()[[1]]  # B_1__2_1
   
-  generate.migration(run, source, recipient, lineage, 2)
+  generate.migration(run, source, recipient, migrating.lineage, 2)
   
   result <- run$get.eventlog()$get.events('migration')
   expect_equal(1, nrow(result))
