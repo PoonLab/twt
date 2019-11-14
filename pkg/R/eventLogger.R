@@ -56,8 +56,8 @@ EventLogger <- R6Class("EventLogger",
     },
     
     add.event = function(type, time, line1, line2, comp1, comp2) {
-      # @param type: event type, one of 'transmission', 'migration', 'coalescence',
-      # or 'bottleneck'.
+      # @param type: event type, one of 'transmission', 'transition', 'migration', 
+      # 'coalescence' or 'bottleneck'.
       # @param time: CUMULATIVE time that event has occurred between two compartments 
       # in a transmission/migration/coalescent event
       
@@ -65,6 +65,10 @@ EventLogger <- R6Class("EventLogger",
         e <- list(event.type=type, time=time, lineage1=line1, lineage2=NA,
                   compartment1=comp1, compartment2=comp2)
       } 
+      else if (type=='transition') {
+        e <- list(event.type='transition', time=time, lineage1=NA, lineage2=NA,
+                  compartment1=comp1, compartment2=comp2)
+      }
       else if (is.element(type, c('coalescent', 'bottleneck'))) {
         e <- list(event.type=type, time=time, lineage1=line1, lineage2=line2,
                   compartment1=comp1, compartment2=NA)

@@ -295,92 +295,6 @@ sim.outer.tree <- function(model) {
 }
 
 
-#' .assign.source.compartments
-#' 
-#' Assign source Compartments for all sampled and promoted unsampled infected
-#' Compartments.
-#' 
-#' @keywords internal
-.assign.source.compartments <- function(eventlog, comps, source.popns, t_events) {
-  
-  numActive <- length(comps)
-  
-  while (numActive >= 1) {
-    # first recipient == most recent infection time == largest list of 
-    # `sources` --> efficiency
-    r_ind_comps <- 1                            
-    recipient <- comps[[r_ind_comps]]
-    r_name <- recipient$get.name()
-    r_type <- recipient$get.type()$get.name()
-    
-    # remove chosen recipient from relevant lists (`comps` and possibly `source.popns`)
-    comps[[ r_ind_comps ]] <- NULL
-    ind_source_popn <- which(names(source.popns[[r_type]]) == r_name)
-    if (length(ind_source_popn) != 0) {
-      # TRUE for all iterations except initial iteration case (bc starting 
-      # recipient already removed)
-      source.popns[[r_type]][[ind_source_popn]] <- NULL
-    }
-    
-    # list of possible sources is based off of the `s_type` recorded in the 
-    # event associated with the transmission time in master copy `t_events`
-    if (length(recipient$get.branching.time()) == 0 
-        || is.null(recipient$get.branching.time())) {
-      # root case, "final" resolved transmission event (aka first recorded 
-      # transmission, furthest back in time)
-      break
-      
-    } else {
-      
-      s_type <- t_events[ which(t_events$time == recipient$get.branching.time()), 's_type']
-      
-      # refine list of sources previously separated by Type also by earlier branching times than recipient's branching time
-      refined.list.sources <- sapply(source.popns[[s_type]], function(s) {
-        if (length(s$get.branching.time()) == 0 || is.null(s$get.branching.time())) s
-        else if (s$get.branching.time() > recipient$get.branching.time()) s
-        else NULL
-      })
-      
-      if (length(refined.list.sources) == 0) {
-        print(numActive)
-        print(source.popns)
-        browser()
-      }
-      refined.list.sources[sapply(refined.list.sources, is.null)] <- NULL   # cleanup
-      
-      # select source from a list of sources previously separated by Type
-      s_ind_s_popn <- sample.int(length(refined.list.sources), 1)
-      source <- refined.list.sources[[s_ind_s_popn]]
-      s_name <- source$get.name()
-      
-      eventlog$add.event('transmission', recipient$get.branching.time(), NA, NA, 
-                         r_name, s_name)
-      #print(eventlog)  ### DEBUGGING ###
-    }
-    
-    # if source is an unsampled infected Compartment, now holds a sampled lineage 
-    # we care about (promote us_comp)
-    if (source$is.unsampled() 
-        && !is.element(source$get.name(), names(comps))
-        && length(source$get.branching.time()) != 0) {
-      # add us_comp to list `comps` (once first a source, can now be a recipient)
-      # AND ONLY if source is not "final" transmission event (b/c it has no source, 
-      # therefore can't be recipient)
-      comps[[s_name]] <- source
-    }
-    
-    # update recipient object `source` attr
-    recipient$set.source(source)
-    
-    # update number of active compartments (excludes recipients, includes promoted us_comps)
-    new.order <- order(sapply(comps, function(x) x$get.branching.time()))
-    comps <- comps[ new.order ]
-    numActive <- length(comps)
-  }
-  
-  return(eventlog)
-}
-
 
 
 #' .get.rate.matrices
@@ -557,9 +471,6 @@ sim.outer.tree <- function(model) {
         break
       }
       
-      # append counts to outcome container
-      counts <- rbind(counts, c(susceptible, infected))
-      
       # draw waiting time to next event
       wait <- rexp(1, rate=total.rate)
       current.time <- current.time - wait
@@ -567,6 +478,9 @@ sim.outer.tree <- function(model) {
         # end of simulation
         break
       }
+      
+      # append counts to outcome container BEFORE event
+      counts <- rbind(counts, c(susceptible, infected))
       
       # which event?
       if ( runif(1, max=total.rate) <= sum(t.rates) ) {
@@ -661,12 +575,18 @@ sim.outer.tree <- function(model) {
     }
   }
  
+  
   if (attempt == max.attempts && !all(checks)) {
     stop ('Transmission times generated overshoots given `sampling.times` of ', 
           'Compartments. Some options to fix this error include: changing the ', 
           'origin time of the epidemic to be further back in time or increasing ',
           'transmission rates.')
   }
+  
+  # merge events and counts into a single data frame
+  counts <- as.data.frame(counts)
+  names(counts) <- c(paste('S.', names(susceptible), sep=''), 
+                     paste('I.', names(infected), sep=''))
   
   cbind(events, counts)
 }
@@ -676,32 +596,97 @@ sim.outer.tree <- function(model) {
 #' 
 #' 
 .assign.events <- function(run, events) {
-  # start with sampled Compartments
-  active <-run$get.compartments()
+  eventlog <- run$get.eventlog()
+  
+  # start with sampled infected Compartments
+  active <- run$get.compartments()
   
   # iterate through events in reverse time (start with most recent)
   for (row in seq(nrow(events), 1, -1)) {
+    
     if (length(active) == 1) {
       # reached the root of sampled Compartments
       break
     }
     
-    e <- events[row, ]
-    if (e$event.type == 'transmission') {
+    types <- sapply(active, function(comp) comp$get.type()$get.name())
+    
+    e <- events[row, ]  # go to the next event
+    
+    # TODO: filter by initial sampling time for transmission events
+    n.active.recipients <- sum(types == e$r.type)
+    n.active.sources <- sum(types == e$s.type)
+    
+    # recipients who were uninfected (susceptible) BEFORE event
+    n.recipients <- e[paste('S.', e$r.type, sep='')]
+    n.sources <- e[paste('I.', e$s.type, sep='')]
+    
+    
+    if (e$event.type == 'transmission' || e$event.type == 'migration') {
       
+      if (runif(1, max=n.recipients) < n.active.recipients) {
+        # recipient is an active Compartment
+        recipient <- sample(active[types==r.type], 1)[[1]]
+        
+        if (e$event.type == 'transmission') {
+          # remove recipient from active list
+          active[recipient$get.name()] <- NULL  
+          
+          # update counts (recipient is no longer infected)
+          if (e$s.type == e$r.type) {
+            n.active.sources <- n.active.sources - 1
+            n.sources <- n.sources - 1
+          }
+        }
+
+        
+        if (runif(1, max=n.sources) < n.active.sources) {
+          # source is an active Compartment
+          source <- sample(active[types==s.type], 1)[[1]]
+        }
+        else {
+          # source is an unsampled Compartment 
+          s.type.obj <- run$get.types()[[s.type]]
+          source <- run$generate.unsampled(s.type.obj)
+          active[source$get.name()] <- source
+        }
+        
+        # update event log
+        eventlog$add.event(
+          time = e$time,
+          type = e$event.type,
+          line1 = NA,
+          line2 = NA,
+          comp1 = recipient$get.name(),
+          comp2 = source$get.name()
+        )
+      }
+      # otherwise recipient is not a sampled Compartment - ignore
     }
+    
     else if (e$event.type == 'transition') {
       
-    } 
-    else if (e$event.type == 'migration') {
-      
+      if (runif(1, max=n.recipients+n.sources) < n.active.recipients) {
+        compartment <- sample(active[types==r.type], 1)[[1]]
+        compartment$set.type(run$get.types()[[s.type]])
+        
+        eventlog$add.event(
+          time = e$time,
+          event.type = 'transition',
+          
+          compartment1 = compartment$get.name()
+        )
+      }
+      # otherwise ignore transition of unsampled Compartment
     }
+    
     else {
       stop("Error in .assign.events: unrecognized event type ", 
            e$event.type)
     }
   }
 }
+
 
 
 #' .promote.unsampled.hosts
@@ -816,3 +801,92 @@ sim.outer.tree <- function(model) {
   
   all.t.times  
 }
+
+
+
+#' .assign.source.compartments
+#' 
+#' Assign source Compartments for all sampled and promoted unsampled infected
+#' Compartments.
+#' 
+#' @keywords internal
+.assign.source.compartments <- function(eventlog, comps, source.popns, t_events) {
+  
+  numActive <- length(comps)
+  
+  while (numActive >= 1) {
+    # first recipient == most recent infection time == largest list of 
+    # `sources` --> efficiency
+    r_ind_comps <- 1                            
+    recipient <- comps[[r_ind_comps]]
+    r_name <- recipient$get.name()
+    r_type <- recipient$get.type()$get.name()
+    
+    # remove chosen recipient from relevant lists (`comps` and possibly `source.popns`)
+    comps[[ r_ind_comps ]] <- NULL
+    ind_source_popn <- which(names(source.popns[[r_type]]) == r_name)
+    if (length(ind_source_popn) != 0) {
+      # TRUE for all iterations except initial iteration case (bc starting 
+      # recipient already removed)
+      source.popns[[r_type]][[ind_source_popn]] <- NULL
+    }
+    
+    # list of possible sources is based off of the `s_type` recorded in the 
+    # event associated with the transmission time in master copy `t_events`
+    if (length(recipient$get.branching.time()) == 0 
+        || is.null(recipient$get.branching.time())) {
+      # root case, "final" resolved transmission event (aka first recorded 
+      # transmission, furthest back in time)
+      break
+      
+    } else {
+      
+      s_type <- t_events[ which(t_events$time == recipient$get.branching.time()), 's_type']
+      
+      # refine list of sources previously separated by Type also by earlier branching times than recipient's branching time
+      refined.list.sources <- sapply(source.popns[[s_type]], function(s) {
+        if (length(s$get.branching.time()) == 0 || is.null(s$get.branching.time())) s
+        else if (s$get.branching.time() > recipient$get.branching.time()) s
+        else NULL
+      })
+      
+      if (length(refined.list.sources) == 0) {
+        print(numActive)
+        print(source.popns)
+        browser()
+      }
+      refined.list.sources[sapply(refined.list.sources, is.null)] <- NULL   # cleanup
+      
+      # select source from a list of sources previously separated by Type
+      s_ind_s_popn <- sample.int(length(refined.list.sources), 1)
+      source <- refined.list.sources[[s_ind_s_popn]]
+      s_name <- source$get.name()
+      
+      eventlog$add.event('transmission', recipient$get.branching.time(), NA, NA, 
+                         r_name, s_name)
+      #print(eventlog)  ### DEBUGGING ###
+    }
+    
+    # if source is an unsampled infected Compartment, now holds a sampled lineage 
+    # we care about (promote us_comp)
+    if (source$is.unsampled() 
+        && !is.element(source$get.name(), names(comps))
+        && length(source$get.branching.time()) != 0) {
+      # add us_comp to list `comps` (once first a source, can now be a recipient)
+      # AND ONLY if source is not "final" transmission event (b/c it has no source, 
+      # therefore can't be recipient)
+      comps[[s_name]] <- source
+    }
+    
+    # update recipient object `source` attr
+    recipient$set.source(source)
+    
+    # update number of active compartments (excludes recipients, includes promoted us_comps)
+    new.order <- order(sapply(comps, function(x) x$get.branching.time()))
+    comps <- comps[ new.order ]
+    numActive <- length(comps)
+  }
+  
+  return(eventlog)
+}
+

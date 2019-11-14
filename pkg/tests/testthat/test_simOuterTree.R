@@ -142,7 +142,7 @@ test_that("check simple SI model", {
   
   # look at distribution of waiting times to first transmission
   ot <- init.conds$originTime
-  result <- sapply(1:100, function(i) {
+  result <- sapply(1:50, function(i) {
     sim <- .sample.outer.events(types, init.conds, popn.rates, init.samplings)
     c(ot - sim$time[sim$event.type=='transmission'][1],
       ot - sim$time[49])

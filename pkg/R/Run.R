@@ -147,22 +147,14 @@ Run <- R6Class(
     },
     
     
-    generate.unsampled = function(num.unsampled, t) {
+    generate.unsampled = function(type) {
       # function creates "blank" Compartment objects for Unsampled Hosts (US)
-      # @param num.unsampled = number of unsampled
       # @param t = CompartmentType object
-      new.hosts <- unlist(sapply(
-        1:num.unsampled, 
-        function(blank) {
-          Compartment$new(
-            name=paste0('US_', t$get.name(), '_', blank),
-            type=t,
-            unsampled=TRUE
-          )
-        }))
-      names(new.hosts) <- sapply(new.hosts, function(x) x$get.name())
-  
-      private$unsampled.hosts <- c(private$unsampled.hosts, new.hosts)
+      new.host <- Compartment$new(name=paste0('US_', t$get.name(), '_', blank),
+                                  type=type, unsampled=TRUE)
+      
+      private$unsampled.hosts[new.host$get.name()] <- new.host
+      return(new.host)
     },
     
     clear.unsampled = function() {
