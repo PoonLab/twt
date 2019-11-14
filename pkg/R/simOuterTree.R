@@ -220,25 +220,7 @@ sim.outer.tree <- function(model) {
   
   
   # generate unsampled hosts
-  last.indiv <- T  # FIXME: what is the role of this flag?
-  for (t in types) {
-    # difference between number of recipient Compartments and 
-    #  number of sampled Compartments of this Type
-    num.unsampled <- length(which(events$r.type == t$get.name())) - 
-      length(which(indiv.types == t$get.name()))
-    
-    if (num.unsampled > 0) {
-      if (last.indiv) {
-        # this is the reason why unsampled are not generated at the 
-        # initialization of the MODEL object
-        # FIXME: why do we have one extra unsampled host of the first Type?
-        run$generate.unsampled(num.unsampled+1, t)      
-        last.indiv <- F
-      } else {
-        run$generate.unsampled(num.unsampled, t)
-      }
-    }
-  }
+  .promote.unsampled.hosts(run, events)
   
   
   # expand `time.bands` to include unsampled hosts
@@ -311,7 +293,6 @@ sim.outer.tree <- function(model) {
 
   return(run)
 }
-
 
 
 #' .assign.source.compartments
@@ -554,9 +535,10 @@ sim.outer.tree <- function(model) {
     susceptible[init.conds$indexType] <- susceptible[init.conds$indexType] - 1
     infected[init.conds$indexType] <- 1
     
-    # prepare outcome container
+    # prepare outcome containers
     events <- data.frame(time=numeric(), event.type=character(), r.type=character(), 
                          s.type=character(), stringsAsFactors = FALSE)
+    counts <- c()
     
     # simulate trajectories in forward time (indexed in reverse, ha ha!)
     current.time <- init.conds$originTime
@@ -575,6 +557,8 @@ sim.outer.tree <- function(model) {
         break
       }
       
+      # append counts to outcome container
+      counts <- rbind(counts, c(susceptible, infected))
       
       # draw waiting time to next event
       wait <- rexp(1, rate=total.rate)
@@ -684,7 +668,64 @@ sim.outer.tree <- function(model) {
           'transmission rates.')
   }
   
-  events
+  cbind(events, counts)
+}
+
+
+#' .assign.events
+#' 
+#' 
+.assign.events <- function(run, events) {
+  # start with sampled Compartments
+  active <-run$get.compartments()
+  
+  # iterate through events in reverse time (start with most recent)
+  for (row in seq(nrow(events), 1, -1)) {
+    if (length(active) == 1) {
+      # reached the root of sampled Compartments
+      break
+    }
+    
+    e <- events[row, ]
+    if (e$event.type == 'transmission') {
+      
+    }
+    else if (e$event.type == 'transition') {
+      
+    } 
+    else if (e$event.type == 'migration') {
+      
+    }
+    else {
+      stop("Error in .assign.events: unrecognized event type ", 
+           e$event.type)
+    }
+  }
+}
+
+
+#' .promote.unsampled.hosts
+#' Transmission and migration events 
+.promote.unsampled.hosts <- function(run, events) {
+  last.indiv <- T  # FIXME: what is the role of this flag?
+  for (t in types) {
+    # difference between number of recipient Compartments and 
+    #  number of sampled Compartments of this Type
+    num.unsampled <- length(which(events$r.type == t$get.name())) - 
+      length(which(indiv.types == t$get.name()))
+    
+    if (num.unsampled > 0) {
+      if (last.indiv) {
+        # this is the reason why unsampled are not generated at the 
+        # initialization of the MODEL object
+        # FIXME: why do we have one extra unsampled host of the first Type?
+        run$generate.unsampled(num.unsampled+1, t)      
+        last.indiv <- F
+      } else {
+        run$generate.unsampled(num.unsampled, t)
+      }
+    }
+  }
 }
 
 
