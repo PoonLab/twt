@@ -27,6 +27,8 @@ test_that("build eventlog from tree string", {
     lineage2=rep(NA, 2),
     compartment1=c('B', 'C'),  # recipient (reverse time)
     compartment2=c('A', 'A'),  # source
+    type1=rep(NA, 2),
+    type2=rep(NA, 2),
     stringsAsFactors = FALSE
   )
   
@@ -45,6 +47,8 @@ test_that("build eventlog from YAML", {
     lineage2=rep(NA, 2),
     compartment1=c('B_1', 'C_1'),  # recipient (reverse time)
     compartment2=c('A_1', 'B_1'),  # source
+    type1=rep(NA, 2),
+    type2=rep(NA, 2),
     stringsAsFactors = FALSE
   )
   
@@ -179,9 +183,13 @@ test_that("assignment of outer events", {
   events <- .sample.outer.events(types, init.conds, popn.rates, init.samplings)
   
   .assign.events(run, events)
-  result <- run$get.eventlog()
+  result <- run$get.eventlog()$get.all.events()
   
   # transmissions should define a DAG
+  print(names(run$get.compartments()))
+  print(result)
+  expect_true( all(is.element(names(run$get.compartments()), 
+                              result$compartment1)) )
 })
 
 

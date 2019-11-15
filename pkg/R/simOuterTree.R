@@ -597,6 +597,7 @@ sim.outer.tree <- function(model) {
 #' 
 .assign.events <- function(run, events) {
   eventlog <- run$get.eventlog()
+  eventlog$clear.events()
   
   # start with sampled infected Compartments
   active <- run$get.compartments()
@@ -658,8 +659,6 @@ sim.outer.tree <- function(model) {
         eventlog$add.event(
           time = e$time,
           type = e$event.type,
-          line1 = NA,
-          line2 = NA,
           comp1 = recipient$get.name(),
           comp2 = source$get.name()
         )
@@ -671,13 +670,16 @@ sim.outer.tree <- function(model) {
       
       if (runif(1, max=n.recipients+n.sources) < n.active.recipients) {
         compartment <- sample(active[types==r.type], 1)[[1]]
+        
+        old.type <- compartment$get.type()$get.name()
         compartment$set.type(run$get.types()[[s.type]])
         
         eventlog$add.event(
           time = e$time,
-          event.type = 'transition',
-          
-          compartment1 = compartment$get.name()
+          type = 'transition',
+          comp1 = compartment$get.name(),
+          type1 = old.type,
+          type2 = compartment$get.type()$get.name()
         )
       }
       # otherwise ignore transition of unsampled Compartment
