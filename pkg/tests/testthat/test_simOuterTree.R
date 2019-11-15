@@ -148,7 +148,8 @@ test_that("check simple SI model", {
       ot - sim$time[49])
   })
   # some tolerance due to low number of replicates
-  expect_gt( 0.2, abs((1/(0.01*99)) - mean(result[1,])) )
+  expected <- 1 / (0.01*99)  # 1.01
+  expect_gt( 0.3, abs(expected - mean(result[1,])) )
   
   
   # exact solution of deterministic SI model from 
@@ -167,7 +168,21 @@ test_that("check simple SI model", {
 })
   
 
+test_that("assignment of outer events", {
+  run <- Run$new(model.SI)
 
+  # sample outer events  
+  types <- run$get.types()
+  init.conds <- run$get.initial.conds()
+  popn.rates <- .get.rate.matrices(types)
+  init.samplings <- .get.initial.samplings(run$get.compartments())
+  events <- .sample.outer.events(types, init.conds, popn.rates, init.samplings)
+  
+  .assign.events(run, events)
+  result <- run$get.eventlog()
+  
+  # transmissions should define a DAG
+})
 
 
 

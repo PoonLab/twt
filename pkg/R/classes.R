@@ -198,7 +198,8 @@ Compartment <- R6Class("Compartment",
       private$type <- type
       private$source <- source
       private$branching.time <- branching.time
-      private$unsampled <- unsampled                   # attr req later when identifying new US Comps to be promoted in mig events
+      # attr req later when identifying new US Comps to be promoted in mig events
+      private$unsampled <- unsampled
       private$lineages <- lineages
     },
     
@@ -266,7 +267,7 @@ Compartment <- R6Class("Compartment",
   ),
   private = list(
     name = NULL,
-    type = NULL,          # reference to CompartmentType object
+    type = NULL,  # reference to CompartmentType object
     source = NULL,
     branching.time = NULL,
     unsampled = NULL,

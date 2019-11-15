@@ -443,7 +443,7 @@ sim.outer.tree <- function(model) {
   attempt <- 1
   while (attempt < max.attempts) {
     
-    # initialize populations at origin (named vector)
+    # initialize populations at origin (named vectors)
     susceptible <- unlist(init.conds$size)
     infected <- sapply(susceptible, function(x) 0)
     susceptible[init.conds$indexType] <- susceptible[init.conds$indexType] - 1
@@ -460,7 +460,7 @@ sim.outer.tree <- function(model) {
     while (current.time >= 0) {
       # scale per-contact rates
       t.rates <- .scale.contact.rates(popn.rates[['transmission']], susceptible, infected)
-      m.rates <- .scale.contact.rates(popn.rates[['migration']], susceptible, infected)
+      m.rates <- .scale.contact.rates(popn.rates[['migration']], infected, infected)
       
       # scale non-contact rates
       s.rates <- popn.rates[['transition']] * (susceptible+infected)
@@ -614,19 +614,21 @@ sim.outer.tree <- function(model) {
     e <- events[row, ]  # go to the next event
     
     # TODO: filter by initial sampling time for transmission events
+    #       Need to make sure Compartment is not infected after a Lineage 
+    #       was sampled.
     n.active.recipients <- sum(types == e$r.type)
     n.active.sources <- sum(types == e$s.type)
     
     # recipients who were uninfected (susceptible) BEFORE event
-    n.recipients <- e[paste('S.', e$r.type, sep='')]
-    n.sources <- e[paste('I.', e$s.type, sep='')]
+    n.recipients <- as.numeric(e[paste('S.', e$r.type, sep='')])
+    n.sources <- as.numeric(e[paste('I.', e$s.type, sep='')])
     
     
     if (e$event.type == 'transmission' || e$event.type == 'migration') {
       
       if (runif(1, max=n.recipients) < n.active.recipients) {
         # recipient is an active Compartment
-        recipient <- sample(active[types==r.type], 1)[[1]]
+        recipient <- sample(active[types==e$r.type], 1)[[1]]
         
         if (e$event.type == 'transmission') {
           # remove recipient from active list
@@ -638,17 +640,18 @@ sim.outer.tree <- function(model) {
             n.sources <- n.sources - 1
           }
         }
+        # migration can *potentially* remove compartment from active list
+        # but this requires inner tree simulation (at Lineage level)
 
         
         if (runif(1, max=n.sources) < n.active.sources) {
           # source is an active Compartment
-          source <- sample(active[types==s.type], 1)[[1]]
+          source <- sample(active[types==e$s.type], 1)[[1]]
         }
         else {
           # source is an unsampled Compartment 
-          s.type.obj <- run$get.types()[[s.type]]
-          source <- run$generate.unsampled(s.type.obj)
-          active[source$get.name()] <- source
+          source <- run$generate.unsampled(e$s.type)
+          active[[source$get.name()]] <- source
         }
         
         # update event log
