@@ -633,7 +633,8 @@ sim.outer.tree <- function(model) {
         
         if (e$event.type == 'transmission') {
           # remove recipient from active list
-          active[recipient$get.name()] <- NULL  
+          active[recipient$get.name()] <- NULL
+          types <- sapply(active, function(comp) comp$get.type()$get.name())
           
           # update counts (recipient is no longer infected)
           if (e$s.type == e$r.type) {

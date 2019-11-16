@@ -55,19 +55,22 @@ EventLogger <- R6Class("EventLogger",
       }
     },
     
-    add.event = function(type, time, line1=NA, line2=NA, comp1=NA, comp2=NA, type1=NA, type2=NA) {
+    add.event = function(type, time, line1=NA, line2=NA, comp1=NA, comp2=NA, 
+                         type1=NA, type2=NA) {
       # @param type: event type, one of 'transmission', 'transition', 'migration', 
       # 'coalescence' or 'bottleneck'.
       # @param time: CUMULATIVE time that event has occurred between two compartments 
       # in a transmission/migration/coalescent event
       
-      if (!is.element(type, c('transmission', 'migration', 'transition', 'coalescent', 
-                              'bottleneck'))) {
+      if ( !is.element(type, c(
+        'transmission', 'migration', 'transition', 'coalescent', 'bottleneck'
+        ))) {
         stop("Error in EventLogger:add.event(), unrecognized event type ", type)
       }
       
-      e <- list(event.type=type, time=time, lineage1=line1, lineage2=line2, compartment1=comp1,
-                compartment2=comp2, type1=type1, type2=type2)
+      e <- list(event.type=type, time=time, lineage1=line1, lineage2=line2, 
+                compartment1=comp1, compartment2=comp2, 
+                type1=type1, type2=type2)
       private$events <- rbind(private$events, e, stringsAsFactors=F)
     }, 
     
