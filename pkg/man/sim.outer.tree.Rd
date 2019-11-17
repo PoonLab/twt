@@ -24,13 +24,25 @@ three use cases:
 3. No host tree provided, transmission events need to be simulated under
    user-specified model (`sim.outer.tree`).
    
-\code{sim.outer.tree} simulates transmission events and fixes them to the 
-timeline of lineage sampled events.
+\code{sim.outer.tree} simulates transmission, migration and transition events 
+and fixes them to the timeline of lineage sampled events.
+}
+\details{
+A *transmission* is the passage of one or more Lineages from a source 
+Compartment to an uninfected recipient Compartment that did not carry any 
+Lineages.  
+
+A *migration* is the passage of one or more Lineages from a source Compartment
+to a recipient Compartment that has already been infected (it already carries
+one or more Lineages).
+
+A *transition* occurs when a Compartment switches to another Type.  This 
+is useful for handling host death events, for example.
 }
 \examples{
 
 #' # load susceptible-infected (SI) compartmental model
-path <- system.file('extdata', 'SI.yaml', package='twt')
+path <- system.file('extdata', 'structSI.yaml', package='twt')
 settings <- yaml.load_file(path)
 model <- Model$new(settings)
 

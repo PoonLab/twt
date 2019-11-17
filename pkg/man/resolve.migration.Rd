@@ -4,17 +4,18 @@
 \alias{resolve.migration}
 \title{resolve.migration}
 \usage{
-resolve.migration(run, eventlog, inf, migration.event)
+resolve.migration(run, inf, migration.event)
 }
 \arguments{
 \item{run:}{Run object}
 
-\item{eventlog:}{EventLogger object}
+\item{inf:}{list of sampled and unsampled infected compartments 
+of type Compartment}
 
-\item{inf:}{list of sampled and unsampled infected compartments of type Compartment}
-
-\item{migration.event:}{list of information specific to the migration event being resolved}
+\item{migration.event:}{list of information specific to the migration 
+event being resolved}
 }
 \description{
-function resolves a potential migration event generated from `sim.migrations()`
+function resolves a potential migration event generated from 
+`sim.migrations()`
 }

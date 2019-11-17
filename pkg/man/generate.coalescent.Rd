@@ -4,8 +4,7 @@
 \alias{generate.coalescent}
 \title{generate.coalescent}
 \usage{
-generate.coalescent(run, line1, line2, current.time,
-  is.bottleneck = FALSE)
+generate.coalescent(run, line1, line2, current.time, is.bottleneck = FALSE)
 }
 \arguments{
 \item{run:}{R6 Run object}

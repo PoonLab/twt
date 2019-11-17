@@ -172,7 +172,7 @@ test_that("check simple SI model", {
 })
   
 
-test_that("assignment of outer events", {
+test_that("assignment of transmission events", {
   run <- Run$new(model.SI)
 
   # sample outer events  
@@ -185,16 +185,74 @@ test_that("assignment of outer events", {
   .assign.events(run, events)
   result <- run$get.eventlog()$get.all.events()
   
-  # transmissions should define a DAG
-  #print(names(run$get.compartments()))
-  #print(result)
+  # for this model, only outer events are transmission
+  expect_true(all(result$event.type=='transmission'))
   
-  ## This isn't a good test - not all sampled Compartments
-  ## will have necessarily coalesced within simulation time frame.
-  #expect_true( all(is.element(names(run$get.compartments()), 
-  #                            result$compartment1)) )
+  # transmissions should define a DAG:
+  
+  # 1. only one parent per node - recipients must be unique
+  expect_equal(nrow(result), length(unique(result$compartment1)))
+  
+  # 2. transmission events of parents should always precede children
+  expect_true(
+    all(
+      sapply(1:nrow(result), function(i) {
+        recipient <- result$compartment1[i]
+        source <- result$compartment2[i]
+        r.time <- result$time[i]
+      
+        if ( is.element(source, result$compartment1) ) {
+          s.time <- result$time[ which(result$compartment1 == source) ]
+          (s.time > r.time)  # further back in time
+        } 
+        else {
+          TRUE  # skip comparison
+        }
+      })
+    ))
+
+  # 3. no cycles
+  expect_true(all(
+    sapply(1:nrow(result), function(i) {
+      recipient <- result$compartment1[i]
+      source <- result$compartment2[i]
+      while(is.element(source, result$compartment1)) {
+        next.row <- which(result$compartment1==source)
+        source <- result$compartment2[next.row]  # next source
+        if (source == recipient) {
+          # cycle!
+          return(FALSE)
+        }
+      }
+      TRUE
+    })
+  ))
+  
+  # end of tests
 })
 
 
 
+test_that("assignment of outer events", {
+  run <- Run$new(model.structSI)
+  
+  # sample outer events  
+  types <- run$get.types()
+  init.conds <- run$get.initial.conds()
+  popn.rates <- .get.rate.matrices(types)
+  init.samplings <- .get.initial.samplings(run$get.compartments())
+  events <- .sample.outer.events(types, init.conds, popn.rates, init.samplings)
+  
+  .assign.events(run, events)
+  result <- run$get.eventlog()$get.all.events()
+  
+  # recipient should never be its own source for contact events
+  expect_true(all(
+    result$compartment1 != result$compartment2 &&
+      !is.na(result$compartment1) &&
+      !is.na(result$compartment2)
+    ))
+  
+  
+})
 

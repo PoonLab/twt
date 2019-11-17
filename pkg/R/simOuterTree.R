@@ -644,11 +644,14 @@ sim.outer.tree <- function(model) {
         }
         # migration can *potentially* remove compartment from active list
         # but this requires inner tree simulation (at Lineage level)
-
         
         if (runif(1, max=n.sources) < n.active.sources) {
           # source is an active Compartment
-          source <- sample(active[types==e$s.type], 1)[[1]]
+          source <- recipient
+          while (source$get.name() == recipient$get.name()) {
+            # make sure source is different Compartment
+            source <- sample(active[types==e$s.type], 1)[[1]] 
+          }
         }
         else {
           # source is an unsampled Compartment 
@@ -670,10 +673,10 @@ sim.outer.tree <- function(model) {
     else if (e$event.type == 'transition') {
       
       if (runif(1, max=n.recipients+n.sources) < n.active.recipients) {
-        compartment <- sample(active[types==r.type], 1)[[1]]
+        compartment <- sample(active[types==e$r.type], 1)[[1]]
         
         old.type <- compartment$get.type()$get.name()
-        compartment$set.type(run$get.types()[[s.type]])
+        compartment$set.type(run$get.types()[[e$s.type]])
         
         eventlog$add.event(
           time = e$time,

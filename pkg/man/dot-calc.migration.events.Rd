@@ -4,8 +4,13 @@
 \alias{.calc.migration.events}
 \title{.calc.migration.events}
 \usage{
-.calc.migration.events(init.conds, popn.migration.rates, max.sampling.time,
-  transmission.events)
+.calc.migration.events(
+  init.conds,
+  popn.migration.rates,
+  max.sampling.time,
+  possible.source.types,
+  transmission.events
+)
 }
 \arguments{
 \item{init.conds:}{initial conditions specified in model settings, i.e., 
@@ -19,6 +24,8 @@ this function (type numeric)}
 
 \item{possible.source.types:}{list of possible Sources that each recipient 
 type can receive a migrating lineage from}
+
+\item{transmission.events:}{}
 }
 \value{
 data frame of migration events, each made up of: time, 
