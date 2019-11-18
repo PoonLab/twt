@@ -243,11 +243,169 @@ Run <- R6Class(
 )
 
 
-#' Wrapper around plot.EventLogger
+#' plot.Run
+#' 
+#' S3 plot method for Run objects.  
+#' 
+#' If the Run object is the outcome of sim.outer.tree() or either of the 
+#' related outer tree functions, then we call the internal function 
+#' .plot.outer.tree().
+#' 
+#' If the Run object is the outcome of sim.inner.tree(), then the eventlog 
+#' is converted into a Phylo object and plotted using the S3 method provided 
+#' by the `ape` package.  
+#' 
+#' @param run:  R6 object of class `Run`
+#' @param transmissions:  if TRUE, display transmission events on inner tree
+#'        plot.
+#' @param migrations: if TRUE, display migration events on inner tree plot.
+#' @param node.labels: if TRUE, label internal nodes with names.
+#' 
+#' @examples 
+#' # load model
+#' path <- system.file('extdata', 'SI.yaml', package='twt')
+#' 
+#' # load file and parse to construct MODEL object
+#' settings <- yaml.load_file(path)
+#' mod <- MODEL$new(settings)
+#' 
+#' # simulate outer tree
+#' outer <- sim.outer.tree(mod)
+#' 
+#' # simulate inner tree
+#' tree <- sim.inner.tree(mod, outer)
+#' plot(tree)
 #' @export
 plot.Run <- function(run, transmissions=FALSE, migrations=FALSE, 
-                     node.labels=FALSE) {
-  # call S3 method of this Run's event log
-  plot(run$get.eventlog(), transmissions=transmissions, 
-       migrations=migrations, node.labels=node.labels)
+                     node.labels=FALSE, 
+                     pal=c("#1B9E77", "#D95F02", "#7570B3", "#E7298A", 
+                           "#66A61E", "#E6AB02", "#A6761D", "#666666")) {
+  
+  eventlog <- run$get.eventlog()
+  evt <- eventlog$get.all.events()
+  if (is.null(evt)) {
+    cat("No events to display.")
+  }
+  else {
+    if ( all(evt$event.type != 'coalescent') ) {
+      # this is an outer tree
+      .plot.outer.tree(eventlog, pal)
+    } 
+    else {
+      phy <- .eventlogger.to.phylo(
+        eventlog=eventlog, 
+        transmissions=transmissions, 
+        migrations=migrations, 
+        node.labels=node.labels)
+      plot(phy)  # call plot.phylo S3 method
+    }
+  }
+}
+
+#' .reorder.events
+#' 
+#' A helper function that recursively geneates a list of node labels
+#' by post-order traversal (outputting children before parents).
+#' 
+#' @keywords internal
+.reorder.events <- function(events, node, result=c()) {
+  children <- events$compartment1[events$compartment2==node]
+  inf.times <- sapply(children, function(child) 
+    events$time[events$compartment1==child])
+  
+  for (child in children[order(inf.times, decreasing=TRUE)]) {
+    result <- .reorder.events(events, child, result)
+  }
+  result <- c(result, node)
+  return(result)
+}
+
+
+#' .plot.outer.tree
+#' 
+#' A function that converts events stored in an EventLogger object into
+#' an outer transmission tree.
+#' 
+#' @param e: EventLogger object
+#' 
+#' @examples
+#' path <- system.file('extdata', 'structSI.yaml', package='twt')
+#' settings <- yaml.load_file(path)
+#' model <- Model$new(settings)
+#' run <- sim.outer.tree(model)
+#' plot(run)
+#' 
+#' @keywords internal
+.plot.outer.tree <- function(run, pal) {
+  e <- run$get.eventlog()
+  comps <- run$get.compartments()
+  types <- run$get.types()
+  
+  if (length(types) > length(pal)) {
+    warning("Number of colours in `pal` less than number of CompartmentTypes.")
+  }
+  
+  if (length(types) > 1) {
+    pal <- pal[1:length(types)]
+    names(pal) <- names(types)
+  } else {
+    pal <- 'black'
+  }
+  
+  events <- e$get.all.events()
+  trans <- events[events$event.type=='transmission',]
+  
+  # find root
+  sources <- unique(trans$compartment2)
+  root <- sources[!is.element(sources, trans$compartment1)]
+  
+  # sort nodes by post-order traversal (parents after children)
+  nodes <- .reorder.events(trans, root)
+  
+  # prepare plot region
+  par(mar=c(5,1,1,1))
+  plot(NA, xlim=c(-max(trans$time*1.1), 0), ylim=c(0.5, length(nodes)+0.5),
+       xlab='Time', yaxt='n', ylab=NA, bty='n')
+  
+  . <- sapply(nodes, function(node) {
+    is.sampled <- FALSE
+    if (is.element(node, names(comps))) {
+      is.sampled <- TRUE
+      comp <- comps[[node]]
+    }
+    
+    if (node != root) {
+      row <- trans[trans$compartment1 == node,]
+      inf.time <- row[['time']]
+      source <- row[['compartment2']]
+    } else {
+      inf.time <- max(trans$time)*1.1
+      source <- NA
+    }
+    
+    # TODO: retrieve initial sampling times
+    samp.time <- 0
+    if (is.sampled) {
+      samp.time <- max(sapply(comp$get.lineages(), 
+                              function(line) line$get.sampling.time()))
+    }
+    
+    segments(x0=-inf.time, x1=samp.time, y0=which(nodes==node), lwd=3,
+             col=ifelse(is.sampled, 'black', 'grey'))
+    
+    if (!is.na(source)) {
+      arrows(x0=-inf.time, y1=which(nodes==node), y0=which(nodes==source), 
+             length=0.08, lwd=2, col='orangered')  
+    }
+    
+  })
+  
+  migrations <- events[events$event.type=='migration', ]
+  for (m in migrations) {
+    time <- m$time
+    recipient <- which(nodes == m$compartment1)
+    source <- which(nodes == m$compartment2)
+    
+    arrows()
+  }
 }

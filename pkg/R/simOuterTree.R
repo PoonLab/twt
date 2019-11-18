@@ -419,9 +419,9 @@ sim.outer.tree <- function(model) {
           recipient <- sample(types, 1, prob=t.rates[row, ])[[1]]
         }
         
-        # update counts (recipient becomes source type)
+        # update counts
         susceptible[recipient$get.name()] <- susceptible[recipient$get.name()] - 1
-        infected[source$get.name()] <- infected[source$get.name()] + 1
+        infected[recipient$get.name()] <- infected[recipient$get.name()] + 1
       }
       else {
         total.s.rate <- sum(s.rates)
@@ -561,7 +561,6 @@ sim.outer.tree <- function(model) {
         
         if (e$event.type == 'transmission') {
           # remove recipient from sampled infected Compartments
-          #print(paste('remove active Compartment', recipient$get.name()))
           active[recipient$get.name()] <- NULL
           types <- sapply(active, function(comp) comp$get.type()$get.name())
         }

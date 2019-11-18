@@ -96,28 +96,7 @@ test_that("get initial samplings", {
 })
 
 
-<<<<<<< HEAD
-test_that("calculate transmission events", {
-  run <- Run$new(model.SI)
-  
-  popn.rates <- .calc.popn.rates(run$get.types())
-  
-  init.samplings <- .store.initial.samplings(
-    infected = run$get.compartments(),
-    lineages = run$get.lineages(),
-    popn.rates = popn.rates)
-  
-  set.seed(1)
-  result <- .calc.transmission.events(
-    init.conds = run$get.initial.conds(), 
-    popn.rates = popn.rates,
-    init.samplings = init.samplings)
-  
-  expect_true(all(result$event.type=='transmission'))
-  
-  # waiting time to earliest transmission events
-  # should be approximately 1/(0.01*100) = 1.0
-=======
+
 test_that("sample outer events", {
   run <- Run$new(model.structSI)
   types <- run$get.types()
@@ -181,8 +160,6 @@ test_that("check simple SI model", {
   
 
 test_that("assignment of transmission events", {
-  set.seed(28)
-
   run <- Run$new(model.SI)
   
   # sample outer events  
@@ -250,7 +227,6 @@ test_that("assignment of transmission events", {
   ))
   
   # end of tests
->>>>>>> 208ae737d31f4c9075d9ce1df03ad72cb64e333c
 })
 
 
@@ -275,7 +251,10 @@ test_that("assignment of outer events", {
   # migrations are only between infected compartments (preceded by transmission)
   migrations <- log[log$event.type == 'migration', ]
   transmissions <- log[log$event.type == 'transmission', ]
-  
+  root <- unique(transmissions$compartment2[
+    !is.element(transmissions$compartment2, transmissions$compartment1)
+    ])
+  expect_equal(1, length(root))
   expect_equal(nrow(transmissions), length(unique(transmissions$compartment1)))
   
   expect_true(all(

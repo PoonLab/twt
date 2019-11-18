@@ -191,57 +191,6 @@ EventLogger <- R6Class("EventLogger",
 
 
 
-# Functions to convert the events stored in the EventLogger into an 
-# ape::phylo object that can then be plotted or printed.
-# These are S3 methods defined outside of the R6 class definition.
-
-#' plot.EventLogger
-#' 
-#' Generate a plot summarizing the content of an EventLogger object
-#' as a phylogenetic tree.
-#' 
-#' @param eventlog:  Object of class 'EventLogger'
-#' @param transmissions:  If TRUE, display transmission events in plot.
-#' 
-#' @examples 
-#' # load model
-#' path <- system.file('extdata', 'SI.yaml', package='twt')
-#' 
-#' # load file and parse to construct MODEL object
-#' settings <- yaml.load_file(path)
-#' mod <- MODEL$new(settings)
-#' 
-#' # simulate outer tree
-#' outer <- sim.outer.tree(mod)
-#' 
-#' # simulate inner tree
-#' tree <- sim.inner.tree(mod, outer)
-#' plot(tree)
-#' 
-#' @export
-plot.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE, 
-                             node.labels=FALSE) {
-  evt <- eventlog$get.all.events()
-  if (is.null(evt)) {
-    cat("No events to display.")
-  }
-  else {
-    if ( all(evt$event.type != 'coalescent') ) {
-      # this is an outer tree
-      .plot.outer.tree(eventlog)
-    } 
-    else {
-      phy <- .eventlogger.to.phylo(
-        eventlog=eventlog, 
-        transmissions=transmissions, 
-        migrations=migrations, 
-        node.labels=node.labels)
-      plot(phy)  # call plot.phylo S3 method
-    }
-  }
-}
-
-
 #' print.EventLogger
 #' 
 #' `print.EventLogger` is simply a wrapper function on EventLogger's 
@@ -266,40 +215,6 @@ print.EventLogger <- function(eventlog) {
   }
 }
 
-
-.reorder.events <- function(events, node, result=c()) {
-  children <- events$compartment1[events$compartment2==node]
-  for (child in children) {
-    result <- .reorder.events(events, child, result)
-  }
-  result <- c(result, node)
-}
-
-#' .plot.outer.tree
-#' 
-#' A function that converts events stored in an EventLogger object into
-#' an outer transmission tree.
-#' 
-#' @param e: EventLogger object
-#' 
-#' @examples
-#' path <- system.file('extdata', 'SI.yaml', package='twt')
-#' settings <- yaml.load_file(path)
-#' model <- Model$new(settings)
-#' run <- sim.outer.tree(model)
-#' e <- run$get.eventlog()
-#' plot(run)
-#' 
-#' @keywords internal
-.plot.outer.tree <- function(e) {
-  events <- e$get.all.events()
-  trans <- events[events$event.type=='transmission',]
-  
-  # find roots
-  sources <- unique(trans$compartment2)
-  roots <- sources[!is.element(sources, trans$compartment1)]
-  
-}
 
 
 #' .eventlogger.to.phylo
