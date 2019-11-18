@@ -248,5 +248,6 @@ Run <- R6Class(
 plot.Run <- function(run, transmissions=FALSE, migrations=FALSE, 
                      node.labels=FALSE) {
   # call S3 method of this Run's event log
-  plot(run$get.eventlog())
+  plot(run$get.eventlog(), transmissions=transmissions, 
+       migrations=migrations, node.labels=node.labels)
 }

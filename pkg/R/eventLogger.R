@@ -226,7 +226,7 @@ plot.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE,
     cat("No events to display.")
   }
   else {
-    if (all(is.element(evt$event.type, c('transmission', 'migration')))) {
+    if ( all(evt$event.type != 'coalescent') ) {
       # this is an outer tree
       .plot.outer.tree(eventlog)
     } 
@@ -236,7 +236,7 @@ plot.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE,
         transmissions=transmissions, 
         migrations=migrations, 
         node.labels=node.labels)
-      plot(phy)
+      plot(phy)  # call plot.phylo S3 method
     }
   }
 }
@@ -267,6 +267,13 @@ print.EventLogger <- function(eventlog) {
 }
 
 
+.reorder.events <- function(events, node, result=c()) {
+  children <- events$compartment1[events$compartment2==node]
+  for (child in children) {
+    result <- .reorder.events(events, child, result)
+  }
+  result <- c(result, node)
+}
 
 #' .plot.outer.tree
 #' 
@@ -275,30 +282,22 @@ print.EventLogger <- function(eventlog) {
 #' 
 #' @param e: EventLogger object
 #' 
-#' @return ape::phylo object
+#' @examples
+#' path <- system.file('extdata', 'SI.yaml', package='twt')
+#' settings <- yaml.load_file(path)
+#' model <- Model$new(settings)
+#' run <- sim.outer.tree(model)
+#' e <- run$get.eventlog()
+#' plot(run)
+#' 
 #' @keywords internal
 .plot.outer.tree <- function(e) {
   events <- e$get.all.events()
-  stopifnot(all(events$event.type == 'transmission'))
+  trans <- events[events$event.type=='transmission',]
   
-  recip <- events$compartment1
-  source <- events$compartment2
-  comps <- unique(c(recip, source))
-  
-  # source that is never a recipient is the root
-  root <- unique(source[!is.element(source, recip)])
-  if (length(root) != 1) {
-    stop("Eventlog contains more than one index compartment (root)")
-  }
-  
-  # TODO work in progress!
-  
-  # 1. sort compartments in order of infection time
-  
-  # 2. draw horizontal line segments for compartments
-  
-  # 3. draw vertical line segments for transmissions
-  
+  # find roots
+  sources <- unique(trans$compartment2)
+  roots <- sources[!is.element(sources, trans$compartment1)]
   
 }
 

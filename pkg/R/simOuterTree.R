@@ -545,12 +545,13 @@ sim.outer.tree <- function(model) {
     n.active.recipients <- sum(types == e$r.type)
     n.active.sources <- sum(types == e$s.type)
     
-    # recipients who were uninfected (susceptible) BEFORE event
-    n.recipients <- as.numeric(e[paste('S.', e$r.type, sep='')])
-    n.sources <- as.numeric(e[paste('I.', e$s.type, sep='')])
-    
-    
     if (e$event.type == 'transmission' || e$event.type == 'migration') {
+      key <- paste(
+        ifelse(e$event.type=='transmission', 'S.', 'I.'), 
+        e$r.type, sep='')
+      n.recipients <- as.numeric(e[key])
+      
+      n.sources <- as.numeric(e[paste('I.', e$s.type, sep='')])
       
       if (runif(1, max=n.recipients) < n.active.recipients) {
         # recipient is an active Compartment
@@ -567,8 +568,7 @@ sim.outer.tree <- function(model) {
             n.sources <- n.sources - 1
           }
         }
-        # migration can *potentially* remove compartment from active list
-        # but this requires inner tree simulation (at Lineage level)
+        
         
         if (runif(1, max=n.sources) < n.active.sources) {
           # source is an active Compartment
@@ -593,6 +593,14 @@ sim.outer.tree <- function(model) {
         )
       }
       # otherwise recipient is not a sampled Compartment - ignore
+    }
+    
+    else if (e$event.type == 'migration') {
+      # recipients who were infected BEFORE event
+      n.recipients <- as.numeric(e[paste('I.', e$r.type, sep='')])
+      n.sources <- as.numeric(e[paste('I.', e$s.type, sep='')])
+      
+
     }
     
     else if (e$event.type == 'transition') {
