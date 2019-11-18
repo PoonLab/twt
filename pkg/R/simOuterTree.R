@@ -193,25 +193,8 @@ sim.outer.tree <- function(model) {
   # store fixed sampling times of Lineages as specified by model
   eventlog$store.fixed.samplings(model$get.fixed.samplings())
   
-  # extract objects from Run object
-  comps <- run$get.compartments()
-  types <- run$get.types()  # CompartmentType objects
-  
-  # maps Compartments to CompartmentTypes by index
-  indiv.types <- sapply(unlist(comps), function(a){a$get.type()$get.name()})
-  
-  # record population totals and transmission rates for all Types
-  init.conds <- run$get.initial.conds()
-  popn.totals <- init.conds$size  # list of CompartmentType->size
-  
-  # extract transmission, migration and transition rates as convenient named matrices
-  popn.rates <- .get.rate.matrices(types)
-
-  # record max sampling times (furthest back in time) of lineages for each Compartment
-  init.samplings <- .get.initial.samplings(comps)
-  
   # sample events based on population dynamics and rates
-  events <- .sample.outer.events(types, init.conds, popn.rates, init.samplings)
+  events <- .sample.outer.events(run)
   
   # assign events only to history of sampled Compartments
   .assign.events(run, events)
@@ -294,25 +277,6 @@ sim.outer.tree <- function(model) {
 
 
 
-#' .get.initial.samplings
-#' 
-#' Support function for sim.outer.tree.  Retrieves first sampling time of a Lineage 
-#' for each sampled infected Compartment.
-#'
-#' @param compartments:  list of sampled infected Compartment objects
-#'
-#' @return named vector of first Lineage sampling times for each Compartment
-#' @keywords internal
-.get.initial.samplings <- function(compartments) {
-  data.frame(
-    type=sapply(compartments, function(comp) comp$get.type()$get.name()),
-    init.sample=sapply(compartments, function(comp) {
-      max( sapply(comp$get.lineages(), function(l) l$get.sampling.time()) )
-    })
-  )
-}
-
-
 #' .scale.contact.rates
 #' 
 #' Helper function for .sample.outer.events - calculate population rates 
@@ -345,25 +309,24 @@ sim.outer.tree <- function(model) {
 #' Support function for sim.outer.tree.  Samples transmission, transition and
 #' migration events based on population dynamics of the Model.
 #' 
-#' @param types:  list of CompartmentTypes as returned by Run$get.types()
-#' @param init.conds: initial conditions, comprising (1) time scale of simulation
-#'        (2) initial population size per CompartmentType and (3) Type
-#'        of index case
-#' @param popn.rates:  names matrices for transmission, transition and migration
-#'        rates.
-#' @param init.samplings: list of first Lineage sampling times per Compartment,
-#'        grouped by CompartmentType
+#' @param run:  R6 object of class Run
 #' @param max.attempts: number of tries to sample events
 #'        
 #' @return data frame of outer tree events, each made up of: time, 
 #'         event type, recipient CompartmentType and source CompartmentType
 #'         
 #' @keywords internal
-.sample.outer.events <- function(types, init.conds, popn.rates, init.samplings, 
-                                 max.attempts=10) {
+.sample.outer.events <- function(run, max.attempts=10) {
+  # extract objects from Run object
+  comps <- run$get.compartments()
+  types <- run$get.types()  # CompartmentType objects
   
-  # convert data frame into list
-  init.by.type <- split(init.samplings$init.sample, init.samplings$type)
+  # record population totals and transmission rates for all Types
+  init.conds <- run$get.initial.conds()
+  popn.totals <- init.conds$size  # list of CompartmentType->size
+  
+  # extract transmission, migration and transition rates as convenient named matrices
+  popn.rates <- .get.rate.matrices(types)
   
   attempt <- 1
   while (attempt < max.attempts) {
@@ -483,16 +446,13 @@ sim.outer.tree <- function(model) {
 
     } 
     
-    # check that there are enough Compartments of each Type to be sampled
+    # check that there are enough Compartments of each Type (ignoring
+    # sampling times)
+    all.types <- sapply(comps, function(comp) comp$get.type()$get.name())
     checks <- sapply(1:length(infected), function(i) {
       ctype <- names(infected)[i]
       count <- infected[ctype]
-      samp.times <- init.by.type[[ctype]]
-      if (is.null(samp.times)) {
-        stop("Error in .sample.outer.events: CompartmentType ", ctype, 
-             " not found in init.samplings")
-      }
-      length(samp.times) <= count
+      sum(all.types==ctype) <= count
     })
     
     if (all(checks)) {
@@ -538,14 +498,9 @@ sim.outer.tree <- function(model) {
     types <- sapply(active, function(comp) comp$get.type()$get.name())
     
     e <- events[row, ]  # go to the next event
-    #print(e)
     
-    # TODO: filter by initial sampling time for transmission events
-    #       Need to make sure Compartment is not infected after a Lineage 
-    #       was sampled.
     n.active.recipients <- sum(types == e$r.type)
     n.active.sources <- sum(types == e$s.type)
-    
     
     if ( is.element(e$event.type, c('transmission', 'migration')) ) {
       
@@ -557,7 +512,15 @@ sim.outer.tree <- function(model) {
       
       if (runif(1, max=n.recipients) < n.active.recipients) {
         # recipient is an active Compartment
-        recipient <- sample(active[types==e$r.type], 1)[[1]]
+        
+        # infection must precede first Lineage sampling time
+        eligible <- Filter(function(comp) is.na(comp$get.sampling.time()) || 
+                             e$time > comp$get.sampling.time(), 
+                           active[types==e$r.type])
+        if (length(eligible) == 0) {
+          stop("Error in .assign.events(): No eligible compartments for transmission event ", e)
+        }
+        recipient <- sample(eligible, 1)[[1]]
         
         if (e$event.type == 'transmission') {
           # remove recipient from sampled infected Compartments

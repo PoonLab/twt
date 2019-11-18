@@ -459,12 +459,9 @@ generate.coalescent <- function(run, line1, line2, current.time, is.bottleneck=F
   # remove lineages undergoing coalescence
   run$remove.lineage(line1)
   run$remove.lineage(line2)
-  comp$remove.lineage(line1)
-  comp$remove.lineage(line2)
   
   # add ancestral lineage resulting from coalescence
   run$add.lineage(ancestral.lineage)
-  comp$add.lineage(ancestral.lineage)
   
   # remove pairs containing coalesced lineages from list of pair choices
   . <- remove.lineage.pairs(run, line1)

@@ -40,6 +40,8 @@ test_that("generate coalescent", {
     lineage2=rep('Node1', 2),
     compartment1=rep(comp$get.name(), 2),
     compartment2=rep(NA, 2),
+    type1=rep(NA, 2),
+    type2=rep(NA, 2),
     stringsAsFactors = FALSE
   )
   expected$compartment2 <- as.character(expected$compartment2)

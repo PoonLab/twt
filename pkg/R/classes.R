@@ -193,11 +193,12 @@ CompartmentType  <- R6Class(
 Compartment <- R6Class("Compartment",
   public = list(
     initialize = function(name=NA, type=NA, source=NA, branching.time=NA, 
-                          unsampled=FALSE, lineages=list()) {
+                          sampling.time=NA, unsampled=FALSE, lineages=list()) {
       private$name <- name
       private$type <- type
       private$source <- source
       private$branching.time <- branching.time
+      private$sampling.time <- sampling.time
       # attr req later when identifying new US Comps to be promoted in mig events
       private$unsampled <- unsampled
       private$lineages <- lineages
@@ -232,6 +233,10 @@ Compartment <- R6Class("Compartment",
       private$branching.time
     },
     
+    get.sampling.time = function() {
+      private$sampling.time
+    },
+    
     set.type = function(new.type) {
       private$type <- new.type
     },
@@ -244,6 +249,12 @@ Compartment <- R6Class("Compartment",
       private$branching.time <- new.branching.time
     },
     
+    set.sampling.time = function() {
+      private$sampling.time <- max(sapply(private$lineages, function(line) {
+        line$get.sampling.time()
+      }))
+    },
+    
     is.unsampled = function() {
       private$unsampled
     },
@@ -254,14 +265,12 @@ Compartment <- R6Class("Compartment",
     
     add.lineage = function(new.lineage) {
       private$lineages[[length(private$lineages)+1]] <- new.lineage
+      self$set.sampling.time()
     },
     
     remove.lineage = function(ex.lineage) {
-      lin.ind <- which(sapply(
-        private$lineages, 
-        function(x) { x$get.name() == ex.lineage$get.name() } 
-      ))
-      private$lineages <- private$lineages[-lin.ind]
+      private$lineages[[ex.lineage$get.name()]] <- NULL
+      self$set.sampling.time()
     }
     
   ),
@@ -270,6 +279,7 @@ Compartment <- R6Class("Compartment",
     type = NULL,  # reference to CompartmentType object
     source = NULL,
     branching.time = NULL,
+    sampling.time = NULL,
     unsampled = NULL,
     lineages = NULL,
     

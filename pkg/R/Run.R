@@ -39,6 +39,9 @@ Run <- R6Class(
       private$lineages <- unlist(
         lapply(private$compartments, function(x) x$get.lineages())
         )
+      names(private$lineages) <- sapply(private$lineages, function(l) {
+        l$get.name()
+      })
       
       
       private$fixed.samplings <- model$get.fixed.samplings()
@@ -121,21 +124,26 @@ Run <- R6Class(
       if ( !is.element('Lineage', class(lineage)) ) {
         stop("Error in add.lineage(): <lineage> must be R6 class Lineage object.")
       }
-      private$lineages[[length(private$lineages)+1]] <- lineage
+      #private$lineages[[length(private$lineages)+1]] <- lineage
+      private$lineages[[lineage$get.name()]] <- lineage
+      
+      comp <- lineage$get.location()
+      comp$add.lineage(lineage)
     },
     
     remove.lineage = function(lineage) {
       if ( !is.element('Lineage', class(lineage)) ) {
         stop("Error in remove.lineage: argument 'lineage' must be R6 class Lineage.")
       }
-      temp <- sapply(private$lineages, function(x) x$get.name())
-      target <- lineage$get.name()
-      if (!is.element(target, temp)) {
-        stop("Error in remove.lineage(): ", target, " not in Run lineages:\n",
-             paste(temp, collapse=','))
+      
+      if ( !is.element(lineage$get.name(), names(private$lineages)) ) {
+        stop(paste("Error in remove.lineage: ", lineage$get.name(), " not in Run lineages:\n",
+             paste(names(private$lineages), collapse=',')))
       }
       
-      private$lineages <- private$lineages[-which(temp==target)]
+      private$lineages[[lineage$get.name()]] <- NULL
+      comp <- lineage$get.location()
+      comp$remove.lineage(lineage)
     },
     
     
@@ -289,7 +297,7 @@ plot.Run <- function(run, transmissions=FALSE, migrations=FALSE,
   else {
     if ( all(evt$event.type != 'coalescent') ) {
       # this is an outer tree
-      .plot.outer.tree(eventlog, pal)
+      .plot.outer.tree(run, pal)
     } 
     else {
       phy <- .eventlogger.to.phylo(
@@ -336,24 +344,14 @@ plot.Run <- function(run, transmissions=FALSE, migrations=FALSE,
 #' plot(run)
 #' 
 #' @keywords internal
-.plot.outer.tree <- function(run, pal) {
+.plot.outer.tree <- function(run) {
   e <- run$get.eventlog()
   comps <- run$get.compartments()
   types <- run$get.types()
   
-  if (length(types) > length(pal)) {
-    warning("Number of colours in `pal` less than number of CompartmentTypes.")
-  }
-  
-  if (length(types) > 1) {
-    pal <- pal[1:length(types)]
-    names(pal) <- names(types)
-  } else {
-    pal <- 'black'
-  }
-  
   events <- e$get.all.events()
   trans <- events[events$event.type=='transmission',]
+  migrations <- events[events$event.type=='migration', ]
   
   # find root
   sources <- unique(trans$compartment2)
@@ -364,7 +362,7 @@ plot.Run <- function(run, transmissions=FALSE, migrations=FALSE,
   
   # prepare plot region
   par(mar=c(5,1,1,1))
-  plot(NA, xlim=c(-max(trans$time*1.1), 0), ylim=c(0.5, length(nodes)+0.5),
+  plot(NA, xlim=c(-max(trans$time*1.05), 0), ylim=c(0.5, length(nodes)+0.5),
        xlab='Time', yaxt='n', ylab=NA, bty='n')
   
   . <- sapply(nodes, function(node) {
@@ -379,19 +377,21 @@ plot.Run <- function(run, transmissions=FALSE, migrations=FALSE,
       inf.time <- row[['time']]
       source <- row[['compartment2']]
     } else {
-      inf.time <- max(trans$time)*1.1
+      inf.time <- max(trans$time)*1.05
       source <- NA
     }
     
-    # TODO: retrieve initial sampling times
     samp.time <- 0
     if (is.sampled) {
-      samp.time <- max(sapply(comp$get.lineages(), 
+      samp.time <- -max(sapply(comp$get.lineages(), 
                               function(line) line$get.sampling.time()))
+    } else {
+      samp.time <- min(c(trans$time[trans$compartment2==node],
+                         migrations$time[migrations$compartment2==node]))
     }
     
-    segments(x0=-inf.time, x1=samp.time, y0=which(nodes==node), lwd=3,
-             col=ifelse(is.sampled, 'black', 'grey'))
+    segments(x0=-inf.time, x1=-samp.time, y0=which(nodes==node), 
+             lwd=5, lend=2, col=ifelse(is.sampled, 'black', 'grey'))
     
     if (!is.na(source)) {
       arrows(x0=-inf.time, y1=which(nodes==node), y0=which(nodes==source), 
@@ -400,12 +400,12 @@ plot.Run <- function(run, transmissions=FALSE, migrations=FALSE,
     
   })
   
-  migrations <- events[events$event.type=='migration', ]
-  for (m in migrations) {
-    time <- m$time
+  for (i in 1:nrow(migrations)) {
+    m <- migrations[i,]
+    time <- -m$time
     recipient <- which(nodes == m$compartment1)
     source <- which(nodes == m$compartment2)
     
-    arrows()
+    arrows(x0=time, y0=source, y1=recipient, col=rgb(0.37, 0.62, 0.63, 0.5), lwd=2, length=0.08)
   }
 }

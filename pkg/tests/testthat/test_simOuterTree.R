@@ -81,40 +81,6 @@ test_that("get rate matrices", {
 })
 
 
-test_that("get initial samplings", {
-  # Compartment "A" has 3 Lineages sampled at t=0, 2 and 3
-  run <- Run$new(model.chain)
-  infected <- run$get.compartments()
-  
-  result <- .get.initial.samplings(infected)
-  expected <- data.frame(
-    type=rep('host', 3),
-    init.sample=c(3.0, 0, 0)
-    )
-  row.names(expected) <- c('A_1', 'B_1', 'C_1')
-  expect_equal(expected, result)
-})
-
-
-
-test_that("sample outer events", {
-  run <- Run$new(model.structSI)
-  types <- run$get.types()
-  init.conds <- run$get.initial.conds()
-  init.conds$originTime <- 20  # make simulation longer
-  popn.rates <- .get.rate.matrices(types)
-  init.samplings <- .get.initial.samplings(run$get.compartments())
-  
-  result <- .sample.outer.events(types, init.conds, popn.rates, init.samplings)
-  
-  # kind of a dumb test
-  expect_true(all(is.element(result$event.type, 
-                             c('transmission', 'transition', 'migration'))))
-  
-  # epidemic starts with 1 infected, 99 susceptible
-  result <- sum(result$event.type == 'transmission')
-  expect_equal(99, result)  # IF enough time in simulation
-})
 
 
 test_that("check simple SI model", {
@@ -124,8 +90,9 @@ test_that("check simple SI model", {
   
   init.conds <- run$get.initial.conds()
   popn.rates <- .get.rate.matrices(types)
-  init.samplings <- .get.initial.samplings(run$get.compartments())
-  expect_true(all(init.samplings$init.sample==0))
+  
+  init.samplings <- sapply(run$get.compartments(), function(x) x$get.sampling.time())
+  expect_true(all(init.samplings==0))
   
   # no migration, no transition)
   expect_equal(0, as.vector(popn.rates[['transition']]))
@@ -134,7 +101,7 @@ test_that("check simple SI model", {
   # look at distribution of waiting times to first transmission
   ot <- init.conds$originTime
   result <- sapply(1:50, function(i) {
-    sim <- .sample.outer.events(types, init.conds, popn.rates, init.samplings)
+    sim <- .sample.outer.events(run)
     c(ot - sim$time[sim$event.type=='transmission'][1],
       ot - sim$time[49])
   })
@@ -161,13 +128,7 @@ test_that("check simple SI model", {
 
 test_that("assignment of transmission events", {
   run <- Run$new(model.SI)
-  
-  # sample outer events  
-  types <- run$get.types()
-  init.conds <- run$get.initial.conds()
-  popn.rates <- .get.rate.matrices(types)
-  init.samplings <- .get.initial.samplings(run$get.compartments())
-  events <- .sample.outer.events(types, init.conds, popn.rates, init.samplings)
+  events <- .sample.outer.events(run)
   
   .assign.events(run, events)
   result <- run$get.eventlog()$get.all.events()
@@ -233,13 +194,7 @@ test_that("assignment of transmission events", {
 
 test_that("assignment of outer events", {
   run <- Run$new(model.structSI)
-  
-  # sample outer events  
-  types <- run$get.types()
-  init.conds <- run$get.initial.conds()
-  popn.rates <- .get.rate.matrices(types)
-  init.samplings <- .get.initial.samplings(run$get.compartments())
-  events <- .sample.outer.events(types, init.conds, popn.rates, init.samplings)
+  events <- .sample.outer.events(run)
   
   .assign.events(run, events)
   log <- run$get.eventlog()$get.all.events()

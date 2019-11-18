@@ -14,3 +14,21 @@ test_that("Compartment cloning", {
   expect_false(identical(result, line))
   
 })
+
+test_that("set sampling time", {
+  comp <- Compartment$new()
+  expect_equal(NA, comp$get.sampling.time())
+  
+  line <- Lineage$new(location=comp, sampling.time=1)
+  comp$add.lineage(line)
+  expect_equal(1, comp$get.sampling.time())
+  
+  line <- Lineage$new(location=comp, sampling.time=3)
+  comp$add.lineage(line)
+  expect_equal(3, comp$get.sampling.time())
+  
+  line <- Lineage$new(location=comp, sampling.time=2)
+  comp$add.lineage(line)
+  expect_equal(3, comp$get.sampling.time())
+})
+

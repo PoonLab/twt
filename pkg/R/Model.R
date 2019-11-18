@@ -273,7 +273,7 @@ Model <- R6Class("Model",
       }
       
       # return object will be concatenated vector of Lineage objects
-      unlist(sapply(names(settings$Lineages), function(label) {
+      result <- unlist(sapply(names(settings$Lineages), function(label) {
         if (grepl("_", label)) {
           stop("Error: underscore characters are reserved, please modify Lineage name",
                label)
@@ -348,13 +348,16 @@ Model <- R6Class("Model",
               location = comp  # reference to Compartment object
             )
             # add Lineage to Compartment
+            # this also updates Compartment sampling.time attribute
             comp$add.lineage(new.lineage)
             
             new.lineage  # return object
           })
         })
-      
       }))
+      
+      names(result) <- sapply(result, function(l) l$get.name())
+      result
     },
     
     

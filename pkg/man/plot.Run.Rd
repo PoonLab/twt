@@ -2,10 +2,46 @@
 % Please edit documentation in R/Run.R
 \name{plot.Run}
 \alias{plot.Run}
-\title{Wrapper around plot.EventLogger}
+\title{plot.Run}
 \usage{
-\method{plot}{Run}(run, transmissions = FALSE, migrations = FALSE, node.labels = FALSE)
+\method{plot}{Run}(run, transmissions = FALSE, migrations = FALSE,
+  node.labels = FALSE, pal = c("#1B9E77", "#D95F02", "#7570B3",
+  "#E7298A", "#66A61E", "#E6AB02", "#A6761D", "#666666"))
+}
+\arguments{
+\item{run:}{R6 object of class `Run`}
+
+\item{transmissions:}{if TRUE, display transmission events on inner tree
+plot.}
+
+\item{migrations:}{if TRUE, display migration events on inner tree plot.}
+
+\item{node.labels:}{if TRUE, label internal nodes with names.}
 }
 \description{
-Wrapper around plot.EventLogger
+S3 plot method for Run objects.
+}
+\details{
+If the Run object is the outcome of sim.outer.tree() or either of the 
+related outer tree functions, then we call the internal function 
+.plot.outer.tree().
+
+If the Run object is the outcome of sim.inner.tree(), then the eventlog 
+is converted into a Phylo object and plotted using the S3 method provided 
+by the `ape` package.
+}
+\examples{
+# load model
+path <- system.file('extdata', 'SI.yaml', package='twt')
+
+# load file and parse to construct MODEL object
+settings <- yaml.load_file(path)
+mod <- MODEL$new(settings)
+
+# simulate outer tree
+outer <- sim.outer.tree(mod)
+
+# simulate inner tree
+tree <- sim.inner.tree(mod, outer)
+plot(tree)
 }

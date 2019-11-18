@@ -4,26 +4,10 @@
 \alias{.sample.outer.events}
 \title{.sample.outer.events}
 \usage{
-.sample.outer.events(
-  types,
-  init.conds,
-  popn.rates,
-  init.samplings,
-  max.attempts = 10
-)
+.sample.outer.events(run, max.attempts = 10)
 }
 \arguments{
-\item{types:}{list of CompartmentTypes as returned by Run$get.types()}
-
-\item{init.conds:}{initial conditions, comprising (1) time scale of simulation
-(2) initial population size per CompartmentType and (3) Type
-of index case}
-
-\item{popn.rates:}{names matrices for transmission, transition and migration
-rates.}
-
-\item{init.samplings:}{list of first Lineage sampling times per Compartment,
-grouped by CompartmentType}
+\item{run:}{R6 object of class Run}
 
 \item{max.attempts:}{number of tries to sample events}
 }

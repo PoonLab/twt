@@ -4,13 +4,8 @@
 \alias{.calc.migration.events}
 \title{.calc.migration.events}
 \usage{
-.calc.migration.events(
-  init.conds,
-  popn.migration.rates,
-  max.sampling.time,
-  possible.source.types,
-  transmission.events
-)
+.calc.migration.events(init.conds, popn.migration.rates, max.sampling.time,
+  possible.source.types, transmission.events)
 }
 \arguments{
 \item{init.conds:}{initial conditions specified in model settings, i.e., 

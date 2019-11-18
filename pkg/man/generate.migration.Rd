@@ -4,7 +4,8 @@
 \alias{generate.migration}
 \title{generate.migration}
 \usage{
-generate.migration(run, source, recipient, migrating.lineage, migration.time)
+generate.migration(run, source, recipient, migrating.lineage,
+  migration.time)
 }
 \arguments{
 \item{run:}{Run object}
