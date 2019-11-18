@@ -54,7 +54,7 @@ test_that("lineages have names", {
 test_that("Model assigns sampling times", {
   result <- m$get.fixed.samplings()$tip.height
   expected <- rep(c(0.2, 0, 0), times=2)
-  expect_equal(result, expected)
+  expect_equal(result, expected, check.names=FALSE)
 })
 
 test_that("Model parse population growth dynamics", {

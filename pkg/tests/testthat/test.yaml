@@ -9,6 +9,7 @@ CompartmentTypes:
   'host':
     branching.rates: (host=0.1)
     migration.rates: ()
+    transition.rates: ()
     bottleneck.size: 1
     wait.time.distr:
       distr: 'exp'
