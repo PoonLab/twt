@@ -181,8 +181,10 @@ test_that("check simple SI model", {
   
 
 test_that("assignment of transmission events", {
-  run <- Run$new(model.SI)
+  set.seed(28)
 
+  run <- Run$new(model.SI)
+  
   # sample outer events  
   types <- run$get.types()
   init.conds <- run$get.initial.conds()
@@ -195,6 +197,17 @@ test_that("assignment of transmission events", {
   
   # for this model, only outer events are transmission
   expect_true(all(result$event.type=='transmission'))
+  
+  # output should represent a complete tree relating the sampled Compartments
+  sampled <- names(run$get.compartments())
+  all.cases.are.tips <- all(is.element(sampled, result$compartment1))
+  
+  root <- unique(result$compartment2[!is.element(result$compartment2, result$compartment1)])
+  expect_equal(1, length(root))
+  sampled.index.case <- is.element(root, sampled)
+
+  expect_true( all.cases.are.tips || sampled.index.case )
+
   
   # transmissions should define a DAG:
   
@@ -253,18 +266,15 @@ test_that("assignment of outer events", {
   events <- .sample.outer.events(types, init.conds, popn.rates, init.samplings)
   
   .assign.events(run, events)
-  result <- run$get.eventlog()$get.all.events()
+  log <- run$get.eventlog()$get.all.events()
   
   # recipient should never be its own source for contact events
-  expect_true(all(
-    result$compartment1 != result$compartment2 &&
-      !is.na(result$compartment1) &&
-      !is.na(result$compartment2)
-    ))
+  contacts <- log[log$event.type != 'transition', ]
+  expect_true(all(contacts$compartment1 != contacts$compartment2))
   
   # migrations are only between infected compartments (preceded by transmission)
-  migrations <- result[result$event.type == 'migration', ]
-  transmissions <- result[result$event.type == 'transmission', ]
+  migrations <- log[log$event.type == 'migration', ]
+  transmissions <- log[log$event.type == 'transmission', ]
   
   expect_equal(nrow(transmissions), length(unique(transmissions$compartment1)))
   

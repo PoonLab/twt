@@ -404,9 +404,6 @@ sim.outer.tree <- function(model) {
         break
       }
       
-      # append counts to outcome container BEFORE event
-      counts <- rbind(counts, c(susceptible, infected))
-      
       # which event?
       if ( runif(1, max=total.rate) <= sum(t.rates) ) {
         event.type <- 'transmission'
@@ -471,6 +468,9 @@ sim.outer.tree <- function(model) {
           # migration does not affect counts
         }
       }
+      
+      # append counts to outcome container after event
+      counts <- rbind(counts, c(susceptible, infected))
       
       # append event
       events <- rbind(events, data.frame(
@@ -538,6 +538,7 @@ sim.outer.tree <- function(model) {
     types <- sapply(active, function(comp) comp$get.type()$get.name())
     
     e <- events[row, ]  # go to the next event
+    #print(e)
     
     # TODO: filter by initial sampling time for transmission events
     #       Need to make sure Compartment is not infected after a Lineage 
@@ -545,30 +546,32 @@ sim.outer.tree <- function(model) {
     n.active.recipients <- sum(types == e$r.type)
     n.active.sources <- sum(types == e$s.type)
     
-    if (e$event.type == 'transmission' || e$event.type == 'migration') {
-      key <- paste(
-        ifelse(e$event.type=='transmission', 'S.', 'I.'), 
-        e$r.type, sep='')
-      n.recipients <- as.numeric(e[key])
+    
+    if ( is.element(e$event.type, c('transmission', 'migration')) ) {
       
+      # total numbers of infected Compartments of respective Types
+      n.recipients <- as.numeric(e[paste('I.', e$r.type, sep='')])
       n.sources <- as.numeric(e[paste('I.', e$s.type, sep='')])
+      
+      #print(c(n.recipients, n.active.recipients, n.sources, n.active.sources))
       
       if (runif(1, max=n.recipients) < n.active.recipients) {
         # recipient is an active Compartment
         recipient <- sample(active[types==e$r.type], 1)[[1]]
         
         if (e$event.type == 'transmission') {
-          # remove recipient from active list
+          # remove recipient from sampled infected Compartments
+          #print(paste('remove active Compartment', recipient$get.name()))
           active[recipient$get.name()] <- NULL
           types <- sapply(active, function(comp) comp$get.type()$get.name())
-          
-          # update counts (recipient is no longer infected)
-          if (e$s.type == e$r.type) {
-            n.active.sources <- n.active.sources - 1
-            n.sources <- n.sources - 1
-          }
         }
         
+        # random sampling of source
+        if (e$r.type == e$s.type) {
+          # recipient cannot be its own source
+          n.active.sources <- n.active.sources - 1
+          n.sources <- n.sources - 1
+        }
         
         if (runif(1, max=n.sources) < n.active.sources) {
           # source is an active Compartment
@@ -589,23 +592,21 @@ sim.outer.tree <- function(model) {
           time = e$time,
           type = e$event.type,
           comp1 = recipient$get.name(),
-          comp2 = source$get.name()
+          comp2 = source$get.name(),
+          type1 = e$r.type,
+          type2 = e$s.type
         )
       }
       # otherwise recipient is not a sampled Compartment - ignore
     }
     
-    else if (e$event.type == 'migration') {
-      # recipients who were infected BEFORE event
-      n.recipients <- as.numeric(e[paste('I.', e$r.type, sep='')])
-      n.sources <- as.numeric(e[paste('I.', e$s.type, sep='')])
-      
-
-    }
-    
     else if (e$event.type == 'transition') {
+      # either infected or uninfected Compartments may transition
+      n.recipients <- as.numeric(e[paste('S.', e$r.type, sep='')]) + 
+        as.numeric(e[paste('I.', e$r.type, sep='')])
       
-      if (runif(1, max=n.recipients+n.sources) < n.active.recipients) {
+      if (runif(1, max=n.recipients) < n.active.recipients) {
+        # transitioning Compartment is a sampled one
         compartment <- sample(active[types==e$r.type], 1)[[1]]
         
         old.type <- compartment$get.type()$get.name()
