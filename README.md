@@ -15,4 +15,4 @@ Like many other simulation programs, twt uses a conventional [Gillespie method](
 
 ## Funding
 
-Development of treeswithintrees was directly supported by a grant from the Government of Canada through Genome Canada and the Ontario Genomics Institute (OGI-131).
+Development of treeswithintrees was directly supported by a grant from the Government of Canada through Genome Canada and the Ontario Genomics Institute (OGI-131) and by the Canadian Institutes of Health Research (project grant PJT-155990).
