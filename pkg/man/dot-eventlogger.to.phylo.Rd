@@ -4,8 +4,12 @@
 \alias{.eventlogger.to.phylo}
 \title{.eventlogger.to.phylo}
 \usage{
-.eventlogger.to.phylo(eventlog, transmissions = FALSE,
-  migrations = FALSE, node.labels = FALSE)
+.eventlogger.to.phylo(
+  eventlog,
+  transmissions = FALSE,
+  migrations = FALSE,
+  node.labels = FALSE
+)
 }
 \arguments{
 \item{eventlog:}{EventLogger object}

@@ -4,7 +4,7 @@
 #' objects of the various classes (e.g., Compartment, CompartmentType) that 
 #' define a simulation model.  A \code{Model} object is immutable - it should
 #' not change over the course of simulation.  Instead, we derive a \code{Run}
-#' object class (below) that inherits from a \code{Model}.
+#' object class that inherits from a \code{Model}.
 #' 
 #' @param settings: a named list returned by `yaml.load_file()` that contains 
 #' user specifications of the simulation model.
@@ -139,8 +139,8 @@ Model <- R6Class("Model",
         stop("Empty 'CompartmentTypes' field in settings.")
       }
       
-      required <- c('branching.rates', 'migration.rates', 'bottleneck.size',
-                    'wait.time.distr')
+      required <- c('branching.rates', 'transition.rates', 'migration.rates', 
+                    'bottleneck.size', 'wait.time.distr')
       
       unlist(sapply(names(settings$CompartmentTypes), function(x) {
         params <- settings$CompartmentTypes[[x]]
@@ -150,7 +150,7 @@ Model <- R6Class("Model",
           stop(paste("CompartmentTypes:", x, " missing required field(s): ", required[missing]))
         }
         
-        # Compartmen'tType must specify EITHER coalescent.rate or piecewise linear model
+        # CompartmentType must specify EITHER coalescent.rate or piecewise linear model
         if (!is.element('coalescent.rate', names(params)) &&
             !is.element('popn.growth.dynamics', names(params))) {
           stop("Either `coalescent.rate` or `popn.growth.dynamics` must be",
@@ -171,6 +171,7 @@ Model <- R6Class("Model",
         CompartmentType$new(
           name = x,
           branching.rates = eval(parse(text=paste('list', params$branching.rates))),
+          transition.rates = eval(parse(text=paste('list', params$transition.rates))),
           migration.rates = eval(parse(text=paste('list', params$migration.rates))),
           
           bottleneck.size = params$bottleneck.size,
@@ -246,6 +247,7 @@ Model <- R6Class("Model",
       ## Sets `source` attribute to other Compartment objects after generated 
       ## w/ private$load.compartments().  Note assignment of Compartments
       ## generated through `replicates` setting is not supported.
+      ## This is only used when user is manually specifying the outer tree.
       
       compNames <- sapply(private$compartments, function(n){n$get.name()})
       
@@ -256,13 +258,11 @@ Model <- R6Class("Model",
           x$set.source(sourceObj)
         } 
         else {
-          # TODO: if source is 'undefined' or not in the list, must be 
-          # assigned to an unsampled host (US)
+          # source will be set by outer tree simulation
         }
         x
       })
     },
-    
     
 
     load.lineages = function(settings) {

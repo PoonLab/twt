@@ -4,13 +4,10 @@
 \alias{generate.migration}
 \title{generate.migration}
 \usage{
-generate.migration(run, eventlog, source, recipient, migrating.lineage,
-  migration.time)
+generate.migration(run, source, recipient, migrating.lineage, migration.time)
 }
 \arguments{
-\item{run:}{MODEl object}
-
-\item{eventlog:}{EventLogger object}
+\item{run:}{Run object}
 
 \item{migrating.lineage:}{Lineage object; to be migrated}
 
@@ -19,5 +16,6 @@ generate.migration(run, eventlog, source, recipient, migrating.lineage,
 \item{current.time:}{double; time of simulation current to this function call}
 }
 \description{
-function records a migration event with a given lineage from a source to recipient migration
+Function to record a migration event of a given Lineage from a source to 
+recipient compartment.
 }

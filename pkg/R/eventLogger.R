@@ -55,24 +55,22 @@ EventLogger <- R6Class("EventLogger",
       }
     },
     
-    add.event = function(type, time, line1, line2, comp1, comp2) {
-      # @param type: event type, one of 'transmission', 'migration', 'coalescence',
-      # or 'bottleneck'.
+    add.event = function(type, time, line1=NA, line2=NA, comp1=NA, comp2=NA, 
+                         type1=NA, type2=NA) {
+      # @param type: event type, one of 'transmission', 'transition', 'migration', 
+      # 'coalescence' or 'bottleneck'.
       # @param time: CUMULATIVE time that event has occurred between two compartments 
       # in a transmission/migration/coalescent event
       
-      if (is.element(type, c('transmission', 'migration'))) {
-        e <- list(event.type=type, time=time, lineage1=line1, lineage2=NA,
-                  compartment1=comp1, compartment2=comp2)
-      } 
-      else if (is.element(type, c('coalescent', 'bottleneck'))) {
-        e <- list(event.type=type, time=time, lineage1=line1, lineage2=line2,
-                  compartment1=comp1, compartment2=NA)
-      } 
-      else {
-        stop("Error, unrecognized type argument in add.event()")
+      if ( !is.element(type, c(
+        'transmission', 'migration', 'transition', 'coalescent', 'bottleneck'
+        ))) {
+        stop("Error in EventLogger:add.event(), unrecognized event type ", type)
       }
       
+      e <- list(event.type=type, time=time, lineage1=line1, lineage2=line2, 
+                compartment1=comp1, compartment2=comp2, 
+                type1=type1, type2=type2)
       private$events <- rbind(private$events, e, stringsAsFactors=F)
     }, 
     
@@ -85,6 +83,8 @@ EventLogger <- R6Class("EventLogger",
         lineage2=character(),
         compartment1=character(),
         compartment2=character(),
+        type1=character(),
+        type2=character(),
         stringsAsFactors = FALSE
         )
     },
@@ -226,7 +226,7 @@ plot.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE,
     cat("No events to display.")
   }
   else {
-    if (all(is.element(evt$event.type, c('transmission', 'migration')))) {
+    if ( all(evt$event.type != 'coalescent') ) {
       # this is an outer tree
       .plot.outer.tree(eventlog)
     } 
@@ -236,7 +236,7 @@ plot.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE,
         transmissions=transmissions, 
         migrations=migrations, 
         node.labels=node.labels)
-      plot(phy)
+      plot(phy)  # call plot.phylo S3 method
     }
   }
 }
@@ -267,6 +267,13 @@ print.EventLogger <- function(eventlog) {
 }
 
 
+.reorder.events <- function(events, node, result=c()) {
+  children <- events$compartment1[events$compartment2==node]
+  for (child in children) {
+    result <- .reorder.events(events, child, result)
+  }
+  result <- c(result, node)
+}
 
 #' .plot.outer.tree
 #' 
@@ -275,30 +282,22 @@ print.EventLogger <- function(eventlog) {
 #' 
 #' @param e: EventLogger object
 #' 
-#' @return ape::phylo object
+#' @examples
+#' path <- system.file('extdata', 'SI.yaml', package='twt')
+#' settings <- yaml.load_file(path)
+#' model <- Model$new(settings)
+#' run <- sim.outer.tree(model)
+#' e <- run$get.eventlog()
+#' plot(run)
+#' 
 #' @keywords internal
 .plot.outer.tree <- function(e) {
   events <- e$get.all.events()
-  stopifnot(all(events$event.type == 'transmission'))
+  trans <- events[events$event.type=='transmission',]
   
-  recip <- events$compartment1
-  source <- events$compartment2
-  comps <- unique(c(recip, source))
-  
-  # source that is never a recipient is the root
-  root <- unique(source[!is.element(source, recip)])
-  if (length(root) != 1) {
-    stop("Eventlog contains more than one index compartment (root)")
-  }
-  
-  # TODO work in progress!
-  
-  # 1. sort compartments in order of infection time
-  
-  # 2. draw horizontal line segments for compartments
-  
-  # 3. draw vertical line segments for transmissions
-  
+  # find roots
+  sources <- unique(trans$compartment2)
+  roots <- sources[!is.element(sources, trans$compartment1)]
   
 }
 

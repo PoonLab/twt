@@ -9,6 +9,7 @@ InitialConditions:
 CompartmentTypes:
   'blood':                                        # blood no transmission to blood transmission is to uninfected cell
     branching.rates: (blood=0.0, cell=0.05)       # infection of a cell (transmission rate from blood -> cell)
+    transition.rates: ()
     migration.rates: (blood=0.0, cell=0.0)        
     bottleneck.size: 1                            # assume a single virus enters an uninfected cell
     wait.time.distr:                              # distribution of waiting time between infection time and first sampling time of a Compartment
@@ -26,6 +27,7 @@ CompartmentTypes:
         startPopn: 300
   'cell':
     branching.rates: (blood=0.0, cell=0.0)      # assume no direct cell-to-cell transmission
+    transition.rates: ()
     migration.rates: (blood=0.01, cell=0.0)     # migration rate from cell -> blood is release of virus particles back into blood
     bottleneck.size: undefined                  # assume no migration to infected cells
     wait.time.distr:  # distribution of waiting time between infection time and first sampling time of a Compartment

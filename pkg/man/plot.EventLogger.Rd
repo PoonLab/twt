@@ -4,8 +4,7 @@
 \alias{plot.EventLogger}
 \title{plot.EventLogger}
 \usage{
-\method{plot}{EventLogger}(eventlog, transmissions = FALSE,
-  migrations = FALSE, node.labels = FALSE)
+\method{plot}{EventLogger}(eventlog, transmissions = FALSE, migrations = FALSE, node.labels = FALSE)
 }
 \arguments{
 \item{eventlog:}{Object of class 'EventLogger'}

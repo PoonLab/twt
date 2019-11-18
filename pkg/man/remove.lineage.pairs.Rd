@@ -12,6 +12,6 @@ remove.lineage.pairs(run, lineage)
 \item{lineage}{= Lineage object, to be removed from list of lineage pair choices}
 }
 \description{
-this function removes lineage pairs in MODEL obj attr `choices`: list of lineage 
-pair choices to coalesce
+This function removes lineage pairs in Run obj attr `choices`: list of lineage 
+pair choices to coalesce.
 }

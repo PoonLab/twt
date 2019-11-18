@@ -21,6 +21,7 @@ Returning vector of all transmission times, including times used and unused
 in this current assignment of transmission times.
 }
 \description{
-Assignment of transmission times specific to each type.
+Support function for sim.outer.tree.  Assignment of transmission times specific 
+to each type.
 }
 \keyword{internal}

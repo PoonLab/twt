@@ -147,22 +147,18 @@ Run <- R6Class(
     },
     
     
-    generate.unsampled = function(num.unsampled, t) {
+    generate.unsampled = function(type.name) {
       # function creates "blank" Compartment objects for Unsampled Hosts (US)
-      # @param num.unsampled = number of unsampled
-      # @param t = CompartmentType object
-      new.hosts <- unlist(sapply(
-        1:num.unsampled, 
-        function(blank) {
-          Compartment$new(
-            name=paste0('US_', t$get.name(), '_', blank),
-            type=t,
-            unsampled=TRUE
-          )
-        }))
-      names(new.hosts) <- sapply(new.hosts, function(x) x$get.name())
-  
-      private$unsampled.hosts <- c(private$unsampled.hosts, new.hosts)
+      # @param type.name = unique name of CompartmentType
+      
+      new.host <- Compartment$new(
+        name=paste0('US_', type.name, '_', length(private$unsampled.hosts)+1),
+        type=private$types[[type.name]], 
+        unsampled=TRUE
+        )
+      
+      private$unsampled.hosts[[new.host$get.name()]] <- new.host
+      return(new.host)
     },
     
     clear.unsampled = function() {
@@ -252,5 +248,6 @@ Run <- R6Class(
 plot.Run <- function(run, transmissions=FALSE, migrations=FALSE, 
                      node.labels=FALSE) {
   # call S3 method of this Run's event log
-  plot(run$get.eventlog())
+  plot(run$get.eventlog(), transmissions=transmissions, 
+       migrations=migrations, node.labels=node.labels)
 }
