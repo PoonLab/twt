@@ -56,20 +56,6 @@ test_that("build eventlog from YAML", {
 })
 
 
-test_that("simulate outer tree", {
-  skip("not yet implemented")
-  r <- sim.outer.tree(model.SI)
-  e <- r$get.eventlog()
-  result <- e$get.all.events()
-  
-  # TODO: transmission events should define a DAG
-  
-  # every recipient (compartment1) should appear once only
-  expect_true(all(result$event.type=='transmission'))
-  expect_equal(length(unique(result$compartment1)), nrow(result))
-  
-})
-
 
 test_that("get rate matrices", {
   run <- Run$new(model.structSI)
@@ -253,6 +239,41 @@ test_that("assignment of outer events", {
       !is.na(result$compartment2)
     ))
   
+  # migrations are only between infected compartments (preceded by transmission)
+  migrations <- result[result$event.type == 'migration', ]
+  transmissions <- result[result$event.type == 'transmission', ]
   
+  expect_equal(nrow(transmissions), length(unique(transmissions$compartment1)))
+  
+  expect_true(all(
+    sapply(1:nrow(migrations), function(i) {
+      mig.time <- migrations$time[i]
+      recipient <- migrations$compartment1[i]
+      source <- migrations$compartment2[i]
+      
+      inf.time1 <- transmissions$time[which(transmissions$compartment1 == recipient)]
+      if (length(inf.time1) == 0) inf.time1 <- Inf
+      
+      inf.time2 <- transmissions$time[which(transmissions$compartment1 == source)]
+      if (length(inf.time2) == 0) inf.time2 <- Inf
+      
+      return( min(inf.time1, inf.time2) > mig.time )
+      })
+    ))
+  
+})
+
+
+
+test_that("simulate outer tree", {
+  # check if any of the example models raise warnings or errors
+  for (f in Sys.glob('example*.yaml')) {
+    model <- Model$new(yaml.load_file('example1.yaml'))  
+    expect_silent(sim.outer.tree(model))
+  }
+  
+  expect_silent(sim.outer.tree(model.chain))
+  expect_silent(sim.outer.tree(model.SI))
+  expect_silent(sim.outer.tree(model.structSI))
 })
 
