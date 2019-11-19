@@ -90,9 +90,9 @@ EventLogger <- R6Class("EventLogger",
     },
     
     
-    resolve.transmission = function(recipient, lineages) {
+    record.transmission = function(recipient, lineages) {
       # Record which Lineages are transmitted from source to 
-      # recipient.
+      # recipient (should only be one entry with Compartment as recipient)
       # 
       # @param recipient:  Compartment object
       # @param lineages:  a vector of names of Lineages to transfer out
@@ -100,11 +100,11 @@ EventLogger <- R6Class("EventLogger",
       
       # locate transmission event
       events <- self$get.all.events()
-      idx <- which(events$compartment1 == recipient && 
+      idx <- which(events$compartment1 == recipient$get.name() && 
                      events$event.type == 'transmission' &&
                      is.na(events$lineage1))
       if (length(idx) != 1) {
-        stop(paste("Error in eventLogger:resolve.transmission - ",
+        stop(paste("Error in eventLogger:record.transmission - ",
                    ifelse(length(idx)>1, "multiple", "no"), 
                    " transmission events match recipient ",
                    recipient$get.name()))
@@ -120,6 +120,32 @@ EventLogger <- R6Class("EventLogger",
       }
       private$events <- rbind(events, cache)
     },
+    
+    
+    record.migration = function(recipient, source, time, lineages) {
+      # Record which Lineages are transmitted from source to recipient
+      # through a migration event
+      events <- self$get.all.events()
+      idx <- which(events$compartment1 == recipient$get.name() && 
+                     events$compartment2 == source$get.name() &&
+                     events$time == time &&
+                     is.na(events$lineage1))
+      if (length(idx) != 1) {
+        stop(paste("Error in eventLogger:record.migration - ",
+                   ifelse(length(idx)>1, "multiple", "no"), 
+                   " transmission events match recipient ",
+                   recipient$get.name()))
+      }
+      
+      e <- events[idx,]
+      cache <- events[(idx+1):nrow(events), ]
+      events <- events[1:(idx-1), ]
+      for (l in lineages) {
+        e$lineage1 <- l
+        events <- rbind(events, as.list(e), stringsAsFactors=F)
+      }
+      private$events <- rbind(events, cache)
+    }
     
     
     get.fixed.samplings = function() {

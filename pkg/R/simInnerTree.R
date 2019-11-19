@@ -1,12 +1,15 @@
 #' sim.inner.tree
 #' 
 #' Simulate the coalescence of Lineages within Compartments, and resolve
-#' migration events that may involve sampled Lineages
+#' migration events that may involve sampled Lineages.
 #' 
 #' @param model:  R6 object of class Model or Run.  If user provides a Model 
-#'        object, then an EventLogger object must also be provided.  The 
-#'        expected use case is generating an eventlog from `eventlog.from.tree`
-#'        and using Model to parameterize the inner tree simulation.
+#'        object, then an EventLogger object (such as produced from a Newick tree
+#'        string by `eventlog.from.tree`) must be provided.
+#'        The supplied or derived Run object tracks the locations of Lineage objects
+#'        among Compartments that are modified by transmission and migration; and 
+#'        tracks the presence/absence of Lineages that change with sampling, 
+#'        coalescence and bottleneck events.  
 #' @param e: (optional)  R6 object of class EventLogger
 #' @return R6 object of class EventLogger
 #' 
@@ -52,46 +55,257 @@ sim.inner.tree <- function(model, e=NA) {
   
   eventlog <- run$get.eventlog()
   events <- eventlog$get.all.events()
-  events <- events[order(events$time), ]
+  events <- events[order(events$time), ]  # sort in reverse time (most recent first)
   
-  if (any(!is.element(run$get.compartments(), 
-                      union(t.events$compartment1, t.events$compartment2)))) {
+  # retrieve all Compartments in outer events
+  comps <- c(run$get.compartments(), run$get.unsampled.hosts())
+  if (any(!is.element(comps, union(events$compartment1, events$compartment2)))) {
     stop(paste("Mismatch between compartment names in Run and EventLogger objects."))
   }
   
   # initialize simulation at most recent sampling time
   current.time <- 0.
   extant.lineages <- run$get.extant.lineages(current.time)
-  num.extant <- length(extant.lineages)
-  if (num.extant == 0) {
+  n.extant <- length(extant.lineages)
+  if (n.extant == 0) {
     stop ('There must be at least one lineage sampled at time t=0.')
   }
   
-  for (i in 1:nrow(events)) {
-    e <- events[i,]
+  # iterate through outer events
+  row <- 1
+  while (row <= nrow(events)) {
     
-    # sample waiting times to coalescent events
+    if (n.extant == 1) {
+      # coalesced to final ancestral Lineage
+      break
+    }
+    
+    e <- events[row,]  # retrieve outer event
+    
+    # draw waiting times for coalescence of extant lineages (named vector)
     c.times <- calc.coal.wait.times(run, current.time)
     
-    if (length(c.times) == 0) {
-      # no Compartments with two or more Lineages
-      # resolve the next event
+    if (length(c.times) > 0) {
+      c.time <- min(c.times)
+      t.delta <- e$time - current.time  # time left until next event
       
-      if (e$event.type == 'transmission') {
-        resolve.transmission(run, e)
-      }
-      else if (e$event.type == 'migration') {
-        resolve.migration(run, e)
+      if (c.time < t.delta) {
+        comp.name <- names(c.times)[which.min(c.times)]
+        comp <- comps[[comp.name]]  # retrieve Compartment obj from list
+        
+        current.time <- current.time + c.time
+        resolve.coalescent(run, comp, time=current.time)
+        
+        next  # try another coalescent event (no change to row)
       }
     }
+    
+    # resolve the next event
+    if (e$event.type == 'transmission') {
+      resolve.transmission(run, e)
+    }
+    else if (e$event.type == 'migration') {
+      resolve.migration(run, e)
+    } 
+    else if (e$event.type == 'transition') {
+      resolve.transition(run, e)
+    } 
     else {
-      # compete coalescent event against next outer event
-      waiting.time <- e$time - current.time
-      
+      stop("Error in simInnerTree: unknown event type ", e$event.type)
     }
+      
+    # move to next event
+    row <- row+1
+    current.time <- e$time
+    extant.lineages <- run$get.extant.lineages(current.time)
+    n.extant <- length(extant.lineages)
   }
+ 
   
 }
+
+
+#' resolve.coalescent
+#' 
+#' Helper function records the coalescence of two extant Lineages into an
+#' ancestral Lineage.
+#' 
+#' @param run:  an R6 object of class Run
+#' @param comp:  an R6 object of class Compartment
+#' @param time:  double; time of coalescent event
+#' @param is.bottleneck:  if TRUE, mark event as 'bottleneck' in log
+#' 
+#' @export
+resolve.coalecsent <- function(run, comp, time, is.bottleneck=FALSE) {
+  # retrieve extant lineages
+  lineages <- run$get.extant.lineages(current.time, comp)
+  if (length(lineages) < 2) {
+    stop("Error in simInnerTree: <2 extant lineages in Compartment ", 
+         comp$get.name())
+  }
+  pair <- sample(lineages, 2)
+  line1 <- pair[[1]]
+  line2 <- pair[[2]]
+  
+  # create ancestral Lineage
+  ancestor <- Lineage$new(
+    name=run$get.node.ident(),  # label internal nodes as "Node1", etc.
+    sampling.time=time,
+    location=comp
+    )
+  
+  # remove coalesced lineages
+  run$remove.lineage(line1)
+  run$remove.lineage(line2)
+  
+  # update event log
+  event.type <- ifelse(is.bottleneck, 'bottleneck', 'coalescent')
+  eventlog <- run$get.eventlog()
+  eventlog$add.event(type=event.type, time=time, line1=line1$get.name(),
+                     line2=ancestor$get.name(), comp1=comp$get.name())
+  eventlog$add.event(type=event.type, time=time, line1=line2$get.name(),
+                     line2=ancestor$get.name(), comp1=comp$get.name())
+}
+
+
+#' resolve.transmission
+#' 
+#' Helper function records the transmission of Lineages from source
+#' to recipient Compartments and updates the state of the Run object.
+#' 
+#' @param run:  R6 object of class Run
+#' @param e:  row from EventLogger dataframe
+#' 
+#' @export
+resolve.transmission <- function(run, e) {
+  if (e$event.type != 'transmission') {
+    stop("resolve.transmission called on event of type '", e$event.type,
+         "', expecting 'transmission'"
+  }
+
+  # retrieve Compartment objects for transmission event
+  comps <- c(run$get.compartments(), run$get.unsampled.hosts())
+  
+  recipient <- comps[[e$compartment1]]
+  if (is.null(recipient)) {
+    stop("resolve.transmission() failed to locate recipient Compartment ",
+         e$compartment1)
+  }
+  
+  source <- comps[[e$compartment2]]
+  if (is.null(source)) {
+    stop("resolve.transmission() failed to locate source Compartment ", 
+         e$compartment2)
+  }
+  
+  # apply bottleneck in recipient
+  survivors <- resolve.bottleneck(run, recipient)
+  for (lineage in survivors) {
+    # move "surviving" Lineage to source Compartment
+    recipient$remove.lineage(lineage)
+    lineage$set.location(source)
+    source$add.lineage(lineage)
+  }
+  
+  # update eventlog
+  eventlog <- run$get.eventlog()
+  eventlog$record.transmission(recipient, survivors)
+}
+
+
+#' resolve.bottleneck
+#' 
+#' Helper function records the bottleneck of extant Lineages, with a
+#' random sample being transferred to the source Compartment.
+#' 
+#' @param run:  R6 object of class Run
+#' @param comp:  R6 object of class Compartment
+#' 
+#' @return list of Lineage objects to pass to source Compartment
+#' @export
+resolve.bottleneck <- function(run, comp) {
+  
+  time <- comp$get.branching.time()
+  if (!is.numeric(current.time)) {
+    stop("Error in generate.bottleneck: Compartment ", comp$get.name(), 
+         " has no assigned branching time.")
+  }
+  
+  bottleneck.size <- comp$get.type()$get.bottleneck.size()
+  if (!is.numeric(bottleneck.size)) {
+    stop("Error in generate.bottleneck: Compartment ", comp$get.name(),
+         " has no bottleneck size specified.")
+  }
+  
+  # retrieve extant Lineages in compartment
+  lineages <- run$get.extant.lineages(time, comp)
+  if (length(lineages) == 0) {
+    stop("Error in generate.bottleneck: Compartment ", comp$get.name(),
+         " has no Lineages to bottleneck!")
+  }
+  
+  while (length(lineages) > bottleneck.size) {
+    pair <- sample(linegaes, 2)  # replace defaults to FALSE
+    resolve.coalecsent(run, comp, time, is.bottleneck=TRUE)
+    # update lineages
+    lineages <- run$get.extant.lineages(time, comp)
+  }
+  
+  return(lineages)
+}
+
+
+
+#' resolve.migration
+#' 
+#' Helper function records the migration of extant Lineages between
+#' Compartments.
+#' 
+resolve.migration <- function(run, e) {
+  if (e$event.type != 'migration') {
+    stop("resolve.migration called on event of type '", e$event.type,
+         "', expecting 'migration'"
+  }
+  
+  # retrieve Compartment objects for migration event
+  comps <- c(run$get.compartments(), run$get.unsampled.hosts())
+  
+  recipient <- comps[[e$compartment1]]
+  if (is.null(recipient)) {
+    stop("resolve.migration() failed to locate recipient Compartment ",
+         e$compartment1)
+  }
+  
+  source <- comps[[e$compartment2]]
+  if (is.null(source)) {
+    stop("resolve.migration() failed to locate source Compartment ", 
+         e$compartment2)
+  }
+  
+  # retrieve extant lineages in recipient Compartment
+  lineages <- run$get.extant.lineages(e$time, recipient)
+  n.extant <- length(lineages)
+  
+  # determine how many extant Lineages in recipient (if any) were 
+  # transferred by migration (secondary contact) from source
+  eff.size <- 1/recipient$get.type()$get.coalescent.rate()
+  bottleneck.size <- recipient$get.type()$get.bottleneck.size()
+  
+  # sampling without replacement
+  count <- rhyper(nn=1, m=n.extant, n=eff.size-n.extant,
+                  k=bottleneck.size)
+  
+  for (line in sample(lineages, count)) {
+    recipient$remove.lineage(line)
+    line$set.location(source)
+    source$add.lineage(line)
+  }
+  
+  # update eventlog
+  eventlog <- run$get.eventlog()
+  
+}
+
 
 
 
