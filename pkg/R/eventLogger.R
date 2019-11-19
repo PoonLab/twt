@@ -90,31 +90,37 @@ EventLogger <- R6Class("EventLogger",
     },
     
     
-    modify.event = function(transmission.time, lineages) {
-      # when inner tree simulation has reached a transmission event, 
-      # need to fill in the lineage column w/ the lineages that are present 
-      # at transmission time
-      #
-      # @param transmission.time:  time of event
-      # @param lineages:  
+    resolve.transmission = function(recipient, lineages) {
+      # Record which Lineages are transmitted from source to 
+      # recipient.
+      # 
+      # @param recipient:  Compartment object
+      # @param lineages:  a vector of names of Lineages to transfer out
+      #                   of recipient Compartment
       
-      # in the case of bottleneck events, will have same time so have to isolate 
-      # transmission event times
-      transmission.events <- self$get.events('transmission')
+      # locate transmission event
+      events <- self$get.all.events()
+      idx <- which(events$compartment1 == recipient && 
+                     events$event.type == 'transmission' &&
+                     is.na(events$lineage1))
+      if (length(idx) != 1) {
+        stop(paste("Error in eventLogger:resolve.transmission - ",
+                   ifelse(length(idx)>1, "multiple", "no"), 
+                   " transmission events match recipient ",
+                   recipient$get.name())
+      }
       
-      index <- which(transmission.events$time == transmission.time)
-      rowname <- rownames(transmission.events)[index]
-      eventlog.index <- which(rownames(self$get.all.events()) == rowname)
-      private$events[eventlog.index, 'lineage1'] <- lineages
+      # replace event with new rows
+      e <- events[idx, ]
+      cache <- events[(idx+1):nrow(events), ]
+      events <- events[1:(idx-1), ]
+      for (l in lineages) {
+        e$lineage1 <- l
+        events <- rbind(events, as.list(e), stringsAsFactors=F)
+      }
+      private$events <- rbind(events, cache)
     },
     
-    get.migration.events = function() {
-      private$migration.events.storage
-    },
-    
-    store.migration.events = function(migration.events) {
-      private$migration.events.storage <- migration.events
-    },
     
     get.fixed.samplings = function() {
       # retrieves the fixed sampling times of the tips of a MODEL object
@@ -131,8 +137,6 @@ EventLogger <- R6Class("EventLogger",
   
   private = list(
     events = NULL,
-    #events.noncumul = NULL,  ## DEPRECATED (issue #58)
-    migration.events.storage = NULL,
     fixed.samplings.storage = NULL,
     
     generate.events = function(events, root, tips) {

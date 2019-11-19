@@ -71,7 +71,7 @@ sim.inner.tree <- function(mod, e=NA) {
   }
   
   # retrieve migration events **to be resolved** and times
-  migration.events <- eventlog$get.migration.events()
+  migration.events <- eventlog$get.events('migration')
   migration.times <- migration.events$time
   
   # intitialize simulation at time of most recently sampled Lineage

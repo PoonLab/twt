@@ -75,6 +75,8 @@ Run <- R6Class(
       # Caches the result in member variable 'extant.lineages'
       # 
       # @param time = coalescent (cumulative time) of the simulation
+      
+      # store in private variable for other functions to access
       private$extant.lineages <- private$retrieve.extant.lineages(time)
       private$extant.lineages
     },
@@ -191,7 +193,7 @@ Run <- R6Class(
     # private functions
     
     retrieve.extant.lineages = function(time) {
-      # intializes list of Lineages with sampling.time t=0
+      # initializes list of Lineages with sampling.time t=0
       unlist(sapply(private$lineages, function(b){
         if (b$get.sampling.time() <= time) {b}
       }))
