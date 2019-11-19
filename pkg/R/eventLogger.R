@@ -107,7 +107,7 @@ EventLogger <- R6Class("EventLogger",
         stop(paste("Error in eventLogger:resolve.transmission - ",
                    ifelse(length(idx)>1, "multiple", "no"), 
                    " transmission events match recipient ",
-                   recipient$get.name())
+                   recipient$get.name()))
       }
       
       # replace event with new rows

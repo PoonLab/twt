@@ -1,5 +1,91 @@
 #' sim.inner.tree
 #' 
+#' Simulate the coalescence of Lineages within Compartments, and resolve
+#' migration events that may involve sampled Lineages
+#' 
+#' @param model:  R6 object of class Model or Run.  If user provides a Model 
+#'        object, then an EventLogger object must also be provided.  The 
+#'        expected use case is generating an eventlog from `eventlog.from.tree`
+#'        and using Model to parameterize the inner tree simulation.
+#' @param e: (optional)  R6 object of class EventLogger
+#' @return R6 object of class EventLogger
+#' 
+#' @examples 
+#' # load model
+#' path <- system.file('extdata', 'SI.yaml', package='twt')
+#' 
+#' # load file and parse to construct MODEL object
+#' settings <- yaml.load_file(path)
+#' mod <- Model$new(settings)
+#' 
+#' # simulate outer tree - returns a Run object carrying EventLogger
+#' run <- sim.outer.tree(mod)
+#' 
+#' # simulate inner tree
+#' tree <- sim.inner.tree(run)
+#' plot(tree)
+#' 
+#' @export
+sim.inner.tree <- function(model, e=NA) {
+  
+  # handle arguments
+  if ( is.element('Run', class(mod)) ) {
+    run <- mod
+    if ( nrow(run$get.eventlog()$get.all.events()) ==0 ) {
+      stop("Error in sim.inner.tree(): empty EventLogger in Run object. ",
+           "Did you run sim.outer.tree() before calling this function?")
+    }
+  }
+  else if ( is.element('Model', class(mod)) ) {
+    if (is.environment(e)) {
+      run <- Run$new(mod)
+      # don't modify the original EventLogger object
+      run$set.eventlog(e$clone())
+    } 
+    else {
+      stop("You must provide an EventLogger to sim.inner.tree() if `mod` is a Model object")
+    }
+  }
+  else {
+    stop("sim.inner.tree(): argument `mod` must be R6 class Model or Run.")
+  }
+  
+  eventlog <- run$get.eventlog()
+  t.events <- eventlog$get.events('transmission')
+  
+  if (any(!is.element(run$get.compartments(), 
+                      union(t.events$compartment1, t.events$compartment2)))) {
+    stop(paste("Mismatch between compartment names in Run and EventLogger objects."))
+  }
+  
+  # initialize simulation at most recent sampling time
+  current.time <- 0.
+  extant.lineages <- run$get.extant.lineages(current.time)
+  num.extant <- length(extant.lineages)
+  if (num.extant == 0) {
+    stop ('There must be at least one lineage sampled at time t=0.')
+  }
+  
+  while (num.extant > 0) {
+    if (num.extant == 1) {
+      # see issue #54
+    }
+    
+    # calculate waiting times for coalescent events in any Compartment
+    # carry 2 or more Lineages
+    wait.times <- calc.coal.wait.times(run, current.time)
+    
+    if (length(wait.times) == 0) {
+      # no coalescent events possible, move to next transmission or migration event
+    }
+  }
+}
+
+
+#################################################3
+
+#' sim.inner.tree
+#' 
 #' Simulate the coalescence of pathogen lineages within hosts (compartments)
 #' AND resolve the migration events that may or may not involve sampled pathogen 
 #' lineages within hosts.
@@ -115,7 +201,7 @@ sim.inner.tree <- function(mod, e=NA) {
     # record number of migration events already included in simulation at this 
     # current.time
     num.migrations.occurred <- sum(migration.times <= current.time)
-      
+    
     if (length(coal.wait.times) == 0) {
       # no coalescent events possible at this point in time (all Compartments carry 
       # no more than one Lineage)
@@ -167,7 +253,7 @@ sim.inner.tree <- function(mod, e=NA) {
     # check to see if the minimum waiting time is not exceeded by other fixed events:
     skipped.transm.times <- transm.times[which(
       (transm.times > current.time) && (transm.times <= new.time)
-      )]
+    )]
     
     if ( length(skipped.transm.times) > 0 ) {
       # if minimum waiting time to coalescent exceeds a transmission event not 
@@ -229,7 +315,7 @@ sim.inner.tree <- function(mod, e=NA) {
       lineages.to.coalesce <- sample(coal.comp.lineages, 2)
       generate.coalescent(run, eventlog, lineages.to.coalesce, coal.comp, new.time)
       
-
+      
       if (length(which(transm.times <= new.time)) > num.transm.occurred) {
         # issue 40: if coalescent event occurs at a transmission time, force coalescence of all other lineages at this time
         
@@ -267,20 +353,20 @@ sim.inner.tree <- function(mod, e=NA) {
 #' 
 #' @export update.transmission
 update.transmission <- function(run, inf, transm.event) {
-
+  
   # retrieve Compartment objects
   recipient <- inf[[ transm.event$compartment1 ]]
   if (is.null(recipient)) {
     stop("update.transmission() failed to locate recipient Compartment ",
          transm.event$compartment2)
   }
-
+  
   source <- inf[[ transm.event$compartment2 ]]
   if (is.null(source)) {
     stop("update.transmission() failed to locate source Compartment ", 
          transm.event$compartment1)
   }
-
+  
   # apply bottleneck in recipient
   survivor.lineages <- generate.bottleneck(run, recipient)
   name.str <- c()
@@ -339,7 +425,7 @@ resolve.migration <- function(run, inf, migration.event) {
       })
       possible.sources[sapply(possible.sources, is.null)] <- NULL   # cleanup
       chosen.source <- sample(possible.sources, 1)[[1]]
-
+      
       # draw a lineage to be migrated
       migrating.lineage <- sample(chosen.recipient$get.lineages(), 1)[[1]]
       generate.migration(run, chosen.source, chosen.recipient, 
@@ -364,18 +450,18 @@ resolve.migration <- function(run, inf, migration.event) {
 #' @export
 generate.migration <- function(run, source, recipient, migrating.lineage, 
                                migration.time) {
-
+  
   if ( !identical(migrating.lineage$get.location(), recipient) ) {
     stop("Error in generate.migration: Lineage ", migrating.lineage.$get.name(),
          " is not located in Compartment ", recipient$get.name())
   }
   l_name <- migrating.lineage$get.name()  # lineage name
-
+  
   eventlog <- run$get.eventlog()  
   outer.tree.events <- eventlog$get.events('transmission')
   outer.tree.comps <- union(outer.tree.events$compartment1, 
                             outer.tree.events$compartment2)
-
+  
   if ( !is.element(source$get.name(), outer.tree.comps) ) {
     # issue #32: if migration of lineages from unsampled (US) individual not 
     # already included in outer tree (via transmission event), have to graft 
@@ -392,10 +478,10 @@ generate.migration <- function(run, source, recipient, migrating.lineage,
       stop("Error in generate.migration(): CompartmentType ", source$get.type()$get.name(),
            " has no unused transmission times >= migration time ", migration.time)
     }
-
+    
     # sample an available time
     avail.t.time <- t.times[ sample(index, 1) ]
-
+    
     # reset the vector to make the sampled time now unavailable
     # CONFIRMED: the type's vector of available t.times is updated for every 
     # compartment under this Compartment Type
@@ -405,27 +491,27 @@ generate.migration <- function(run, source, recipient, migrating.lineage,
     types <- run$get.types()
     master.comp.type <- which( names(types) == source$get.type()$get.name() )
     types[[master.comp.type]]$set.transmission.times(t.times)
-
+    
     # generate new transmission event for branch to be grafted onto tree
     eventlog$add.event('transmission', avail.t.time, l_name, NA, 
                        recipient$get.name(), source$get.name())
   }
-
+  
   # add lineage to source compartment
   source$add.lineage(migrating.lineage)
   add.lineage.pairs(run, migrating.lineage)
-
+  
   # remove lineage from recipient compartment
   recipient$remove.lineage(migrating.lineage)
   remove.lineage.pairs(run, migrating.lineage)
-
+  
   # set location of migrating lineage to source compartment
   migrating.lineage$set.location(source)
-
+  
   # add migration event to EventLogger
   eventlog$add.event('migration', migration.time, l_name, NA, 
                      recipient$get.name(), source$get.name())
-
+  
 }
 
 
@@ -454,7 +540,7 @@ generate.coalescent <- function(run, line1, line2, current.time, is.bottleneck=F
     name = run$get.node.ident(),  # label internal nodes from 1..inf by convention
     sampling.time = current.time,
     location = comp
-    )
+  )
   
   # remove lineages undergoing coalescence
   run$remove.lineage(line1)
