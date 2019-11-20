@@ -184,7 +184,7 @@ Run <- R6Class(
       for (node in private$extant.lineages) {
         compName <- node$get.location()$get.name()
         
-        if ( !is.element(compName, names(private$locations) ) {
+        if ( !is.element(compName, names(private$locations)) ) {
           private$locations[[compName]] <- list()
         }
         private$locations[[compName]] <- c(private$locations[[compName]], node$get.name())
@@ -246,7 +246,7 @@ plot.Run <- function(run, transmissions=FALSE, migrations=FALSE,
       .plot.outer.tree(run, pal)
     } 
     else {
-      phy <- .eventlogger.to.phylo(
+      phy <- as.phylo.EventLogger(
         eventlog=eventlog, 
         transmissions=transmissions, 
         migrations=migrations, 

@@ -7,5 +7,6 @@
 .assign.events(run, events)
 }
 \description{
-.assign.events
+Assignment of outer events proceeds in reverse (coalescent) time,
+starting from the sampled Compartments.
 }

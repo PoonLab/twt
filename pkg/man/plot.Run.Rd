@@ -4,9 +4,14 @@
 \alias{plot.Run}
 \title{plot.Run}
 \usage{
-\method{plot}{Run}(run, transmissions = FALSE, migrations = FALSE,
-  node.labels = FALSE, pal = c("#1B9E77", "#D95F02", "#7570B3",
-  "#E7298A", "#66A61E", "#E6AB02", "#A6761D", "#666666"))
+\method{plot}{Run}(
+  run,
+  transmissions = FALSE,
+  migrations = FALSE,
+  node.labels = FALSE,
+  pal = c("#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E", "#E6AB02", "#A6761D",
+    "#666666")
+)
 }
 \arguments{
 \item{run:}{R6 object of class `Run`}

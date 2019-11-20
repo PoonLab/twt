@@ -47,12 +47,13 @@ EventLogger <- R6Class("EventLogger",
       }
     },
     
+    
+    #' @param type: event type, one of 'transmission', 'transition', 'migration', 
+    #'        'coalescence' or 'bottleneck'.
+    #' @param time: CUMULATIVE time that event has occurred between two compartments 
+    #'        in a transmission/migration/coalescent event
     add.event = function(type, time, line1=NA, line2=NA, comp1=NA, comp2=NA, 
                          type1=NA, type2=NA) {
-      # @param type: event type, one of 'transmission', 'transition', 'migration', 
-      # 'coalescence' or 'bottleneck'.
-      # @param time: CUMULATIVE time that event has occurred between two compartments 
-      # in a transmission/migration/coalescent event
       
       if ( !is.element(type, c(
         'transmission', 'migration', 'transition', 'coalescent', 'bottleneck'
@@ -82,14 +83,13 @@ EventLogger <- R6Class("EventLogger",
     },
     
     
+    #' Record which Lineages are transmitted from source to 
+    #' recipient (should only be one entry with Compartment as recipient)
+    #' 
+    #' @param recipient:  Compartment object
+    #' @param lineages:  a vector of names of Lineages to transfer out
+    #'                   of recipient Compartment
     record.transmission = function(recipient, lineages) {
-      # Record which Lineages are transmitted from source to 
-      # recipient (should only be one entry with Compartment as recipient)
-      # 
-      # @param recipient:  Compartment object
-      # @param lineages:  a vector of names of Lineages to transfer out
-      #                   of recipient Compartment
-      
       # locate transmission event
       events <- self$get.all.events()
       idx <- which(events$compartment1 == recipient$get.name() && 
@@ -114,15 +114,14 @@ EventLogger <- R6Class("EventLogger",
     },
     
     
+    #' Record which Lineages are transmitted from source to recipient
+    #' through a migration event
+    #'
+    #' @param recipient:  Compartment object
+    #' @param source:  Compartment object
+    #' @param time:  double, time of migration event
+    #' @param lineages:  a list of Lineage objects
     record.migration = function(recipient, source, time, lineages) {
-      # Record which Lineages are transmitted from source to recipient
-      # through a migration event
-      #
-      # @param recipient:  Compartment object
-      # @param source:  Compartment object
-      # @param time:  double, time of migration event
-      # @param lineages:  a list of Lineage objects
-      
       events <- self$get.all.events()
       idx <- which(events$compartment1 == recipient$get.name() && 
                      events$compartment2 == source$get.name() &&

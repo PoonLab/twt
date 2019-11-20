@@ -4,18 +4,14 @@
 \alias{resolve.migration}
 \title{resolve.migration}
 \usage{
-resolve.migration(run, inf, migration.event)
+resolve.migration(run, e)
 }
 \arguments{
-\item{run:}{Run object}
+\item{run:}{R6 object of class Run}
 
-\item{inf:}{list of sampled and unsampled infected compartments 
-of type Compartment}
-
-\item{migration.event:}{list of information specific to the migration 
-event being resolved}
+\item{e:}{a row from EventLogger$get.all.events() dataframe}
 }
 \description{
-function resolves a potential migration event generated from 
-`sim.migrations()`
+Helper function records the migration of extant Lineages between
+Compartments.
 }

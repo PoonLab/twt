@@ -195,7 +195,7 @@ resolve.coalescent <- function(run, comp, time, is.bottleneck=FALSE) {
 resolve.transmission <- function(run, e) {
   if (e$event.type != 'transmission') {
     stop("resolve.transmission called on event of type '", e$event.type,
-         "', expecting 'transmission'"
+         "', expecting 'transmission'")
   }
 
   # retrieve Compartment objects for transmission event
@@ -282,7 +282,7 @@ resolve.bottleneck <- function(run, comp) {
 resolve.migration <- function(run, e) {
   if (e$event.type != 'migration') {
     stop("resolve.migration called on event of type '", e$event.type,
-         "', expecting 'migration'"
+         "', expecting 'migration'")
   }
   
   # retrieve Compartment objects for migration event
