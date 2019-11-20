@@ -6,8 +6,6 @@
 #' 
 #' @param events: a data frame where each row represents an event with a time 
 #' stamp in forward time.
-#' @param migration.events.storage: a data frame of migration events, returned by
-#' `simMigrations.R:.calc.migration.events()`.
 #' 
 #' @examples
 #' # manually initialize an EventLog object
@@ -19,17 +17,11 @@
 #' @export
 EventLogger <- R6Class("EventLogger", 
   public = list(
-    initialize = function(events = NA, migration.events.storage = NA) {
+    initialize = function(events = NA) {
       if (is.na(events)) {
         self$clear.events()
       } else {
         private$events <- events  
-      }
-      
-      if (is.na(migration.events.storage)) {
-        private$migration.events.storage <- data.frame(stringsAsFactors = FALSE)
-      } else {
-        private$migration.events.storage <- migration.events.storage
       }
     },
    
@@ -151,7 +143,7 @@ EventLogger <- R6Class("EventLogger",
         events <- rbind(events, as.list(e), stringsAsFactors=F)
       }
       private$events <- rbind(events, cache)
-    }
+    },
     
     
     get.fixed.samplings = function() {
@@ -253,7 +245,7 @@ print.EventLogger <- function(eventlog) {
 
 
 
-#' write.tree
+#' as.phylo
 #' 
 #' An S3 method converts events stored in the EventLogger object into an inner 
 #' coalescent tree w/ option to include/exclude transmission events.
@@ -262,8 +254,9 @@ print.EventLogger <- function(eventlog) {
 #' @param transmissions: logical; if TRUE, transmission events included, 
 #' else excluded otherwise.
 #' @return ape::phylo object
-#' @keywords internal
-write.tree.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE, 
+#' 
+#' @export
+as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE, 
                                   node.labels=FALSE) {
   
   # helper function: if the event being examined is a bottleneck event, 
@@ -550,6 +543,5 @@ write.tree.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FAL
   attr(phy, 'order') <- 'cladewise'
   phy
 }
-
 
 
