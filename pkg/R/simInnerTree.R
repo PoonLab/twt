@@ -140,7 +140,7 @@ sim.inner.tree <- function(model, e=NA) {
 }
 
 
-#' resolve.coalescent
+#' .resolve.coalescent
 #' 
 #' Helper function records the coalescence of two extant Lineages into an
 #' ancestral Lineage.
@@ -150,8 +150,8 @@ sim.inner.tree <- function(model, e=NA) {
 #' @param time:  double; time of coalescent event
 #' @param is.bottleneck:  if TRUE, mark event as 'bottleneck' in log
 #' 
-#' @export
-resolve.coalescent <- function(run, comp, time, is.bottleneck=FALSE) {
+#' @keywords internal
+.resolve.coalescent <- function(run, comp, time, is.bottleneck=FALSE) {
   # retrieve extant lineages
   lineages <- run$get.extant.lineages(current.time, comp)
   if (length(lineages) < 2) {
@@ -183,7 +183,7 @@ resolve.coalescent <- function(run, comp, time, is.bottleneck=FALSE) {
 }
 
 
-#' resolve.transmission
+#' .resolve.transmission
 #' 
 #' Helper function records the transmission of Lineages from source
 #' to recipient Compartments and updates the state of the Run object.
@@ -191,8 +191,8 @@ resolve.coalescent <- function(run, comp, time, is.bottleneck=FALSE) {
 #' @param run:  R6 object of class Run
 #' @param e:  row from EventLogger dataframe
 #' 
-#' @export
-resolve.transmission <- function(run, e) {
+#' @keywords internal
+.resolve.transmission <- function(run, e) {
   if (e$event.type != 'transmission') {
     stop("resolve.transmission called on event of type '", e$event.type,
          "', expecting 'transmission'")
@@ -214,7 +214,7 @@ resolve.transmission <- function(run, e) {
   }
   
   # apply bottleneck in recipient
-  survivors <- resolve.bottleneck(run, recipient)
+  survivors <- .resolve.bottleneck(run, recipient)
   for (lineage in survivors) {
     # move "surviving" Lineage to source Compartment
     recipient$remove.lineage(lineage)
@@ -228,7 +228,7 @@ resolve.transmission <- function(run, e) {
 }
 
 
-#' resolve.bottleneck
+#' .resolve.bottleneck
 #' 
 #' Helper function records the bottleneck of extant Lineages, with a
 #' random sample being transferred to the source Compartment.
@@ -237,8 +237,8 @@ resolve.transmission <- function(run, e) {
 #' @param comp:  R6 object of class Compartment
 #' 
 #' @return list of Lineage objects to pass to source Compartment
-#' @export
-resolve.bottleneck <- function(run, comp) {
+#' @keywords internal
+.resolve.bottleneck <- function(run, comp) {
   
   time <- comp$get.branching.time()
   if (!is.numeric(current.time)) {
@@ -271,7 +271,7 @@ resolve.bottleneck <- function(run, comp) {
 
 
 
-#' resolve.migration
+#' .resolve.migration
 #' 
 #' Helper function records the migration of extant Lineages between
 #' Compartments.
@@ -279,7 +279,8 @@ resolve.bottleneck <- function(run, comp) {
 #' @param run:  R6 object of class Run
 #' @param e:  a row from EventLogger$get.all.events() dataframe
 #' 
-resolve.migration <- function(run, e) {
+#' @keywords internal
+.resolve.migration <- function(run, e) {
   if (e$event.type != 'migration') {
     stop("resolve.migration called on event of type '", e$event.type,
          "', expecting 'migration'")
@@ -326,7 +327,7 @@ resolve.migration <- function(run, e) {
 }
 
 
-#' resolve.transition
+#' .resolve.transition
 #' 
 #' Helper function records the transition of a Compartment from one Type
 #' to another.  Note this reverts a Compartment at time 0 (most recent time)
@@ -334,7 +335,9 @@ resolve.migration <- function(run, e) {
 #' 
 #' @param run:  R6 object of class Run
 #' @param e:  a row from an EventLogger dataframe
-resolve.transition <- function(run, e) {
+#' 
+#' @keywords internal
+.resolve.transition <- function(run, e) {
   # retrieve Compartment object by name
   comps <- c(run$get.compartments(), run$get.unsampled.hosts())
   comp <- comps[[e$compartment1]]
@@ -357,23 +360,29 @@ resolve.transition <- function(run, e) {
 
 
 
-#' wait.time
+#' rcoal.linear
 #' 
 #' Draw waiting time to next coalescent event for the current interval
 #' of a piecewise linear model describing the population 
-#' growth dynamics over time.
-#' Inverse cumulative function from Romero-Severson et al., 2017 
+#' growth dynamics over time, where N(t) = alpha + beta*t
+#' 
+#' Inverse cumulative distribution function from Romero-Severson et al., 2017 
 #' https://doi.org/10.1534/genetics.117.300284
 #' 
 #' @param k: number of extant lineages that could potentially coalesce
-#' @param t1: start time in reverse, relative to intercept
-#' @param alpha: intercept, population size at t=0
+#' @param t1: most recent time point on piecewise interval -- origin of 
+#'        coalescent (reverse-time) process.
+#' @param alpha: intercept, population size at t=0 (start of infection)
 #' @param beta: slope of linear growth interval
 #' 
 #' @return  Random variate from waiting time distribution.
-#' @keywords internal
-wait.time <- function(k, t1, alpha, beta){
-  u <- runif(1)
+#' 
+#' @examples 
+#' rcoal.linear()
+#' 
+#' @export
+rcoal.linear <- function(k, t1, alpha, beta=0){
+  u <- runif(1)  # random uniform deviate
   (1-(1-u)^(beta/choose(k,2)))*(alpha+beta*t1)/beta
 }
 

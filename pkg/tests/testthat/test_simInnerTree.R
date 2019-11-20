@@ -14,6 +14,11 @@ model <- Model$new(settings)
 #        3   2   1   0  time
 
 
+test_that("draw coalescent wait times", {
+  run <- Run$new(model)
+  
+})
+
 
 test_that("generate coalescent", {
   run <- init.branching.events(model)
@@ -24,7 +29,7 @@ test_that("generate coalescent", {
   line1 <- lineages[[1]]
   line2 <- lineages[[2]]
   
-  generate.coalescent(run, line1, line2, 0.5)
+  resolve.coalescent(run, line1, line2, 0.5)
   
   result <- run$get.lineages()
   expect_equal(8, length(result))
@@ -95,41 +100,6 @@ test_that("update transmission", {
 })
 
 
-
-test_that("remove lineage pairs", {
-  run <- init.branching.events(model)
-  lineage <- run$get.lineages()[[1]]  # A_1__1_1
-
-  remove.lineage.pairs(run, lineage)
-  result <- run$get.pairs()  # list keyed by Lineage name tuples
-  
-  expected <- list(
-    'A_1__1_2,A_1__1_3' = "A_1",
-    'B_1__2_1,B_1__2_2' = "B_1",
-    'B_1__2_1,B_1__2_3' = "B_1",
-    'B_1__2_2,B_1__2_3' = "B_1",
-    'C_1__3_1,C_1__3_2' = "C_1",
-    'C_1__3_1,C_1__3_3' = "C_1",
-    'C_1__3_2,C_1__3_3' = "C_1"
-    )
-  expect_equal(expected, result)
-})
-
-
-test_that("add lineage pairs", {
-  run <- init.branching.events(model)
-  comp <- run$get.compartments()[[1]]
-  lineage <- Lineage$new(name="test", sampling.time=0, location=comp)
-  comp$add.lineage(lineage)
-  
-  add.lineage.pairs(run, lineage)
-  result <- run$get.pairs()
-  
-  expect_equal(12, length(result))
-  expect_true(is.element(list('A_1__1_1,test'='A_1'), result))
-  expect_true(is.element(list('A_1__1_2,test'='A_1'), result))
-  expect_true(is.element(list('A_1__1_3,test'='A_1'), result))
-})
 
 
 test_that("generate migration between sampled Compartments", {
