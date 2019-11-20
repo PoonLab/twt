@@ -479,6 +479,8 @@ sim.outer.tree <- function(model) {
 
 #' .assign.events
 #' 
+#' Assignment of outer events proceeds in reverse (coalescent) time,
+#' starting from the sampled Compartments.
 #' 
 .assign.events <- function(run, events) {
   eventlog <- run$get.eventlog()
@@ -555,8 +557,8 @@ sim.outer.tree <- function(model) {
           type = e$event.type,
           comp1 = recipient$get.name(),
           comp2 = source$get.name(),
-          type1 = e$r.type,
-          type2 = e$s.type
+          type1 = e$r.type,  # recipient (derived)
+          type2 = e$s.type  # source (ancestral)
         )
       }
       # otherwise recipient is not a sampled Compartment - ignore
@@ -571,6 +573,7 @@ sim.outer.tree <- function(model) {
         # transitioning Compartment is a sampled one
         compartment <- sample(active[types==e$r.type], 1)[[1]]
         
+        # change the CompartmentType to ancestral ("source") state
         old.type <- compartment$get.type()$get.name()
         compartment$set.type(run$get.types()[[e$s.type]])
         

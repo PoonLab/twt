@@ -125,6 +125,12 @@ EventLogger <- R6Class("EventLogger",
     record.migration = function(recipient, source, time, lineages) {
       # Record which Lineages are transmitted from source to recipient
       # through a migration event
+      #
+      # @param recipient:  Compartment object
+      # @param source:  Compartment object
+      # @param time:  double, time of migration event
+      # @param lineages:  a list of Lineage objects
+      
       events <- self$get.all.events()
       idx <- which(events$compartment1 == recipient$get.name() && 
                      events$compartment2 == source$get.name() &&
@@ -247,9 +253,9 @@ print.EventLogger <- function(eventlog) {
 
 
 
-#' .eventlogger.to.phylo
+#' write.tree
 #' 
-#' function converts events stored in the EventLogger object into an inner 
+#' An S3 method converts events stored in the EventLogger object into an inner 
 #' coalescent tree w/ option to include/exclude transmission events.
 #' 
 #' @param eventlog: EventLogger object
@@ -257,7 +263,7 @@ print.EventLogger <- function(eventlog) {
 #' else excluded otherwise.
 #' @return ape::phylo object
 #' @keywords internal
-.eventlogger.to.phylo <- function(eventlog, transmissions=FALSE, migrations=FALSE, 
+write.tree.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE, 
                                   node.labels=FALSE) {
   
   # helper function: if the event being examined is a bottleneck event, 

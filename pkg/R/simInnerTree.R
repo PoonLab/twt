@@ -26,7 +26,7 @@
 #' 
 #' # simulate inner tree
 #' tree <- sim.inner.tree(run)
-#' plot(tree)
+#' plot(tree)  # converts to a Phylo object
 #' 
 #' @export
 sim.inner.tree <- function(model, e=NA) {
@@ -55,12 +55,25 @@ sim.inner.tree <- function(model, e=NA) {
   
   eventlog <- run$get.eventlog()
   events <- eventlog$get.all.events()
-  events <- events[order(events$time), ]  # sort in reverse time (most recent first)
   
   # retrieve all Compartments in outer events
   comps <- c(run$get.compartments(), run$get.unsampled.hosts())
   if (any(!is.element(comps, union(events$compartment1, events$compartment2)))) {
     stop(paste("Mismatch between compartment names in Run and EventLogger objects."))
+  }
+  types <- run$get.types()
+  
+  # revert Compartments to their derived ("recipient") Types
+  # Types determine coalescent rates during simulation
+  transitions <- events[events$event.type=='transition', ]
+  for (comp in comps) {
+    temp <- transitions[transitions$comp1 == comp$get.name()]
+    if (nrow(temp) == 0) {
+      next  # this Compartment did not undergo any transitions
+    }
+    last.type <- temp$type1[which.min(temp$time)]
+    ctype <- types[[last.type]]
+    comp$set.type(ctype)
   }
   
   # initialize simulation at most recent sampling time
@@ -71,7 +84,9 @@ sim.inner.tree <- function(model, e=NA) {
     stop ('There must be at least one lineage sampled at time t=0.')
   }
   
-  # iterate through outer events
+  
+  # iterate through events in reverse time (most recent first)
+  events <- events[order(events$time), ]
   row <- 1
   while (row <= nrow(events)) {
     
@@ -121,7 +136,7 @@ sim.inner.tree <- function(model, e=NA) {
     n.extant <- length(extant.lineages)
   }
  
-  
+  return(eventlog)
 }
 
 
@@ -136,7 +151,7 @@ sim.inner.tree <- function(model, e=NA) {
 #' @param is.bottleneck:  if TRUE, mark event as 'bottleneck' in log
 #' 
 #' @export
-resolve.coalecsent <- function(run, comp, time, is.bottleneck=FALSE) {
+resolve.coalescent <- function(run, comp, time, is.bottleneck=FALSE) {
   # retrieve extant lineages
   lineages <- run$get.extant.lineages(current.time, comp)
   if (length(lineages) < 2) {
@@ -261,6 +276,9 @@ resolve.bottleneck <- function(run, comp) {
 #' Helper function records the migration of extant Lineages between
 #' Compartments.
 #' 
+#' @param run:  R6 object of class Run
+#' @param e:  a row from EventLogger$get.all.events() dataframe
+#' 
 resolve.migration <- function(run, e) {
   if (e$event.type != 'migration') {
     stop("resolve.migration called on event of type '", e$event.type,
@@ -291,11 +309,12 @@ resolve.migration <- function(run, e) {
   eff.size <- 1/recipient$get.type()$get.coalescent.rate()
   bottleneck.size <- recipient$get.type()$get.bottleneck.size()
   
-  # sampling without replacement
+  # sampling without replacement (hypergeometric distribution)
   count <- rhyper(nn=1, m=n.extant, n=eff.size-n.extant,
                   k=bottleneck.size)
+  migrants <- sample(lineages, count)
   
-  for (line in sample(lineages, count)) {
+  for (line in migrants) {
     recipient$remove.lineage(line)
     line$set.location(source)
     source$add.lineage(line)
@@ -303,11 +322,37 @@ resolve.migration <- function(run, e) {
   
   # update eventlog
   eventlog <- run$get.eventlog()
-  
+  eventlog$record.migration(recipient, source, e$time, migrants)
 }
 
 
-
+#' resolve.transition
+#' 
+#' Helper function records the transition of a Compartment from one Type
+#' to another.  Note this reverts a Compartment at time 0 (most recent time)
+#' from derived type2 to ancestral type1.
+#' 
+#' @param run:  R6 object of class Run
+#' @param e:  a row from an EventLogger dataframe
+resolve.transition <- function(run, e) {
+  # retrieve Compartment object by name
+  comps <- c(run$get.compartments(), run$get.unsampled.hosts())
+  comp <- comps[[e$compartment1]]
+  
+  # retrieve CompartmentTypes
+  types <- run$get.types()
+  type1 <- types[[e$type1]]
+  type2 <- types[[e$type2]]
+  
+  # apply transition
+  comp$set.type()
+  
+  # locate the original row
+  eventlog <- run$get.eventlog()
+  idx <- which(eventlog$event.type == 'transition' && 
+                 eventlog$time == e$time && 
+                 eventlog$compartment1 == e$compartment1)
+}
 
 
 
