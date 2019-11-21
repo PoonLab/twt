@@ -369,11 +369,7 @@ sim.inner.tree <- function(model, e=NA) {
 #' Inverse cumulative distribution function from Romero-Severson et al., 2017 
 #' https://doi.org/10.1534/genetics.117.300284
 #' 
-#' @param k: number of extant lineages that could potentially coalesce
-#' @param t1: most recent time point on piecewise interval -- origin of 
-#'        coalescent (reverse-time) process.
-#' @param alpha: intercept, population size at t=0 (start of infection)
-#' @param beta: slope of linear growth interval
+#' @param comp
 #' 
 #' @return  Random variate from waiting time distribution.
 #' 
@@ -381,7 +377,7 @@ sim.inner.tree <- function(model, e=NA) {
 #' rcoal.linear()
 #' 
 #' @export
-rcoal.linear <- function(k, t1, alpha, beta=0){
+rexp.piecewise <- function(comp, time){
   u <- runif(1)  # random uniform deviate
   (1-(1-u)^(beta/choose(k,2)))*(alpha+beta*t1)/beta
 }
