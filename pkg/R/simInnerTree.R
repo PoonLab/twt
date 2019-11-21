@@ -360,26 +360,65 @@ sim.inner.tree <- function(model, e=NA) {
 
 
 
-#' rcoal.linear
+#' rexp.coal
 #' 
-#' Draw waiting time to next coalescent event for the current interval
-#' of a piecewise linear model describing the population 
-#' growth dynamics over time, where N(t) = alpha + beta*t
+#' Draw exponential waiting time to next coalescent event of Lineages 
+#' within a given Compartment.  Note that if the waiting time exceeds 
+#' this Compartment's transmission event, it will be discarded by 
+#' sim.inner.tree().
 #' 
-#' Inverse cumulative distribution function from Romero-Severson et al., 2017 
-#' https://doi.org/10.1534/genetics.117.300284
-#' 
-#' @param comp
+#' @param run:  R6 object of class Run
+#' @param comp:  R6 object of class Compartment
+#' @param time:  double, current simulation (reverse) time
 #' 
 #' @return  Random variate from waiting time distribution.
 #' 
 #' @examples 
-#' rcoal.linear()
 #' 
-#' @export
-rexp.piecewise <- function(comp, time){
-  u <- runif(1)  # random uniform deviate
-  (1-(1-u)^(beta/choose(k,2)))*(alpha+beta*t1)/beta
+#' 
+#' @keywords internal
+.rexp.coal <- function(run, comp, time) {
+  if (time > comp$get.branching.time()) {
+    stop("Error in rexp.coal: time ", time, " is further back than ",
+         "infection time of Compartment ", comp$get.name())
+  }
+  
+  k <- run$get.extant.lineages(run, comp, time)
+  if (k < 2) {
+    stop("Error in rexp.coal: called on Compartment with <2 lineages.")
+  }
+  
+  ctype <- comp$get.type()
+  c.rate <- ctype$get.coalescent.rate()
+  pieces <- ctype$get.popn.growth.dynamics()
+  
+  if (is.null(c.pieces)) {
+    if (is.null(c.rate)) {
+      stop("Error in rexp.coal: CompartmentType ", ctype$get.name(), 
+           " has no defined coalescent rate nor growth model.")
+    }
+    else {
+      # constant coalescent rate
+      return(rexp(n=1, rate=choose(k,2)*c.rate))
+    }
+  }
+  else {
+    # use piecewise linear growth model
+    
+    # get time since infection of Compartment
+    current.time <- comp$get.branching.time() - time
+    
+    # iterate through pieces, starting with most recent
+    pieces <- pieces[order(pieces$startTime, decreasing=TRUE), ]
+    for (piece in pieces) {
+      if (piece$startTime > current.time) {
+        next
+      }
+      
+      lambda <- 1/piece$endPopn
+      wait <- rexp(1, lambda)
+    }
+  }
 }
 
 
