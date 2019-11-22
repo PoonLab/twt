@@ -330,8 +330,8 @@ sim.inner.tree <- function(model, e=NA) {
 #' .resolve.transition
 #' 
 #' Helper function records the transition of a Compartment from one Type
-#' to another.  Note this reverts a Compartment at time 0 (most recent time)
-#' from derived type2 to ancestral type1.
+#' to another.  Note this REVERTS a Compartment at time 0 (most recent time)
+#' from derived type1 to ancestral type2.
 #' 
 #' @param run:  R6 object of class Run
 #' @param e:  a row from an EventLogger dataframe
@@ -344,11 +344,11 @@ sim.inner.tree <- function(model, e=NA) {
   
   # retrieve CompartmentTypes
   types <- run$get.types()
-  type1 <- types[[e$type1]]
-  type2 <- types[[e$type2]]
+  type1 <- types[[e$type1]]  # derived
+  type2 <- types[[e$type2]]  # ancestral
   
-  # apply transition
-  comp$set.type()
+  # apply reverse transition (derived -> ancestral)
+  comp$set.type(type2)
   
   # locate the original row
   eventlog <- run$get.eventlog()

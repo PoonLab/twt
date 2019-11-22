@@ -82,13 +82,14 @@ Run <- R6Class(
       # store in private variable for other functions to access
       private$extant.lineages <- private$retrieve.extant.lineages(time)
       
-      if (is.na(comp)) {
-        return(private$extant.lineages) 
-      }
-      else {
+      if (is.environment(comp)) {
         Filter(function(x) x$get.location()$get.name()==comp$get.name(), 
                private$extant.lineages)
       }
+      else {
+        return(private$extant.lineages) 
+      }
+
     },
     
     add.lineage = function(lineage) {

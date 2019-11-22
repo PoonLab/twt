@@ -30,7 +30,7 @@ and fixes them to the timeline of lineage sampled events.
 \details{
 A *transmission* is the passage of one or more Lineages from a source 
 Compartment to an uninfected recipient Compartment that did not carry any 
-Lineages.
+Lineages.  
 
 A *migration* is the passage of one or more Lineages from a source Compartment
 to a recipient Compartment that has already been infected (it already carries
