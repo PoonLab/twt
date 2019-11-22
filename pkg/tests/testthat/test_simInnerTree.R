@@ -13,6 +13,9 @@ model <- Model$new(settings)
 # ______________________
 #        3   2   1   0  time
 
+path <- system.file('extdata', 'structSI.yaml', package='twt')
+settings <- yaml.load_file(path)
+structSI <- Model$new(settings)
 
 
 
@@ -24,10 +27,6 @@ test_that("draw coalescent wait times", {
 
 
 test_that("resolve transition", {
-  path <- system.file('extdata', 'structSI.yaml', package='twt')
-  settings <- yaml.load_file(path)
-  structSI <- Model$new(settings)
-  
   set.seed(1)  # should result in 5 transitions
   run <- sim.outer.tree(structSI)
   # comps should be in their most ancestral Types
@@ -58,6 +57,56 @@ test_that("resolve transition", {
   
   .resolve.transition(run, e)
   expect_true(comp$get.type()$get.name() == ancestral.type$get.name())
+  
+})
+
+
+test_that("resolve_migration", {
+  set.seed(1)  # most recent event is a migration
+  run <- sim.outer.tree(structSI)
+  
+  eventlog <- run$get.eventlog()$get.all.events()
+  e <- eventlog[1,]
+  expect_equal('migration', e$event.type)
+  
+  comps <- c(run$get.compartments(), run$get.unsampled.hosts())
+  recipient <- comps[[e$compartment1]]
+  
+  result <- length(recipient$get.lineages())
+  expect_equal(5, result)
+  
+  # effective population size = 10
+  expect_equal(0.1, recipient$get.type()$get.coalescent.rate())
+  expect_null(recipient$get.type()$get.popn.growth.dynamics())
+  expect_equal(1, recipient$get.type()$get.bottleneck.size())
+  
+  # if we set number of extant lineages to 10, migration should 
+  # be guaranteed
+  for (i in 1:5) {
+    l <- Lineage$new(name=paste("temp", i, sep='_'),
+                     sampling.time=0, location=recipient)
+    run$add.lineage(l)
+    # note if we use Compartment$add.lineage() then Run object
+    # will NOT be aware of these Lineage objects and the next
+    # test will fail
+  }
+
+  result <- length(run$get.extant.lineages(0, recipient))
+  expect_equal(10, result)
+  
+  result <- length(recipient$get.lineages())
+  expect_equal(10, result)
+  
+  # source Compartment is unsampled
+  source <- comps[[e$compartment2]]
+  expect_true(source$is.unsampled())
+  result <- length(source$get.lineages())
+  expect_equal(0, result)
+  
+  .resolve.migration(run, e)
+  
+  result <- length(source$get.lineages())
+  expect_equal(1, result)  # bottleneck is 1
   
 })
 

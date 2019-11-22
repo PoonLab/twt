@@ -138,7 +138,7 @@ EventLogger <- R6Class("EventLogger",
       cache <- events[(idx+1):nrow(events), ]
       events <- events[1:(idx-1), ]
       for (l in lineages) {
-        e$lineage1 <- l
+        e$lineage1 <- l$get.name()
         events <- rbind(events, as.list(e), stringsAsFactors=F)
       }
       private$events <- rbind(events, cache)
