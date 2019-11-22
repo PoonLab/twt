@@ -3,7 +3,7 @@
 #' Simulate the coalescence of Lineages within Compartments, and resolve
 #' migration events that may involve sampled Lineages.
 #' 
-#' @param model:  R6 object of class Model or Run.  If user provides a Model 
+#' @param obj:  R6 object of class Model or Run.  If user provides a Model 
 #'        object, then an EventLogger object (such as produced from a Newick tree
 #'        string by `eventlog.from.tree`) must be provided.
 #'        The supplied or derived Run object tracks the locations of Lineage objects
@@ -29,19 +29,19 @@
 #' plot(tree)  # converts to a Phylo object
 #' 
 #' @export
-sim.inner.tree <- function(model, e=NA) {
+sim.inner.tree <- function(obj, e=NA) {
   
   # handle arguments
-  if ( is.element('Run', class(mod)) ) {
-    run <- mod
-    if ( nrow(run$get.eventlog()$get.all.events()) ==0 ) {
+  if ( is.element('Run', class(obj)) ) {
+    run <- obj
+    if ( nrow(run$get.eventlog()$get.all.events()) == 0 ) {
       stop("Error in sim.inner.tree(): empty EventLogger in Run object. ",
            "Did you run sim.outer.tree() before calling this function?")
     }
   }
-  else if ( is.element('Model', class(mod)) ) {
+  else if ( is.element('Model', class(obj)) ) {
     if (is.environment(e)) {
-      run <- Run$new(mod)
+      run <- Run$new(obj)
       # don't modify the original EventLogger object
       run$set.eventlog(e$clone())
     } 
@@ -58,8 +58,8 @@ sim.inner.tree <- function(model, e=NA) {
   
   # retrieve all Compartments in outer events
   comps <- c(run$get.compartments(), run$get.unsampled.hosts())
-  if (any(!is.element(comps, union(events$compartment1, events$compartment2)))) {
-    stop(paste("Mismatch between compartment names in Run and EventLogger objects."))
+  if (any(!is.element(names(comps), union(events$compartment1, events$compartment2)))) {
+    stop("Mismatch between compartment names in Run and EventLogger objects.")
   }
   types <- run$get.types()
   
@@ -109,7 +109,7 @@ sim.inner.tree <- function(model, e=NA) {
         comp <- comps[[comp.name]]  # retrieve Compartment obj from list
         
         current.time <- current.time + c.time
-        resolve.coalescent(run, comp, time=current.time)
+        .resolve.coalescent(run, comp, time=current.time)
         
         next  # try another coalescent event (no change to row)
       }
@@ -117,13 +117,13 @@ sim.inner.tree <- function(model, e=NA) {
     
     # resolve the next event
     if (e$event.type == 'transmission') {
-      resolve.transmission(run, e)
+      .resolve.transmission(run, e)
     }
     else if (e$event.type == 'migration') {
-      resolve.migration(run, e)
+      .resolve.migration(run, e)
     } 
     else if (e$event.type == 'transition') {
-      resolve.transition(run, e)
+      .resolve.transition(run, e)
     } 
     else {
       stop("Error in simInnerTree: unknown event type ", e$event.type)
@@ -136,6 +136,22 @@ sim.inner.tree <- function(model, e=NA) {
     n.extant <- length(extant.lineages)
   }
  
+  # coalesce residual Lineages in root Compartment
+  while (n.extant > 1) {
+    c.times <- calc.coal.wait.times(run, current.time)
+    if (length(c.times) == 0) {
+      break
+    }
+    c.time <- min(c.times)
+    comp.name <- names(c.times)[which.min(c.times)]
+    comp <- comps[[comp.name]]
+    
+    current.time <- current.time + c.time
+    .resolve.coalescent(run, comp, current.time)
+    
+    n.extant <- length(run$get.extant.lineages(current.time))
+  }
+  
   return(eventlog)
 }
 
@@ -153,7 +169,7 @@ sim.inner.tree <- function(model, e=NA) {
 #' @keywords internal
 .resolve.coalescent <- function(run, comp, time, is.bottleneck=FALSE) {
   # retrieve extant lineages
-  lineages <- run$get.extant.lineages(current.time, comp)
+  lineages <- run$get.extant.lineages(time, comp)
   if (length(lineages) < 2) {
     stop("Error in simInnerTree: <2 extant lineages in Compartment ", 
          comp$get.name())
@@ -168,6 +184,7 @@ sim.inner.tree <- function(model, e=NA) {
     sampling.time=time,
     location=comp
     )
+  run$add.lineage(ancestor)
   
   # remove coalesced lineages
   run$remove.lineage(line1)
@@ -241,7 +258,7 @@ sim.inner.tree <- function(model, e=NA) {
 .resolve.bottleneck <- function(run, comp) {
   
   time <- comp$get.branching.time()
-  if (!is.numeric(current.time)) {
+  if (!is.numeric(time)) {
     stop("Error in generate.bottleneck: Compartment ", comp$get.name(), 
          " has no assigned branching time.")
   }
@@ -260,8 +277,8 @@ sim.inner.tree <- function(model, e=NA) {
   }
   
   while (length(lineages) > bottleneck.size) {
-    pair <- sample(linegaes, 2)  # replace defaults to FALSE
-    resolve.coalecsent(run, comp, time, is.bottleneck=TRUE)
+    pair <- sample(lineages, 2)  # replace defaults to FALSE
+    .resolve.coalescent(run, comp, time, is.bottleneck=TRUE)
     # update lineages
     lineages <- run$get.extant.lineages(time, comp)
   }

@@ -111,40 +111,29 @@ test_that("resolve_migration", {
 })
 
 
-test_that("generate coalescent", {
-  skip('refactor')
+test_that("resolve coalescent", {
   run <- init.branching.events(model)
+  lineages <- run$get.lineages()
+  lineage.names <- sapply(lineages, function(x) x$get.name())
   
-  # cause the first two Lineages in Compartment 1 to coalesce
+  # cause two Lineages in Compartment 1 to coalesce
   comp <- run$get.compartments()[[1]]
-  lineages <- comp$get.lineages()
-  line1 <- lineages[[1]]
-  line2 <- lineages[[2]]
   
-  resolve.coalescent(run, line1, line2, 0.5)
+  .resolve.coalescent(run, comp, 0.5)
   
   result <- run$get.lineages()
   expect_equal(8, length(result))
+  
   expect_equal(9, length(model$get.lineages()))  # confirm deep copy
   
   result <- run$get.eventlog()$get.events('coalescent')
-  rownames(result) <- NULL  # ignore row names
-  
-  expected <- data.frame(
-    event.type=rep('coalescent', 2),
-    time=rep(0.5, 2),
-    lineage1=c(line1$get.name(), line2$get.name()),
-    lineage2=rep('Node1', 2),
-    compartment1=rep(comp$get.name(), 2),
-    compartment2=rep(NA, 2),
-    type1=rep(NA, 2),
-    type2=rep(NA, 2),
-    stringsAsFactors = FALSE
-  )
-  expected$compartment2 <- as.character(expected$compartment2)
-  
-  expect_equal(expected, result)
-  
+  expect_equal(2, nrow(result))
+  expect_true(all(result$lineage2=='Node1'))
+  expect_true( all(is.element(result$lineage1, lineage.names)) )
+  expect_true( all(result$time == 0.5) )
+  expect_true( all(result$compartment1 == comp$get.name()) )
+  expect_true( all(is.na(result$compartment2)) )
+
   # is Run a deep copy of Model?
   comp <- model$get.compartments()[[1]]
   model.lineages <- comp$get.lineages()
@@ -159,31 +148,29 @@ test_that("generate coalescent", {
 })
 
 
-test_that("generate bottleneck", {
-  skip('refactor')
+test_that("resolve bottleneck", {
   run <- init.branching.events(model)
   comp <- run$get.compartments()[[3]]
   expect_equal(1, comp$get.type()$get.bottleneck.size())
   
-  result <- generate.bottleneck(run, comp)
+  result <- .resolve.bottleneck(run, comp)
   expect_equal(1, length(result))
+  
+  # surviving lineage should still be in original Compartment
+  expect_equal(result[[1]]$get.location()$get.name(), comp$get.name())
 })
 
 
-test_that("update transmission", {
-  #model <- Model$new(settings)
-  skip('refactor')
-  
+test_that("resolve transmission", {
   run <- init.branching.events(model)
   
-  inf <- c(run$get.compartments(), run$get.unsampled.hosts())
+  # retrieve most recent transmission event
   eventlog <- run$get.eventlog()
-  
   transm.events <- eventlog$get.events('transmission')
   transm.event <- transm.events[which.min(transm.events$time), ]
   
-  # first transmission event is B->C
-  update.transmission(run, inf, transm.event)
+  # first transmission event is: [C] <- [B]
+  .resolve.transmission(run, transm.event)
   result <- run$get.eventlog()$get.all.events()
   
   expected <- c(rep('transmission', 2), rep('bottleneck', 4))
@@ -191,86 +178,20 @@ test_that("update transmission", {
   
   expected <- c(3, 1, rep(1, 4))
   expect_equal(expected, result$time)
+  
+  expected <- c('B_1', 'C_1', rep('C_1', 4))
+  expect_equal(expected, result$compartment1)
+  
+  expected <- c(TRUE, FALSE, rep(FALSE, 4))
+  expect_equal(expected, is.na(result$lineage1))
 })
 
 
-
-
-test_that("generate migration between sampled Compartments", {
-  skip('refactor')
-  
+test_that("simulate inner tree", {
   run <- init.branching.events(model)
-  compartments <- run$get.compartments()
-  source <- compartments[[1]]  # A_1
-  recipient <- compartments[[2]]  # B_1
-  lineage <- recipient$get.lineages()[[1]]  # B_1__2_1
-  
-  # note, source *gains* a Lineage because we're going back in time!
-  generate.migration(run, source, recipient, lineage, 2)
-  
-  result <- run$get.eventlog()$get.events('migration')
-  expect_equal(1, nrow(result))
-  
-  row.names(result) <- NULL
-  expected <- data.frame(
-    event.type='migration', 
-    time=2.0, 
-    lineage1='B_1__2_1', 
-    lineage2=NA, 
-    compartment1='B_1', 
-    compartment2='A_1',
-    stringsAsFactors = FALSE)
-  expect_equal(expected, result)
-})
-
-
-test_that("incorrect migration", {
-  skip('refactor')
-  
-  run <- init.branching.events(model)
-  compartments <- run$get.compartments()
-  source <- compartments[[1]]  # A_1
-  recipient <- compartments[[2]]  # B_1
-  lineage <- source$get.lineages()[[1]]  # A_1__1_1
-  
-  
-  expect_error(generate.migration(run, source, recipient, lineage, 2))
-})
-
-
-test_that("generate migration from unsampled Compartment", {
-  skip('refactor')
   
   set.seed(1)
-  run <- sim.outer.tree(model)
-  
-  eventlog <- run$get.eventlog()
-  print(eventlog)
-  
-  source <- run$get.unsampled.hosts()[[1]]
-  
-  recipient <- run$get.compartments()[[2]]  # B_1
-  migrating.lineage <- recipient$get.lineages()[[1]]  # B_1__2_1
-  
-  generate.migration(run, source, recipient, migrating.lineage, 2)
-  
-  result <- run$get.eventlog()$get.events('migration')
-  expect_equal(1, nrow(result))
-  
-  row.names(result) <- NULL
-  expected <- data.frame(
-    event.type='migration', 
-    time=2.0, 
-    lineage1='B_1__2_1', 
-    lineage2=NA, 
-    compartment1='B_1', 
-    compartment2='US_host_1',
-    stringsAsFactors = FALSE)
-  expect_equal(expected, result)
+  tree <- sim.inner.tree(run)
+  result <- as.phylo(tree)
 })
 
-
-
-test_that("resolve migration", {
-  skip('refactor')
-})

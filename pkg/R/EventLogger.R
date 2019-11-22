@@ -67,9 +67,12 @@ EventLogger <- R6Class("EventLogger",
       private$events <- rbind(private$events, e, stringsAsFactors=F)
     }, 
     
-    
     clear.events = function() {
-      private$events <- data.frame(
+      private$events <- self$blank.events()
+    },
+    
+    blank.events = function() {
+      data.frame(
         event.type=character(),
         time=numeric(),
         lineage1=character(),
@@ -92,22 +95,30 @@ EventLogger <- R6Class("EventLogger",
     record.transmission = function(recipient, lineages) {
       # locate transmission event
       events <- self$get.all.events()
-      idx <- which(events$compartment1 == recipient$get.name() && 
-                     events$event.type == 'transmission' &&
-                     is.na(events$lineage1))
+      idx <- which( events$compartment1 == recipient$get.name() &
+                      events$event.type == 'transmission' )
+                      #is.na(as.logical(events$lineage1)) )
+      
       if (length(idx) != 1) {
-        stop(paste("Error in eventLogger:record.transmission - ",
-                   ifelse(length(idx)>1, "multiple", "no"), 
-                   " transmission events match recipient ",
-                   recipient$get.name()))
+        stop("Error in eventLogger:record.transmission - ",
+             ifelse(length(idx)>1, "multiple", "no"), 
+             " transmission events match recipient ",
+             recipient$get.name())
       }
       
       # replace event with new rows
       e <- events[idx, ]
       cache <- events[(idx+1):nrow(events), ]
-      events <- events[1:(idx-1), ]
+      
+      if (idx > 1) {
+        events <- events[1:(idx-1), ]  
+      } else {
+        # blank data frame
+        events <- self$blank.events()
+      }
+      
       for (l in lineages) {
-        e$lineage1 <- l
+        e$lineage1 <- l$get.name()
         events <- rbind(events, as.list(e), stringsAsFactors=F)
       }
       private$events <- rbind(events, cache)
@@ -258,12 +269,6 @@ print.EventLogger <- function(eventlog) {
 as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE, 
                                   node.labels=FALSE) {
   
-  # helper function: if the event being examined is a bottleneck event, 
-  # must split column named "$lineage1" into the bottlenecking lineages
-  split.bottleneck.lineages <- function(lineages.names) {
-    as.vector(strsplit(lineages.names, ',', fixed=T)[[1]])
-  }
-  
   # fixed sampling times of tips and heights
   fixed.sampl <- eventlog$get.fixed.samplings()
   
@@ -283,13 +288,6 @@ as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE
   
   # bottleneck events, may or may not be present
   b_events <- eventlog$get.events('bottleneck')
-  if (is.null(b_events)) {
-    b_events_lineages <- NULL
-  } else {
-    b_events_lineages <- sapply(1:nrow(b_events), function(x) {
-      split.bottleneck.lineages(b_events[x,]$lineage1)
-    })
-  }
   
   # coalescent events
   c_events <- eventlog$get.events('coalescent')
@@ -304,29 +302,25 @@ as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE
   record.node.label <- vector()   # will keep track of node labels one-to-one with edge matrix, will pare down in function recursive.populate.node.labels()
   node.label <- vector()
   edge <- data.frame()      # eventually will convert into a static edge matrix
-  
+
+    
   # separate nodes into root, tips, and internals
-  root <- unlist(
-            setdiff(
-              c(c_events$compartment1, b_events$compartment1), 
-              c(c_events$lineage1, c_events$lineage2, unlist(b_events_lineages))
-            )
-          )
-  if (length(root) > 1) stop('ERROR! Root > 1: ', root)   
+  # note lineage1 is child, lineage2 is parent
+  root <- unique(core_events$lineage2[
+    which(!is.element(core_events$lineage2, core_events$lineage1))
+    ])
   
-  tips <- unlist(
-            setdiff(
-              c(c_events$lineage1, c_events$lineage2, unlist(b_events_lineages)), 
-              c(c_events$compartment1, b_events$compartment1)
-            )
-          )
+  if (length(root) > 1) stop('ERROR! Found multiple root nodes: ', root)
+  if (length(root) == 0) stop("Error in as.phylo.EventLogger(): failed to locate root.")
   
-  internals <-  unlist(
-    intersect(
-      c(c_events$compartment1, b_events$compartment1), 
-      c(c_events$lineage1, c_events$lineage2, unlist(b_events_lineages))
-      )
-    )
+  nodes <- union(core_events$lineage1, core_events$lineage2)
+  
+  tips <- unique(core_events$lineage1[
+    which(!is.element(core_events$lineage1, core_events$lineage2))
+  ])
+  
+  internals <- setdiff(nodes, tips)
+  
   
   # initialize ape::phylo indices to be assigned to root, tips, and internals
   tip.no <- 1
@@ -343,9 +337,9 @@ as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE
       
       # add node.sampling.time as branch length
       individual.branch.length <- fixed.sampl$tip.height[ which(fixed.sampl$tip.label == node) ]
-      tip.label[tip.no] <<- node
+      tip.label[tip.no] <- node
       
-      tip.no <<- tip.no + 1
+      tip.no <- tip.no + 1
       
       # return tip's branch length (initial sampling time)
       return (c(individual.branch.length, (tip.no -1)))
