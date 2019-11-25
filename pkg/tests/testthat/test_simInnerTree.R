@@ -1,4 +1,5 @@
 require(twt)
+#setwd('~/git/twt/pkg/tests/testthat')
 
 # load test fixtures
 path <- system.file('extdata', 'chain.yaml', package='twt')
@@ -187,7 +188,48 @@ test_that("resolve transmission", {
 })
 
 
+test_that("random exponential deviate under piecewise coalescent", {
+  # SI model, 10 compartments with 3 Lineages each
+  settings <- yaml.load_file("example2.yaml")
+  model <- Model$new(settings)
+  
+  set.seed(1)
+  run <- sim.outer.tree(model)
+  comps <- c(run$get.compartments(), run$get.unsampled.hosts())
+  
+  t.events <- run$get.eventlog()$get.events('transmission')
+  e <- t.events[which.min(t.events$time), ]
+  print(e)
+  
+  comp <- comps[[e$compartment1]]
+  expect_false(comp$is.unsampled())
+  expect_equal(3, length(run$get.extant.lineages(0, comp)))
+  
+  ctype <- comp$get.type()
+  pieces <- as.data.frame(ctype$get.popn.growth.dynamics())
+  piece <- pieces[1,]
+  
+  # beta = -4, N_0 = 20, k=3
+  result <- replicate(1e3, .rexp.coal(run, comp, 0))
+  expected <- -(piece$endPopn + piece$slope * (piece$endTime-comp$get.branching.time())) /
+    piece$slope
+  expect_gt(0.1, expected - max(result))
+  #lineages <- run$get.extant.lineages(time=0)
+  
+  func <- function(k, n0, b) { 
+    k2 <- choose(k, 2)
+    -(n0^(k2/b+1) * k2 * exp(-k2*log(n0)/b) / (b*k2 - k2^2))
+  }
+  delta.t <- piece$endTime - e$time
+  expected <- func(k=3, n0=delta.t*piece$slope + piece$endPopn, b = piece$slope)
+  print(expected)
+  print(summary(result))
+})
+
+
 test_that("simulate inner tree", {
+  skip("refactoring")
+  
   run <- init.branching.events(model)
   
   set.seed(1)

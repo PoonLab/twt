@@ -415,13 +415,13 @@ Model <- R6Class("Model",
       
       # only one piece must have a start time of zero
       if ( length(which(mat[,'startTime'] == 0)) != 1 ) {
-        stop ('One and only one linear piece in the population growth 
-              dynamics functions must have a start time of zero (forward in time).')
+        stop ('One and only one linear piece in the population growth ',
+              'dynamics functions must have a start time of zero (forward in time).')
       }
       if ( length(which(is.na(mat[,'endTime']))) != 1 ) {
-        stop ('One and only one linear piece in the population growth
-              dynamics functions must have an end time of infinity (forward in time).
-              The rest of the pieces must have attr `endTime` specified for each piece.')
+        stop ('One and only one linear piece in the population growth ', 
+              'dynamics functions must have an end time of infinity (forward in time). ',
+              'The rest of the pieces must have attr `endTime` specified for each piece.')
       }
       # all times must be of mode numeric
       if ( is.numeric(mat[,'startTime']) == F || is.numeric(mat[,'endTime']) == F ) {
@@ -433,7 +433,8 @@ Model <- R6Class("Model",
       }
       # start and end times of middle pieces must be continuous (with no gaps or overlaps)
       if ( length(intersect(mat[,'startTime'], mat[,'endTime'])) != (nrow(mat)-1) ) {
-        stop ('There are time gaps and/or overlapping times within the population growth dynamics pieces.')
+        stop ('There are time gaps and/or overlapping times within the population ', 
+              'growth dynamics pieces.')
       }
       
       # order pieces sequentially based on times (in order to calculate slopes)
@@ -451,7 +452,8 @@ Model <- R6Class("Model",
           # size as the final piece's, with a slope of 0
           slope <- 0
         } else {
-          slope <- (mat[x, 'endPopn'] - mat[x, 'startPopn']) / (mat[x, 'endTime'] - mat[x, 'startTime'])
+          slope <- (mat[x, 'startPopn'] - mat[x, 'endPopn']) / 
+            (mat[x, 'endTime'] - mat[x, 'startTime'])
         }
         yInt <- mat[x, 'startPopn'] - slope * mat[x, 'startTime']
         mat[x, 'slope'] <- slope

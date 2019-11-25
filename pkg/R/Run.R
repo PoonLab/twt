@@ -232,9 +232,7 @@ Run <- R6Class(
 #' plot(tree)
 #' @export
 plot.Run <- function(run, transmissions=FALSE, migrations=FALSE, 
-                     node.labels=FALSE, 
-                     pal=c("#1B9E77", "#D95F02", "#7570B3", "#E7298A", 
-                           "#66A61E", "#E6AB02", "#A6761D", "#666666")) {
+                     node.labels=FALSE) {
   
   eventlog <- run$get.eventlog()
   evt <- eventlog$get.all.events()
@@ -244,7 +242,7 @@ plot.Run <- function(run, transmissions=FALSE, migrations=FALSE,
   else {
     if ( all(evt$event.type != 'coalescent') ) {
       # this is an outer tree
-      .plot.outer.tree(run, pal)
+      .plot.outer.tree(run)
     } 
     else {
       phy <- as.phylo.EventLogger(
@@ -347,12 +345,15 @@ plot.Run <- function(run, transmissions=FALSE, migrations=FALSE,
     
   })
   
-  for (i in 1:nrow(migrations)) {
-    m <- migrations[i,]
-    time <- -m$time
-    recipient <- which(nodes == m$compartment1)
-    source <- which(nodes == m$compartment2)
-    
-    arrows(x0=time, y0=source, y1=recipient, col=rgb(0.37, 0.62, 0.63, 0.5), lwd=2, length=0.08)
+  if (nrow(migrations) > 0) {
+    # map migration events to transmission tree
+    for (i in 1:nrow(migrations)) {
+      m <- migrations[i,]
+      time <- -m$time
+      recipient <- which(nodes == m$compartment1)
+      source <- which(nodes == m$compartment2)
+      
+      arrows(x0=time, y0=source, y1=recipient, col=rgb(0.37, 0.62, 0.63, 0.5), lwd=2, length=0.08)
+    } 
   }
 }

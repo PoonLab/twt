@@ -560,6 +560,9 @@ sim.outer.tree <- function(model) {
           type1 = e$r.type,  # recipient (derived)
           type2 = e$s.type  # source (ancestral)
         )
+        
+        # update recipient Compartment
+        recipient$set.branching.time(e$time)
       }
       # otherwise recipient is not a sampled Compartment - ignore
     }

@@ -395,21 +395,44 @@ sim.inner.tree <- function(obj, e=NA) {
 #' 
 #' @keywords internal
 .rexp.coal <- function(run, comp, time) {
-  if (time > comp$get.branching.time()) {
-    stop("Error in rexp.coal: time ", time, " is further back than ",
-         "infection time of Compartment ", comp$get.name())
-  }
+  b.time <- comp$get.branching.time()
   
-  k <- run$get.extant.lineages(run, comp, time)
+  ctype <- comp$get.type()
+  c.rate <- ctype$get.coalescent.rate()
+  pieces <- as.data.frame(ctype$get.popn.growth.dynamics())
+  
+  k <- length(run$get.extant.lineages(time=time, comp=comp))
   if (k < 2) {
     stop("Error in rexp.coal: called on Compartment with <2 lineages.")
   }
   
-  ctype <- comp$get.type()
-  c.rate <- ctype$get.coalescent.rate()
-  pieces <- ctype$get.popn.growth.dynamics()
+  if (is.null(b.time) || is.na(b.time)) {
+    # no branching time, handle index case
+    if (is.null(pieces)) {
+      if (is.null(c.rate)) {
+        stop("Error in rexp.coal: CompartmentType ", ctype$get.name(), 
+             " has no defined coalescent rate nor growth model.")
+      }
+      return(rexp(n=1, rate=choose(k,2) * c.rate))
+    }
+    else {
+      # assume we are at last stage of piecewise growth
+      # TODO: it would be more accurate to use sampling time distribution
+      #       to determine infection time of index case (but what if index
+      #       case is unsampled?)
+      c.rate <- 1. / pieces$startPopn[which.max(pieces$startTime)]
+      return(rexp(n=1, rate=choose(k,2) * c.rate))
+    }
+  }
   
-  if (is.null(c.pieces)) {
+  
+  if (time > b.time) {
+    stop("Error in rexp.coal: time ", time, " is further back than ",
+         "infection time of Compartment ", comp$get.name())
+  }
+  
+  
+  if (is.null(pieces)) {
     if (is.null(c.rate)) {
       stop("Error in rexp.coal: CompartmentType ", ctype$get.name(), 
            " has no defined coalescent rate nor growth model.")
@@ -420,20 +443,43 @@ sim.inner.tree <- function(obj, e=NA) {
     }
   }
   else {
-    # use piecewise linear growth model
+    # use piecewise linear growth model (overrides coalescent.rate)
     
-    # get time since infection of Compartment
-    current.time <- comp$get.branching.time() - time
+    # get (forward) time since infection of Compartment
+    f.time <- comp$get.branching.time() - time
+    current.time <- f.time
     
-    # iterate through pieces, starting with most recent
+    # iterate through pieces, starting with most recent (max startTime)
     pieces <- pieces[order(pieces$startTime, decreasing=TRUE), ]
-    for (piece in pieces) {
+    
+    for (i in 1:nrow(pieces)) {
+      piece <- pieces[i, ]
       if (piece$startTime > current.time) {
+        # this interval is in the future!
         next
       }
       
-      lambda <- 1/piece$endPopn
-      wait <- rexp(1, lambda)
+      # configure parameters
+      delta.t <- piece$endTime - current.time
+      beta <- piece$slope
+      n.0 <- piece$endPopn
+      n.eff <- n.0 + beta * delta.t
+      
+      # for derivation see https://github.com/PoonLab/twt/issues/90
+      wait <- ifelse(beta==0, 
+                     -n.eff/choose(k,2) * log(runif(1)),
+                     n.eff/beta * (runif(1)^(-beta/choose(k, 2)) - 1)
+                     )
+      result <- time + (f.time - (current.time-wait))
+
+      if (i == nrow(pieces) ||  # last interval
+          (current.time - wait) > piece$startTime  # event within this interval
+          ) {
+        return(result)
+      }
+      
+      # else go to next interval
+      current.time <- piece$startTime  # should equal next piece's endTime
     }
   }
 }
