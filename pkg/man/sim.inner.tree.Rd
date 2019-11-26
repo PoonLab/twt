@@ -4,10 +4,10 @@
 \alias{sim.inner.tree}
 \title{sim.inner.tree}
 \usage{
-sim.inner.tree(model, e = NA)
+sim.inner.tree(obj, e = NA)
 }
 \arguments{
-\item{model:}{R6 object of class Model or Run.  If user provides a Model 
+\item{obj:}{R6 object of class Model or Run.  If user provides a Model 
 object, then an EventLogger object (such as produced from a Newick tree
 string by `eventlog.from.tree`) must be provided.
 The supplied or derived Run object tracks the locations of Lineage objects

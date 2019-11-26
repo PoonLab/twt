@@ -199,7 +199,6 @@ test_that("random exponential deviate under linear decay", {
   
   t.events <- run$get.eventlog()$get.events('transmission')
   e <- t.events[which.min(t.events$time), ]
-  print(e)
   
   comp <- comps[[e$compartment1]]
   expect_false(comp$is.unsampled())
@@ -227,11 +226,10 @@ test_that("random exponential deviate under linear decay", {
 
 
 test_that("simulate inner tree", {
-  #skip("refactoring")
-  
+  # user-specified transmission chain (A->B->C)
   run <- init.branching.events(model)
   
-  set.seed(1)
+  #set.seed(1)
   tree <- sim.inner.tree(run)
   result <- as.phylo(tree)
 })

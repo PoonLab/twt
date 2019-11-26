@@ -22,8 +22,4 @@ within a given Compartment.  Note that if the waiting time exceeds
 this Compartment's transmission event, it will be discarded by 
 sim.inner.tree().
 }
-\examples{
-
-
-}
 \keyword{internal}

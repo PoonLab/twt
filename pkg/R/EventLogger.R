@@ -336,7 +336,9 @@ as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE
     if (node %in% tips) {
       
       # add node.sampling.time as branch length
-      individual.branch.length <- fixed.sampl$tip.height[ which(fixed.sampl$tip.label == node) ]
+      individual.branch.length <- fixed.sampl$tip.height[ 
+        which(fixed.sampl$tip.label == node) 
+        ]
       tip.label[tip.no] <- node
       
       tip.no <- tip.no + 1
@@ -519,7 +521,8 @@ as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE
   # convert edge dataframe into matrix
   edge <- as.matrix(edge)
   
-  recursive.populate.node.labels(length(tips)+1)
+  #recursive.populate.node.labels(length(tips)+1)
+  recursive.populate.node.labels(root)
   
   if (node.labels) {
     phy <- list(tip.label=tip.label, Nnode=Nnode, edge.length=as.numeric(edge.length), edge=edge, node.label=node.label)

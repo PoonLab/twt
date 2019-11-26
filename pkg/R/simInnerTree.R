@@ -438,9 +438,6 @@ sample.coalescents <- function(run, current.time){
 #' 
 #' @return  Random variate from waiting time distribution.
 #' 
-#' @examples 
-#' 
-#' 
 #' @keywords internal
 .rexp.coal <- function(run, comp, time) {
   b.time <- comp$get.branching.time()
