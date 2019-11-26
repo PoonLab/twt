@@ -188,7 +188,7 @@ test_that("resolve transmission", {
 })
 
 
-test_that("random exponential deviate under piecewise coalescent", {
+test_that("random exponential deviate under linear decay", {
   # SI model, 10 compartments with 3 Lineages each
   settings <- yaml.load_file("example2.yaml")
   model <- Model$new(settings)
@@ -214,21 +214,20 @@ test_that("random exponential deviate under piecewise coalescent", {
   expected <- -(piece$endPopn + piece$slope * (piece$endTime-comp$get.branching.time())) /
     piece$slope
   expect_gt(0.1, expected - max(result))
-  #lineages <- run$get.extant.lineages(time=0)
   
+  # expected mean from integration of pdf*t for t from 0 to Ne/\beta, given \beta<0
   func <- function(k, n0, b) { 
     k2 <- choose(k, 2)
     -(n0^(k2/b+1) * k2 * exp(-k2*log(n0)/b) / (b*k2 - k2^2))
   }
   delta.t <- piece$endTime - e$time
   expected <- func(k=3, n0=delta.t*piece$slope + piece$endPopn, b = piece$slope)
-  print(expected)
-  print(summary(result))
+  expect_gt(0.1, expected-mean(result))
 })
 
 
 test_that("simulate inner tree", {
-  skip("refactoring")
+  #skip("refactoring")
   
   run <- init.branching.events(model)
   
