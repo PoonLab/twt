@@ -66,14 +66,11 @@ sim.inner.tree <- function(obj, e=NA) {
   # revert Compartments to their derived ("recipient") Types
   # Types determine coalescent rates during simulation
   transitions <- events[events$event.type=='transition', ]
-  for (comp in comps) {
-    temp <- transitions[transitions$comp1 == comp$get.name(), ]
-    if (nrow(temp) == 0) {
-      next  # this Compartment did not undergo any transitions
-    }
-    last.type <- temp$type1[which.min(temp$time)]
-    ctype <- types[[last.type]]
-    comp$set.type(ctype)
+  for (i in order(transitions$time, decreasing=TRUE)) {
+    e <- transitions[i,]
+    comp <- comps[[e$compartment1]]
+    dev.type <- types[[e$type1]]
+    comp$set.type(dev.type)
   }
   
   # initialize simulation at most recent sampling time

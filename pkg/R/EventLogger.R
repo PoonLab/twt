@@ -254,6 +254,39 @@ print.EventLogger <- function(eventlog) {
 }
 
 
+#' plot.EventLogger
+#' Generic plot method for EventLogger class as an S3 object.
+#' Converts the EventLogger object into an ape:phylo S3 object.
+#' 
+#' @param eventlog:  R6 object of class EventLogger
+#' @param transmissions:  if TRUE, display transmission events on inner tree
+#'        plot.
+#' @param migrations: if TRUE, display migration events on inner tree plot.
+#' @param node.labels: if TRUE, label internal nodes with names.
+#' 
+#' @examples 
+#' path <- system.file('extdata', 'structSI.yaml', package='twt')
+#' settings <- yaml.load_file(path)
+#' structSI <- Model$new(settings)
+#' run <- sim.outer.tree(structSI)
+#' eventlog <- sim.inner.tree(run)
+#' tr <- as.phylo(eventlog)
+#' plot(tr)
+#' 
+#' @export
+plot.EventLogger <- function(eventlog, transmissions, migrations, node.labels) {
+  phy <- as.phylo.EventLogger(
+    eventlog=eventlog, 
+    transmissions=transmissions, 
+    migrations=migrations, 
+    node.labels=node.labels)
+  
+  # call plot.phylo S3 method
+  plot(phy)
+}
+
+
+
 #' as.phylo
 #' 
 #' An S3 method converts events stored in the EventLogger object into an inner 
@@ -270,6 +303,8 @@ print.EventLogger <- function(eventlog) {
 #' structSI <- Model$new(settings)
 #' run <- sim.outer.tree(structSI)
 #' eventlog <- sim.inner.tree(run)
+#' tr <- as.phylo(eventlog)
+#' plot(tr)
 #' 
 #' @export
 as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE, 
@@ -290,12 +325,53 @@ as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE
   if (length(root) > 1) stop('ERROR! Found multiple root nodes: ', root)
   if (length(root) == 0) stop("Error in as.phylo.EventLogger(): failed to locate root.")
   
+  
+  if (transmissions | migrations) {
+    # retrieve transmission/migration events
+    targets <- c()
+    if (migration) targets <- c(targets, 'migration')
+    if (transmission) targets <- c(targets, 'transmission')
+    
+    tm.events <- events[!is.na(events$lineage1) & 
+                          is.element(events$event.type, targets), ]
+    
+    for (node in unique(tm.events$lineage1)) {
+      idx <- which(core.events$lineage1==node)
+      e <- core.events[idx, ]
+      if (nrow(e) > 1) {
+        stop("Error in as.phylo.EventLogger: found multiple origins for ",
+             "node ", node)
+      }
+      parent <- e$lineage2
+      
+      temp <- tm.events[tm.events$lineage1==node, ]
+      temp <- temp[order(temp$time ), ]  # start with most recent
+      child <- node
+      
+      for (i in 1:nrow(temp)) {
+        tm.event <- temp[i, ]
+        new.node <- paste(node, i, sep=tm.event$event.type)
+        
+        tm.event$lineage1 <- child
+        tm.event$lineage2 <- new.node
+        
+        core.events <- rbind(core.events, tm.event)
+      }
+      
+      e$lineage1 <- new.node
+      core.events[idx, ] <- e
+    }
+  }
+  
+  
+  # gather lists of node names
   nodes <- union(core.events$lineage1, core.events$lineage2)
   tips <- unique(core.events$lineage1[
     which(!is.element(core.events$lineage1, core.events$lineage2))
     ])
   internals <- setdiff(nodes, tips)
   
+
   # populate edge list by postorder traversal (children before parent)
   preorder <- .reorder.inner.events(core.events, root, order='preorder')
   
@@ -309,7 +385,9 @@ as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE
   edges <- core.events[na.omit(match(preorder, core.events$lineage1)), ]
   edgelist <- as.matrix(t(sapply(1:nrow(edges), function(i) {
     c(which(nodes==edges$lineage2[i]), which(nodes==edges$lineage1[i])) 
-  })))
+  })))  
+
+  
   
   # calculate edge.lengths
   edge.length <- c()
@@ -317,7 +395,7 @@ as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE
     e <- edges[i,]
     child <- e$lineage1
     if (is.element(child, tips)) {
-      bl <- e$time - as.numeric(fixed.sampl$tip.height[child])
+      bl <- e$time - as.numeric(fixed.sampl[child])
     }
     else {
       next.t <- unique(edges$time[edges$lineage2 == child])
@@ -341,10 +419,6 @@ as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE
   
   attr(phy, 'class') <- 'phylo'
   
-  
-  # TODO: calculate edge lengths
-  # TODO: use fixed sampling times to adjust terminal branch lengths
-  
   # TODO: decorate tree with singleton nodes that represent migration and transmission events
   #       phylo cannot plot singleton nodes, so graft a terminal branch of length zero
   phy
@@ -359,12 +433,13 @@ as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE
 #' @param node:  character, unique identifier of a node
 #' @param result:  vector to pass between recursive calls
 #' @keywords internal
-.reorder.inner.events <- function(events, node, order, result=c()) {
+.reorder.inner.events <- function(events, node, order, migration=F, 
+                                  transmission=F, result=c()) {
   if (order=='preorder') {
     result <- c(result, node)  # parent before children
   }
-  children <- events$lineage1[events$lineage2 == node & 
-                                is.element(events$event.type, c('coalescent', 'bottleneck'))]
+  
+  children <- events$lineage1[events$lineage2 == node]
   for (child in children) {
     result <- .reorder.inner.events(events, child, order, result)
   }
@@ -375,7 +450,9 @@ as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE
 }
 
 
-
+.add.node <- function(phy, event) {
+  
+}
 
 
 

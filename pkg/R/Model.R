@@ -374,10 +374,9 @@ Model <- R6Class("Model",
         return (NULL)
       }
       mat <- matrix(
-        nrow=length(pieces), ncol=6, 
+        nrow=length(pieces), ncol=5, 
         dimnames=list(1:length(pieces), 
-                      c('startTime', 'startPopn', 'endTime', 'endPopn', 
-                        'slope', 'intercept'))
+                      c('startTime', 'startPopn', 'endTime', 'endPopn', 'slope'))
         )
       
       for (x in seq_along(pieces)) {
@@ -455,9 +454,9 @@ Model <- R6Class("Model",
           slope <- (mat[x, 'startPopn'] - mat[x, 'endPopn']) / 
             (mat[x, 'endTime'] - mat[x, 'startTime'])
         }
-        yInt <- mat[x, 'startPopn'] - slope * mat[x, 'startTime']
+        #yInt <- mat[x, 'startPopn'] - slope * mat[x, 'startTime']
         mat[x, 'slope'] <- slope
-        mat[x, 'intercept'] <- yInt
+        #mat[x, 'intercept'] <- yInt
       }
       mat
     },
@@ -466,13 +465,7 @@ Model <- R6Class("Model",
     init.fixed.samplings = function() {
       # retrieve sampling time and populate tip labels / times in ape:: phylo object 
       # (for plotting Eventlogger function)
-      list(
-        # store label w/ corresponding tip height in new ape::phylo object (not casted into `phylo` yet)
-        tip.label = sapply(private$lineages, function(x) x$get.name()),
-        
-        # only used for calculating edge length
-        tip.height = sapply(private$lineages, function(x) x$get.sampling.time())
-      )
+      sapply(private$lineages, function(x) x$get.sampling.time())
     }
     
   )

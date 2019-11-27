@@ -13,8 +13,7 @@
 #' 
 #' @field extant.lineages  list of Lineage objects with sampling time t=0 (most recent)
 #' @field locations  a named list of Lineage objects keyed by Compartment
-#' @field choices  list of Lineage pairs that may coalesce per Compartment, 
-#' keyed by index to `locations`
+#' @field counts  a data frame of population dynamics
 #' 
 #' @export
 Run <- R6Class(
@@ -59,6 +58,9 @@ Run <- R6Class(
     ## ACCESSOR FUNCTIONS
     get.eventlog = function() { private$eventlog },
     set.eventlog = function(e) { private$eventlog <- e },
+    
+    get.counts = function() { private$counts },
+    set.counts = function(df) { private$counts <- df },
     
     get.initial.conds = function() { private$initial.conds },
     get.fixed.samplings = function() { private$fixed.samplings },
@@ -158,8 +160,8 @@ Run <- R6Class(
     unsampled.hosts = NULL,
     extant.lineages = NULL,
     
-    locations = NULL,         
-    choices = NULL,
+    locations = NULL,
+    counts = NULL,
     
     node.ident = 1,  # used in simulation of inner tree for generating 
                      # unique idents for internal nodes of ancestral lineages
@@ -211,10 +213,11 @@ Run <- R6Class(
 #' by the `ape` package.  
 #' 
 #' @param run:  R6 object of class `Run`
-#' @param transmissions:  if TRUE, display transmission events on inner tree
-#'        plot.
-#' @param migrations: if TRUE, display migration events on inner tree plot.
-#' @param node.labels: if TRUE, label internal nodes with names.
+#' @param type:  what type of plot should be drawn.  Possible types are
+#' \itemize{
+#' \item "t" for transmission tree plot
+#' \item "s" for stair step plot of population dynamics
+#' }
 #' 
 #' @examples 
 #' # load model
@@ -222,38 +225,37 @@ Run <- R6Class(
 #' 
 #' # load file and parse to construct MODEL object
 #' settings <- yaml.load_file(path)
-#' mod <- MODEL$new(settings)
+#' mod <- Model$new(settings)
 #' 
 #' # simulate outer tree
-#' outer <- sim.outer.tree(mod)
+#' run <- sim.outer.tree(mod)
 #' 
-#' # simulate inner tree
-#' tree <- sim.inner.tree(mod, outer)
-#' plot(tree)
+#' # generate plots side-by-side
+#' par(mfrow=c(1,2))
+#' plot(run, type='s')  # population dynamics
+#' plot(run, type='t')  # transmission tree
+#' 
 #' @export
-plot.Run <- function(run, transmissions=FALSE, migrations=FALSE, 
-                     node.labels=FALSE) {
-  
+plot.Run <- function(run, type='t', ...) {
   eventlog <- run$get.eventlog()
   evt <- eventlog$get.all.events()
   if (is.null(evt)) {
     cat("No events to display.")
   }
+  
+  if (type=='t') {
+    .plot.outer.tree(run, ...)
+  }
+  else if (type == 's') {
+    .plot.dynamics(run, ...)
+  }
   else {
-    if ( all(evt$event.type != 'coalescent') ) {
-      # this is an outer tree
-      .plot.outer.tree(run)
-    } 
-    else {
-      phy <- as.phylo.EventLogger(
-        eventlog=eventlog, 
-        transmissions=transmissions, 
-        migrations=migrations, 
-        node.labels=node.labels)
-      plot(phy)  # call plot.phylo S3 method
-    }
+    stop("Error: type '", type, "' is not recognized by plot.Run(). ",
+         "Use 't' for outer tree plot or 's' for a stairstep plot ",
+         "of the population dynamics.")
   }
 }
+
 
 #' .reorder.events
 #' 
@@ -289,7 +291,7 @@ plot.Run <- function(run, transmissions=FALSE, migrations=FALSE,
 #' plot(run)
 #' 
 #' @keywords internal
-.plot.outer.tree <- function(run) {
+.plot.outer.tree <- function(run, ...) {
   e <- run$get.eventlog()
   comps <- run$get.compartments()
   types <- run$get.types()
@@ -308,7 +310,7 @@ plot.Run <- function(run, transmissions=FALSE, migrations=FALSE,
   # prepare plot region
   par(mar=c(5,1,1,1))
   plot(NA, xlim=c(-max(trans$time*1.05), 0), ylim=c(0.5, length(nodes)+0.5),
-       xlab='Time', yaxt='n', ylab=NA, bty='n')
+       xlab='Time', yaxt='n', ylab=NA, bty='n', ...)
   
   . <- sapply(nodes, function(node) {
     is.sampled <- FALSE
@@ -357,3 +359,29 @@ plot.Run <- function(run, transmissions=FALSE, migrations=FALSE,
     } 
   }
 }
+
+
+#' .plot.dynamics
+#' Make a stairstep plot of the population dynamics.
+#' @param run:  R6 object of class Run
+#' @param ...:  additional arguments passed to generic plot()
+#' 
+#' @keywords internal
+.plot.dynamics <- function(run, ...) {
+  counts <- run$get.counts()
+  
+  # set up plot region
+  par(mar=c(5,5,1,5), xpd=NA)
+  plot(NA, xlim=rev(range(counts$time)), ylim=range(counts[,-1]), bty='n',
+       xlab='Coalescent time', ylab='Population size', ...)
+  for (i in 2:ncol(counts)) {
+    label <- names(counts)[i]
+    ctype <- gsub("[SI]\\.(.+)", "\\1", label)
+    lines(counts$time, counts[,i], type='s', 
+          col=ifelse(startsWith(label, 'S'), 'dodgerblue', 'firebrick2'),
+          lwd=2)
+    text(x=0, y=counts[nrow(counts), i], label=label, adj=0)
+  }
+}
+
+

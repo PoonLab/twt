@@ -52,7 +52,7 @@ test_that("lineages have names", {
 })
 
 test_that("Model assigns sampling times", {
-  result <- m$get.fixed.samplings()$tip.height
+  result <- m$get.fixed.samplings()
   expected <- rep(c(0.2, 0, 0), times=2)
   expect_equal(result, expected, check.names=FALSE)
 })
@@ -65,8 +65,7 @@ test_that("Model parse population growth dynamics", {
   expect_equal(as.vector(result[,2]), c(1, 50, 100, 150))  # startPopn
   expect_equal(as.vector(result[,3]), c(0.75, 1.5, 2.25, NA))  # endTime
   expect_equal(as.vector(result[,4]), c(45, 85, 125, 150))  # endPopn
-  expect_equal(as.vector(result[,5]), c(44/0.75, 35/0.75, 25/0.75, 0))  # slope
-  expect_equal(as.vector(result[,6]), c(1, 15, 50, 150))  # intercept
+  expect_equal(as.vector(result[,5]), c(-44/0.75, -35/0.75, -25/0.75, 0))  # slope
 })
 
 

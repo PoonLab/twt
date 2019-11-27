@@ -472,6 +472,7 @@ sim.outer.tree <- function(model) {
   counts <- as.data.frame(counts)
   names(counts) <- c(paste('S.', names(susceptible), sep=''), 
                      paste('I.', names(infected), sep=''))
+  run$set.counts(cbind(time=events$time, counts))  # store for plotting
   
   cbind(events, counts)
 }
@@ -481,6 +482,8 @@ sim.outer.tree <- function(model) {
 #' 
 #' Assignment of outer events proceeds in reverse (coalescent) time,
 #' starting from the sampled Compartments.
+#' TODO: access population dynamics through Run$get.counts() instead of 
+#'       cbind'ed events
 #' 
 .assign.events <- function(run, events) {
   eventlog <- run$get.eventlog()
