@@ -20,13 +20,6 @@ structSI <- Model$new(settings)
 
 
 
-test_that("draw coalescent wait times", {
-  skip("refactoring coalescent")
-  run <- Run$new(model)
-  
-})
-
-
 test_that("resolve transition", {
   set.seed(1)  # should result in 5 transitions
   run <- sim.outer.tree(structSI)
@@ -228,9 +221,8 @@ test_that("random exponential deviate under linear decay", {
 test_that("simulate inner tree", {
   # user-specified transmission chain (A->B->C)
   run <- init.branching.events(model)
-  
-  set.seed(1)
   tree <- sim.inner.tree(run)
-  #result <- as.phylo(tree)
+  result <- as.phylo(tree)
+  expect_true(is.rooted(result))
 })
 

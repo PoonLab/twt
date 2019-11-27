@@ -209,6 +209,11 @@ test_that("assignment of outer events", {
   root <- unique(transmissions$compartment2[
     !is.element(transmissions$compartment2, transmissions$compartment1)
     ])
+  
+  # next test fails sporadically, trying to capture this
+  if (length(root) > 1) {
+    print(log)
+  }
   expect_equal(1, length(root))
   expect_equal(nrow(transmissions), length(unique(transmissions$compartment1)))
   
