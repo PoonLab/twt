@@ -134,15 +134,15 @@ EventLogger <- R6Class("EventLogger",
     #' @param lineages:  a list of Lineage objects
     record.migration = function(recipient, source, time, lineages) {
       events <- self$get.all.events()
-      idx <- which(events$compartment1 == recipient$get.name() && 
-                     events$compartment2 == source$get.name() &&
-                     events$time == time &&
+      idx <- which(events$compartment1 == recipient$get.name() & 
+                     events$compartment2 == source$get.name() & 
+                     events$time == time &
                      is.na(events$lineage1))
       if (length(idx) != 1) {
-        stop(paste("Error in eventLogger:record.migration - ",
-                   ifelse(length(idx)>1, "multiple", "no"), 
-                   " transmission events match recipient ",
-                   recipient$get.name()))
+        stop("Error in eventLogger:record.migration - ",
+             ifelse(length(idx)>1, "multiple", "no"), 
+             " migration events match recipient ",
+             recipient$get.name(), " and source ", source$get.name())
       }
       
       e <- events[idx,]
@@ -254,7 +254,6 @@ print.EventLogger <- function(eventlog) {
 }
 
 
-
 #' as.phylo
 #' 
 #' An S3 method converts events stored in the EventLogger object into an inner 
@@ -265,279 +264,122 @@ print.EventLogger <- function(eventlog) {
 #' else excluded otherwise.
 #' @return ape::phylo object
 #' 
+#' @examples 
+#' path <- system.file('extdata', 'structSI.yaml', package='twt')
+#' settings <- yaml.load_file(path)
+#' structSI <- Model$new(settings)
+#' run <- sim.outer.tree(structSI)
+#' eventlog <- sim.inner.tree(run)
+#' 
 #' @export
 as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE, 
-                                  node.labels=FALSE) {
-  
-  # fixed sampling times of tips and heights
+                                 node.labels=FALSE) {
+  # retrieve fixed sampling times of tips
   fixed.sampl <- eventlog$get.fixed.samplings()
   
-  # transmission events, can be optionally included
-  if (transmissions) {
-    t_events <- eventlog$get.events('transmission')
-  } else {
-    t_events <- NULL
-  }
+  # retrieve events from log
+  events <- eventlog$get.all.events()
+  core.events <- events[is.element(events$event.type, c('bottleneck', 'coalescent')), ]
   
-  # migration events, can be optionally included
-  if (migrations) {
-    m_events <- eventlog$get.events('migration')
-  } else {
-    m_events <- NULL
-  }
-  
-  # bottleneck events, may or may not be present
-  b_events <- eventlog$get.events('bottleneck')
-  
-  # coalescent events
-  c_events <- eventlog$get.events('coalescent')
-  
-  # minimum set of events to be included
-  core_events <- rbind(c_events, b_events)
-  
-  # initialize attributes of an ape::phylo object
-  tip.label <- vector()
-  edge.length <- vector()
-  Nnode <- 0
-  record.node.label <- vector()   # will keep track of node labels one-to-one with edge matrix, will pare down in function recursive.populate.node.labels()
-  node.label <- vector()
-  edge <- data.frame()      # eventually will convert into a static edge matrix
-
-    
   # separate nodes into root, tips, and internals
   # note lineage1 is child, lineage2 is parent
-  root <- unique(core_events$lineage2[
-    which(!is.element(core_events$lineage2, core_events$lineage1))
+  root <- unique(core.events$lineage2[
+    which(!is.element(core.events$lineage2, core.events$lineage1))
     ])
   
   if (length(root) > 1) stop('ERROR! Found multiple root nodes: ', root)
   if (length(root) == 0) stop("Error in as.phylo.EventLogger(): failed to locate root.")
   
-  nodes <- union(core_events$lineage1, core_events$lineage2)
-  
-  tips <- unique(core_events$lineage1[
-    which(!is.element(core_events$lineage1, core_events$lineage2))
-  ])
-  
+  nodes <- union(core.events$lineage1, core.events$lineage2)
+  tips <- unique(core.events$lineage1[
+    which(!is.element(core.events$lineage1, core.events$lineage2))
+    ])
   internals <- setdiff(nodes, tips)
   
+  # populate edge list by postorder traversal (children before parent)
+  preorder <- .reorder.inner.events(core.events, root, order='preorder')
   
-  # initialize ape::phylo indices to be assigned to root, tips, and internals
-  tip.no <- 1
-  node.no <- length(tips) + 1
+  # reorder node lists
+  tips <- preorder[is.element(preorder, tips)]
+  internals <- preorder[is.element(preorder, internals)]
+  # numbered 1:n for tips, (n+1):(n+m) for internal nodes, starting with root
+  nodes <- c(tips, internals)
   
-
-  recursive.populate.branchlength <- function(node) {
-    # postorder traversal to populate ape::phylo object
-    # visit and populate branch lengths of all children before visiting/populating itself
-    # @param node = name of a node of type character()
-    # @return branch.length = branch length of node of type numeric()
-    
-    if (node %in% tips) {
-      
-      # add node.sampling.time as branch length
-      individual.branch.length <- fixed.sampl$tip.height[ 
-        which(fixed.sampl$tip.label == node) 
-        ]
-      tip.label[tip.no] <- node
-      
-      tip.no <- tip.no + 1
-      
-      # return tip's branch length (initial sampling time)
-      return (c(individual.branch.length, (tip.no -1)))
-      
-    } else {
-      
-      eventRow <- core_events[ which(core_events$compartment1 == node), ]
-      
-      if (eventRow$event.type == 'coalescent') {
-        # this is a coalescent event
-        children <- c(eventRow$lineage1, eventRow$lineage2)
-      } else {
-        # this is a bottleneck event
-        children <- split.bottleneck.lineages(eventRow$lineage1)
-      }
-
-      # record current node.no before recursive call
-      indiv.node.no <- node.no
-      
-      node.no <<- node.no + 1
-      Nnode <<- Nnode + 1
-      
-      final.node.no <- indiv.node.no
-      
-      for (child in children) {
-          
-        if (migrations) {
-          # check for migration events involving `node`; must incorporate singleton node
-          if (child %in% m_events$lineage1) {
-            
-            mig.event <- m_events[ which(m_events$lineage1 == child), ]
-            
-            mig.node.no <- node.no
-            node.no <<- node.no + 1
-            Nnode <<- Nnode + 1
-            
-            # create singleton node here
-            migration.branch.length <- eventRow$time - mig.event$time
-            
-            edge.length[nrow(edge)+1] <<- migration.branch.length
-            edge <<- rbind(edge, c(indiv.node.no, mig.node.no))
-
-            # continue with recursion
-            add.branch(mig.event, child, child, mig.node.no)
-            
-          } else {
-            
-            if (transmissions) {
-              if (child %in% t_events$lineage1) {
-                
-                t.event <- t_events[ which(t_events$lineage1 == child), ]
-                t_events <- t_events[-which(t_events$lineage1 == child), ]
-                
-                t.node.no <- node.no
-                node.no <<- node.no + 1
-                Nnode <<- Nnode + 1
-                
-                # create a singleton node here
-                transmission.branch.length <- eventRow$time - t.event$time
-                
-                edge.length[nrow(edge)+1] <<- transmission.branch.length
-                edge <<- rbind(edge, c(indiv.node.no, t.node.no))
-                
-                # continue with recursion
-                add.branch(t.event, child, child, t.node.no)
-                
-              } else {
-                add.branch(eventRow, node, child, indiv.node.no)
-              }
-              
-            } else {
-              add.branch(eventRow, node, child, indiv.node.no)
-            }
-          
-          }
-          
-        } else {
-          
-          if (transmissions) {
-            if (child %in% t_events$lineage1) {
-              
-              t.event <- t_events[ which(t_events$lineage1 == child), ]
-              t_events <- t_events[-which(t_events$lineage1 == child), ]
-              
-              t.node.no <- node.no
-              node.no <<- node.no + 1
-              Nnode <<- Nnode + 1
-              
-              # create a singleton node here
-              transmission.branch.length <- eventRow$time - t.event$time
-              
-              edge.length[nrow(edge)+1] <<- transmission.branch.length
-              edge <<- rbind(edge, c(indiv.node.no, t.node.no))
-              
-              # continue with recursion
-              add.branch(t.event, child, child, t.node.no)
-              
-            } else {
-              add.branch(eventRow, node, child, indiv.node.no)
-            }
-            
-          } else {
-            add.branch(eventRow, node, child, indiv.node.no)
-          }
-
-        }
-        
-      }
-      
-      # return node's branch length
-      return (c(eventRow$time, final.node.no))
-      
-      
-    } 
-      
-  }
+  # generate edgelist
+  edges <- core.events[na.omit(match(preorder, core.events$lineage1)), ]
+  edgelist <- as.matrix(t(sapply(1:nrow(edges), function(i) {
+    c(which(nodes==edges$lineage2[i]), which(nodes==edges$lineage1[i])) 
+  })))
   
-  
-  add.branch <- function(event, parent.node, child.node, parent.node.no) {
-    
-    recursive.call <- recursive.populate.branchlength(child.node)
-    child.branch.length <- recursive.call[1]
-    child.node.no <- recursive.call[2]
-    
-    individual.branch.length <- event$time - child.branch.length
-    
-    record.node.label[nrow(edge)+1] <<- parent.node
-    
-    edge.length[nrow(edge)+1] <<- individual.branch.length
-    edge <<- rbind(edge, c(parent.node.no, child.node.no))
-    
-  }
-  
-
-  recursive.populate.node.labels <- function(node) {
-    # ape::phylo populates node labels in plot function by preorder traversal
-    # visit node, then go right, then go left
-    
-    if (node %in% 1:length(tips) == FALSE) {
-      label <- record.node.label[which(edge[,1] == node)[1]]
-      if (label %in% node.label == FALSE) {
-        # record name in node.label vector
-        node.label[length(node.label)+1] <<- label
-        
-        # access children, right first, then left
-        children <- edge[which(edge[,1] == node), 2]
-        iterating.list <- children[order(children)]
-        for (child in iterating.list) {
-          recursive.populate.node.labels(child)
-        }
-      }
+  # calculate edge.lengths
+  edge.length <- c()
+  for (i in 1:nrow(edges)) {
+    e <- edges[i,]
+    child <- e$lineage1
+    if (is.element(child, tips)) {
+      bl <- e$time - as.numeric(fixed.sampl$tip.height[child])
     }
-  
-  }
-  
-  
-  if (transmissions) {
-    
-    if (root %in% t_events$lineage1) {
-      t.event <- t_events[ which(t_events$lineage1 == root), ]
-      
-      t.node.no <- node.no
-      node.no <- node.no + 1
-      Nnode <- Nnode + 1
-      
-      # now begin recursion
-      add.branch(t.event, root, root, t.node.no)
-    } else {
-      recursive.populate.branchlength(root)
+    else {
+      next.t <- unique(edges$time[edges$lineage2 == child])
+      if (length(next.t) > 1) {
+        stop("Error in as.phylo.EventLogger: more than one time associated with node ", 
+             child)
+      }
+      bl <- e$time - next.t
     }
-    
-  } else {
-    recursive.populate.branchlength(root)
-  }
-
-  
-  # convert edge dataframe into matrix
-  edge <- as.matrix(edge)
-  
-  #recursive.populate.node.labels(length(tips)+1)
-  recursive.populate.node.labels(root)
-  
-  if (node.labels) {
-    phy <- list(tip.label=tip.label, Nnode=Nnode, edge.length=as.numeric(edge.length), edge=edge, node.label=node.label)
-  } else {
-    # default behaviour: no node labels bc INDELible doesn't like them
-    phy <- list(tip.label=tip.label, Nnode=Nnode, edge.length=as.numeric(edge.length), edge=edge)
+    edge.length <- c(edge.length, bl)
   }
   
-  if (length(phy$edge.length) != nrow(phy$edge)) {
-    cat('Nrow does not equal edge length.')
-  }
+  # create phylo object
+  phy <- list(
+    tip.label = tips,
+    node.label = internals,
+    Nnode = length(internals),
+    edge = edgelist,
+    edge.length = edge.length
+    )
   
   attr(phy, 'class') <- 'phylo'
-  attr(phy, 'order') <- 'cladewise'
+  
+  
+  # TODO: calculate edge lengths
+  # TODO: use fixed sampling times to adjust terminal branch lengths
+  
+  # TODO: decorate tree with singleton nodes that represent migration and transmission events
+  #       phylo cannot plot singleton nodes, so graft a terminal branch of length zero
   phy
 }
+
+
+
+#' .reorder.inner.events
+#' Recursive helper function to generate ordering of events by preorder
+#' traversal of inner tree.  Similar to Run::.reorder.events().
+#' @param events:  data frame of core (coalescent, bottleneck) events
+#' @param node:  character, unique identifier of a node
+#' @param result:  vector to pass between recursive calls
+#' @keywords internal
+.reorder.inner.events <- function(events, node, order, result=c()) {
+  if (order=='preorder') {
+    result <- c(result, node)  # parent before children
+  }
+  children <- events$lineage1[events$lineage2 == node & 
+                                is.element(events$event.type, c('coalescent', 'bottleneck'))]
+  for (child in children) {
+    result <- .reorder.inner.events(events, child, order, result)
+  }
+  if (order=='postorder') {
+    result <- c(result, node)  # children before parent
+  }
+  return(result)
+}
+
+
+
+
+
+
+
+
 
 

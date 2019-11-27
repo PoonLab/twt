@@ -67,7 +67,7 @@ sim.inner.tree <- function(obj, e=NA) {
   # Types determine coalescent rates during simulation
   transitions <- events[events$event.type=='transition', ]
   for (comp in comps) {
-    temp <- transitions[transitions$comp1 == comp$get.name()]
+    temp <- transitions[transitions$comp1 == comp$get.name(), ]
     if (nrow(temp) == 0) {
       next  # this Compartment did not undergo any transitions
     }
@@ -259,21 +259,20 @@ sim.inner.tree <- function(obj, e=NA) {
   
   time <- comp$get.branching.time()
   if (!is.numeric(time)) {
-    stop("Error in generate.bottleneck: Compartment ", comp$get.name(), 
+    stop("Error in .resolve.bottleneck: Compartment ", comp$get.name(), 
          " has no assigned branching time.")
   }
   
   bottleneck.size <- comp$get.type()$get.bottleneck.size()
   if (!is.numeric(bottleneck.size)) {
-    stop("Error in generate.bottleneck: Compartment ", comp$get.name(),
+    stop("Error in .resolve.bottleneck: Compartment ", comp$get.name(),
          " has no bottleneck size specified.")
   }
   
   # retrieve extant Lineages in compartment
   lineages <- run$get.extant.lineages(time, comp)
   if (length(lineages) == 0) {
-    stop("Error in generate.bottleneck: Compartment ", comp$get.name(),
-         " has no Lineages to bottleneck!")
+    return(c())
   }
   
   while (length(lineages) > bottleneck.size) {
@@ -330,17 +329,21 @@ sim.inner.tree <- function(obj, e=NA) {
   # sampling without replacement (hypergeometric distribution)
   count <- rhyper(nn=1, m=n.extant, n=eff.size-n.extant,
                   k=bottleneck.size)
-  migrants <- sample(lineages, count)
   
-  for (line in migrants) {
-    recipient$remove.lineage(line)
-    line$set.location(source)
-    source$add.lineage(line)
+  if (count > 0) {
+    migrants <- sample(lineages, count)
+    
+    for (line in migrants) {
+      recipient$remove.lineage(line)
+      line$set.location(source)
+      source$add.lineage(line)
+    }
+    
+    # update eventlog
+    eventlog <- run$get.eventlog()
+    eventlog$record.migration(recipient, source, e$time, migrants)
   }
-  
-  # update eventlog
-  eventlog <- run$get.eventlog()
-  eventlog$record.migration(recipient, source, e$time, migrants)
+
 }
 
 
@@ -451,9 +454,9 @@ sample.coalescents <- function(run, current.time){
     stop("Error in rexp.coal: called on Compartment with <2 lineages.")
   }
   
-  if (is.null(b.time) || is.na(b.time)) {
+  if ( is.null(b.time) || is.na(as.logical(b.time)) ) {
     # no branching time, handle index case
-    if (is.null(pieces)) {
+    if (is.null(pieces) || nrow(pieces) == 0) {
       if (is.null(c.rate)) {
         stop("Error in rexp.coal: CompartmentType ", ctype$get.name(), 
              " has no defined coalescent rate nor growth model.")
@@ -477,7 +480,7 @@ sample.coalescents <- function(run, current.time){
   }
   
   
-  if (is.null(pieces)) {
+  if (is.null(pieces) || nrow(pieces) == 0) {
     if (is.null(c.rate)) {
       stop("Error in rexp.coal: CompartmentType ", ctype$get.name(), 
            " has no defined coalescent rate nor growth model.")

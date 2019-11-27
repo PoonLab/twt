@@ -229,8 +229,8 @@ test_that("simulate inner tree", {
   # user-specified transmission chain (A->B->C)
   run <- init.branching.events(model)
   
-  #set.seed(1)
+  set.seed(1)
   tree <- sim.inner.tree(run)
-  result <- as.phylo(tree)
+  #result <- as.phylo(tree)
 })
 
