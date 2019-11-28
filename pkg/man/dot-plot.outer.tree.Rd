@@ -4,7 +4,7 @@
 \alias{.plot.outer.tree}
 \title{.plot.outer.tree}
 \usage{
-.plot.outer.tree(run)
+.plot.outer.tree(run, ...)
 }
 \arguments{
 \item{e:}{EventLogger object}

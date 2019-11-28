@@ -3,13 +3,15 @@ Type: Package
 Title: treeswithintrees
 Version: 0.0.1
 Date: 2018-03-06
-Author: {Art FY Poon}
-Maintainer: Art FY Poon <artpoon@gmail.com>
+Author: {Art FY Poon (@ArtPoon)}
+Maintainer: Art FY Poon <apoon42@uwo.ca>
 Depends:
     R6,
-    testthat,
     ape,
-    yaml
+    yaml,
+    ggtree
+Suggests:
+    testthat
 Description: treeswithintrees (twt) is an R package for the coalescent (reverse time) simulation of host (transmission) trees and pathogen trees within host trees. It is designed to be flexible so that it can accommodate a range of models at different levels of diversity, such as compartmental epidemic models, e.g., susceptible-infected-recovered (SIR) models; cospeciation/cophylogeny models and models of compartmentalized within-host evolution, e.g., migration between the blood and genital tract.twt uses a conventional Gillespie method to sample a sequence of discrete stochastic events over reverse time.
 License: GPL-3
 RoxygenNote: 7.0.0

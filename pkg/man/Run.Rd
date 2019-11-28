@@ -28,8 +28,7 @@ is tracked at this level.
 
 \item{\code{locations}}{a named list of Lineage objects keyed by Compartment}
 
-\item{\code{choices}}{list of Lineage pairs that may coalesce per Compartment, 
-keyed by index to `locations`}
+\item{\code{counts}}{a data frame of population dynamics}
 }}
 
 \keyword{datasets}

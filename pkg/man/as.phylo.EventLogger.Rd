@@ -5,7 +5,7 @@
 \title{as.phylo}
 \usage{
 \method{as.phylo}{EventLogger}(eventlog, transmissions = FALSE,
-  migrations = FALSE, node.labels = FALSE)
+  migrations = FALSE)
 }
 \arguments{
 \item{eventlog:}{EventLogger object}
@@ -19,4 +19,19 @@ ape::phylo object
 \description{
 An S3 method converts events stored in the EventLogger object into an inner 
 coalescent tree w/ option to include/exclude transmission events.
+}
+\examples{
+path <- system.file('extdata', 'structSI.yaml', package='twt')
+settings <- yaml.load_file(path)
+structSI <- Model$new(settings)
+run <- sim.outer.tree(structSI)
+eventlog <- sim.inner.tree(run)
+tr <- as.phylo(eventlog, transmissions=TRUE, migrations=TRUE) 
+tr
+
+# make a nice plot
+ggtree(tr) + geom_tiplab() + 
+geom_nodepoint(aes(fill=(tr$event.type=='coalescent')), 
+pch=21, stroke=1, size=3, colour='black')
+
 }

@@ -4,18 +4,16 @@
 \alias{plot.Run}
 \title{plot.Run}
 \usage{
-\method{plot}{Run}(run, transmissions = FALSE, migrations = FALSE,
-  node.labels = FALSE)
+\method{plot}{Run}(run, type = "t", ...)
 }
 \arguments{
 \item{run:}{R6 object of class `Run`}
 
-\item{transmissions:}{if TRUE, display transmission events on inner tree
-plot.}
-
-\item{migrations:}{if TRUE, display migration events on inner tree plot.}
-
-\item{node.labels:}{if TRUE, label internal nodes with names.}
+\item{type:}{what type of plot should be drawn.  Possible types are
+\itemize{
+\item "t" for transmission tree plot
+\item "s" for stair step plot of population dynamics
+}}
 }
 \description{
 S3 plot method for Run objects.
@@ -35,12 +33,14 @@ path <- system.file('extdata', 'SI.yaml', package='twt')
 
 # load file and parse to construct MODEL object
 settings <- yaml.load_file(path)
-mod <- MODEL$new(settings)
+mod <- Model$new(settings)
 
 # simulate outer tree
-outer <- sim.outer.tree(mod)
+run <- sim.outer.tree(mod)
 
-# simulate inner tree
-tree <- sim.inner.tree(mod, outer)
-plot(tree)
+# generate plots side-by-side
+par(mfrow=c(1,2))
+plot(run, type='s')  # population dynamics
+plot(run, type='t')  # transmission tree
+
 }

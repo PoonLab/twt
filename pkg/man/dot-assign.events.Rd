@@ -9,4 +9,6 @@
 \description{
 Assignment of outer events proceeds in reverse (coalescent) time,
 starting from the sampled Compartments.
+TODO: access population dynamics through Run$get.counts() instead of 
+      cbind'ed events
 }

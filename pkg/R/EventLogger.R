@@ -262,7 +262,6 @@ print.EventLogger <- function(eventlog) {
 #' @param transmissions:  if TRUE, display transmission events on inner tree
 #'        plot.
 #' @param migrations: if TRUE, display migration events on inner tree plot.
-#' @param node.labels: if TRUE, label internal nodes with names.
 #' 
 #' @examples 
 #' path <- system.file('extdata', 'structSI.yaml', package='twt')
@@ -270,19 +269,29 @@ print.EventLogger <- function(eventlog) {
 #' structSI <- Model$new(settings)
 #' run <- sim.outer.tree(structSI)
 #' eventlog <- sim.inner.tree(run)
-#' tr <- as.phylo(eventlog)
-#' plot(tr)
+#' plot(eventlog, transmissions=T, migrations=T)
 #' 
 #' @export
-plot.EventLogger <- function(eventlog, transmissions, migrations, node.labels) {
+plot.EventLogger <- function(eventlog, transmissions, migrations) {
   phy <- as.phylo.EventLogger(
     eventlog=eventlog, 
     transmissions=transmissions, 
-    migrations=migrations, 
-    node.labels=node.labels)
+    migrations=migrations)
   
   # call plot.phylo S3 method
-  plot(phy)
+  #plot(phy)
+  if (transmissions | migrations) {
+    is.singleton <- ifelse(is.element(phy$event.type, c('coalescent', 'bottleneck')),
+                           NA, phy$event.type=='transmission')
+    
+    ggtree(phy) + geom_tiplab() + 
+      geom_nodepoint(aes(fill=is.singleton), 
+                     pch=21, stroke=1, size=2, 
+                     colour='black', na.rm=T)  
+  }
+  else {
+    ggtree(phy) + geom_tiplab()
+  }
 }
 
 
@@ -303,13 +312,18 @@ plot.EventLogger <- function(eventlog, transmissions, migrations, node.labels) {
 #' structSI <- Model$new(settings)
 #' run <- sim.outer.tree(structSI)
 #' eventlog <- sim.inner.tree(run)
-#' tr <- as.phylo(eventlog) 
+#' tr <- as.phylo(eventlog, transmissions=TRUE, migrations=TRUE) 
 #' tr
 #' 
+#' # make a nice plot
+#' ggtree(tr) + geom_tiplab() + 
+#' geom_nodepoint(aes(fill=(tr$event.type=='coalescent')), 
+#' pch=21, stroke=1, size=3, colour='black')
+#' 
 #' @export
-as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE, 
-                                 node.labels=FALSE) {
-  # retrieve fixed sampling times of tips
+as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE) {
+
+    # retrieve fixed sampling times of tips
   fixed.sampl <- eventlog$get.fixed.samplings()
   
   # retrieve events from log
@@ -408,6 +422,10 @@ as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE
     edge.length <- c(edge.length, bl)
   }
   
+  # need to reorder edges to sequence of derived nodes
+  index2 <- match(nodes, edges$lineage2)
+  index1 <- match(nodes, edges$lineage1)
+  
   # create phylo object
   phy <- list(
     tip.label = tips,
@@ -415,11 +433,11 @@ as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE
     Nnode = length(internals),
     edge = edgelist,
     edge.length = edge.length,
-    event.type = edges$event.type,
-    compartment1 = edges$compartment1,
-    compartment2 = edges$compartment2,
-    type1 = edges$type1,
-    type2 = edges$type2
+    event.type = edges$event.type[index2],
+    compartment1 = edges$compartment1[index1],
+    compartment2 = edges$compartment2[index1],
+    type1 = edges$type1[index1],
+    type2 = edges$type2[index1]
     )
   attr(phy, 'class') <- 'phylo'
   phy
