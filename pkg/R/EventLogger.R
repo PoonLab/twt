@@ -303,8 +303,8 @@ plot.EventLogger <- function(eventlog, transmissions, migrations, node.labels) {
 #' structSI <- Model$new(settings)
 #' run <- sim.outer.tree(structSI)
 #' eventlog <- sim.inner.tree(run)
-#' tr <- as.phylo(eventlog)
-#' plot(tr)
+#' tr <- as.phylo(eventlog) 
+#' tr
 #' 
 #' @export
 as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE, 
@@ -389,7 +389,6 @@ as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE
   })))  
 
   
-  
   # calculate edge.lengths
   edge.length <- c()
   for (i in 1:nrow(edges)) {
@@ -415,16 +414,16 @@ as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE
     node.label = internals,
     Nnode = length(internals),
     edge = edgelist,
-    edge.length = edge.length
+    edge.length = edge.length,
+    event.type = edges$event.type,
+    compartment1 = edges$compartment1,
+    compartment2 = edges$compartment2,
+    type1 = edges$type1,
+    type2 = edges$type2
     )
-  
   attr(phy, 'class') <- 'phylo'
-  
-  # TODO: decorate tree with singleton nodes that represent migration and transmission events
-  #       phylo cannot plot singleton nodes, so graft a terminal branch of length zero
   phy
 }
-
 
 
 #' .reorder.inner.events
