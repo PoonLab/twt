@@ -329,13 +329,14 @@ as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE
   if (transmissions | migrations) {
     # retrieve transmission/migration events
     targets <- c()
-    if (migration) targets <- c(targets, 'migration')
-    if (transmission) targets <- c(targets, 'transmission')
+    if (migrations) targets <- c(targets, 'migration')
+    if (transmissions) targets <- c(targets, 'transmission')
     
     tm.events <- events[!is.na(events$lineage1) & 
                           is.element(events$event.type, targets), ]
     
     for (node in unique(tm.events$lineage1)) {
+      # locate origin of this Lineage among core events
       idx <- which(core.events$lineage1==node)
       e <- core.events[idx, ]
       if (nrow(e) > 1) {
@@ -344,17 +345,17 @@ as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE
       }
       parent <- e$lineage2
       
+      # modify Lineage names in sequence of events
       temp <- tm.events[tm.events$lineage1==node, ]
       temp <- temp[order(temp$time ), ]  # start with most recent
       child <- node
-      
       for (i in 1:nrow(temp)) {
         tm.event <- temp[i, ]
         new.node <- paste(node, i, sep=tm.event$event.type)
         
         tm.event$lineage1 <- child
         tm.event$lineage2 <- new.node
-        
+        child <- new.node
         core.events <- rbind(core.events, tm.event)
       }
       
@@ -433,8 +434,7 @@ as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE
 #' @param node:  character, unique identifier of a node
 #' @param result:  vector to pass between recursive calls
 #' @keywords internal
-.reorder.inner.events <- function(events, node, order, migration=F, 
-                                  transmission=F, result=c()) {
+.reorder.inner.events <- function(events, node, order, result=c()) {
   if (order=='preorder') {
     result <- c(result, node)  # parent before children
   }
@@ -447,11 +447,6 @@ as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE
     result <- c(result, node)  # children before parent
   }
   return(result)
-}
-
-
-.add.node <- function(phy, event) {
-  
 }
 
 
