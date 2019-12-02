@@ -303,6 +303,10 @@ plot.Run <- function(run, type='t', ...) {
   # find root
   sources <- unique(trans$compartment2)
   root <- sources[!is.element(sources, trans$compartment1)]
+  if (length(root) > 1) {
+    stop("Detected multiple roots in Run object: ", 
+         paste(root, collapse=", "))
+  }
   
   # sort nodes by post-order traversal (parents after children)
   nodes <- .reorder.events(trans, root)
@@ -312,7 +316,9 @@ plot.Run <- function(run, type='t', ...) {
   plot(NA, xlim=c(-max(trans$time*1.05), 0), ylim=c(0.5, length(nodes)+0.5),
        xlab='Time', yaxt='n', ylab=NA, bty='n', ...)
   
-  . <- sapply(nodes, function(node) {
+  #. <- sapply(nodes, function(node) {
+  for (i in 1:length(nodes)) {
+    node <- nodes[i]
     is.sampled <- FALSE
     if (is.element(node, names(comps))) {
       is.sampled <- TRUE
@@ -344,8 +350,7 @@ plot.Run <- function(run, type='t', ...) {
       arrows(x0=-inf.time, y1=which(nodes==node), y0=which(nodes==source), 
              length=0.08, lwd=2, col='orangered')  
     }
-    
-  })
+  }
   
   if (nrow(migrations) > 0) {
     # map migration events to transmission tree

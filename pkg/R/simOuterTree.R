@@ -599,6 +599,10 @@ sim.outer.tree <- function(model) {
            e$event.type)
     }
   }
+  
+  if (length(active) > 1) {
+    stop("Failed to reach index case.")
+  }
 }
 
 

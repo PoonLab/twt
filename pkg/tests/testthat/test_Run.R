@@ -45,6 +45,7 @@ test_that("Run is deep copy of Model lineages", {
 
 
 test_that("Run extracts pairs of lineages", {
+  skip("Deprecated")
   result <- r$get.pairs()
   
   # there are only one pair per host because the third lineage is not yet extant

@@ -316,9 +316,12 @@ plot.EventLogger <- function(eventlog, transmissions, migrations) {
 #' tr
 #' 
 #' # make a nice plot
-#' ggtree(tr) + geom_tiplab() + 
-#' geom_nodepoint(aes(fill=(tr$event.type=='coalescent')), 
-#' pch=21, stroke=1, size=3, colour='black')
+#' require(ggfree)
+#' l <- tree.layout(structSI, type='r') 
+#' plot(l)
+#' cex <- as.integer(structSI$event.type %in% c('transmission', 'migration'))
+#' bg <- ifelse(structSI$event.type=='transmission', 'dodgerblue', 'salmon')
+#' points(l, cex=cex, pch=21, bg=bg)
 #' 
 #' @export
 as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE) {
