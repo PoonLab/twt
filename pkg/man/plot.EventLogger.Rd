@@ -6,7 +6,8 @@
 Generic plot method for EventLogger class as an S3 object.
 Converts the EventLogger object into an ape:phylo S3 object.}
 \usage{
-\method{plot}{EventLogger}(eventlog, transmissions, migrations)
+\method{plot}{EventLogger}(eventlog, transmissions = T, migrations = T,
+  ...)
 }
 \arguments{
 \item{eventlog:}{R6 object of class EventLogger}
@@ -27,7 +28,8 @@ settings <- yaml.load_file(path)
 structSI <- Model$new(settings)
 run <- sim.outer.tree(structSI)
 eventlog <- sim.inner.tree(run)
-tr <- as.phylo(eventlog)
-plot(tr)
+
+# orange dots represent migration events
+plot(eventlog, transmissions=T, migrations=T)
 
 }

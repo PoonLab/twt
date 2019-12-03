@@ -270,29 +270,27 @@ print.EventLogger <- function(eventlog) {
 #' run <- sim.outer.tree(structSI)
 #' eventlog <- sim.inner.tree(run)
 #' 
+#' # orange dots represent migration events
 #' plot(eventlog, transmissions=T, migrations=T)
 #' 
 #' @export
-plot.EventLogger <- function(eventlog, transmissions, migrations) {
-  phy <- as.phylo.EventLogger(
-    eventlog=eventlog, 
-    transmissions=transmissions, 
-    migrations=migrations)
+plot.EventLogger <- function(eventlog, transmissions=T, migrations=T, ...) {
+  phy <- as.phylo(eventlog, transmissions=transmissions, 
+                  migrations=migrations)
+  l <- tree.layout(phy, type='r')
   
   # call plot.phylo S3 method
   #plot(phy)
   if (transmissions | migrations) {
     is.singleton <- ifelse(is.element(phy$event.type, c('coalescent', 'bottleneck')),
                            NA, phy$event.type=='transmission')
-    
-    l <- tree.layout(phy, type='r')
-    ggtree(phy) + geom_tiplab() + 
-      geom_nodepoint(aes(fill=is.singleton), 
-                     pch=21, stroke=1, size=2, 
-                     colour='black', na.rm=T)  
+    cex <- ifelse(is.na(is.singleton), 0, 1)
+    bg <- ifelse(is.singleton, 'dodgerblue', 'orange')
+    plot(l, ...)
+    points(l, cex=cex, pch=21, bg=bg)
   }
   else {
-    ggtree(phy) + geom_tiplab()
+    plot(l, ...)
   }
 }
 

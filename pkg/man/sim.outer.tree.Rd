@@ -4,10 +4,13 @@
 \alias{sim.outer.tree}
 \title{sim.outer.tree}
 \usage{
-sim.outer.tree(model)
+sim.outer.tree(model, max.attempts = 5)
 }
 \arguments{
-\item{model:}{object of class 'MODEL'}
+\item{model:}{R6 object of class 'Model'}
+
+\item{max.attempts:}{maximum number of attempts to simulate outer events.
+Defaults to 5.}
 }
 \value{
 object of class 'EventLogger'

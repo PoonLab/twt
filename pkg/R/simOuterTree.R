@@ -169,7 +169,9 @@ init.branching.events <- function(model, eventlog=NA) {
 #' A *transition* occurs when a Compartment switches to another Type.  This 
 #' is useful for handling host death events, for example.
 #' 
-#' @param model: object of class 'MODEL'
+#' @param model:  R6 object of class 'Model'
+#' @param max.attempts:  maximum number of attempts to simulate outer events.
+#'        Defaults to 5.
 #' @return object of class 'EventLogger'
 #' 
 #' @examples
@@ -184,20 +186,35 @@ init.branching.events <- function(model, eventlog=NA) {
 #' 
 #' @seealso init.branching.events, eventlog.from.tree
 #' @export
-sim.outer.tree <- function(model) {
-  run <- Run$new(model)
+sim.outer.tree <- function(model, max.attempts=5) {
+  attempt <- 1
   
-  # initialize a new object as return value
-  eventlog <- run$get.eventlog()
+  while (attempt <= max.attempts) {
+    run <- Run$new(model)
+    
+    # initialize a new object as return value
+    eventlog <- run$get.eventlog()
+    
+    # store fixed sampling times of Lineages as specified by model
+    eventlog$store.fixed.samplings(model$get.fixed.samplings())
+    
+    # sample events based on population dynamics and rates
+    events <- .sample.outer.events(run)
+    
+    # assign events only to history of sampled Compartments
+    resolved <- .assign.events(run, events)
+    if (resolved) {
+      break
+    }
+    
+    attempt <- attempt+1  # else try again
+    warning("Failed to resolve outer tree, starting attempt ", attempt)
+  }
   
-  # store fixed sampling times of Lineages as specified by model
-  eventlog$store.fixed.samplings(model$get.fixed.samplings())
-  
-  # sample events based on population dynamics and rates
-  events <- .sample.outer.events(run)
-  
-  # assign events only to history of sampled Compartments
-  .assign.events(run, events)
+  if (attempt == max.attempts) {
+    stop("sim.outer.tree() failed to resolve an outer tree. ",
+         "Try increasing the total population size or ")
+  }
 
   return(run)
 }
@@ -485,6 +502,9 @@ sim.outer.tree <- function(model) {
 #' @param run:  R6 object of class Run
 #' @param events:  data frame from .sample.outer.events()
 #' 
+#' @return TRUE if events converge to index case, otherwise FALSE
+#'         to trigger sim.outer.tree() to re-run analysis
+#' 
 #' @keywords internal
 .assign.events <- function(run, events) {
   # TODO: access population dynamics through Run$get.counts() instead of 
@@ -605,11 +625,7 @@ sim.outer.tree <- function(model) {
     }
   }
   
-  if (length(active) > 1) {
-    warning("Failed to converge to index case: there are ", length(active),
-            " active compartments at the root.", 
-            "You should discard this run and restart from the Model!")    
-  }
+  return(length(active) == 1)
 }
 
 

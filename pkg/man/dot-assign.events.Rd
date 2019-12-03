@@ -6,9 +6,17 @@
 \usage{
 .assign.events(run, events)
 }
+\arguments{
+\item{run:}{R6 object of class Run}
+
+\item{events:}{data frame from .sample.outer.events()}
+}
+\value{
+TRUE if events converge to index case, otherwise FALSE
+        to trigger sim.outer.tree() to re-run analysis
+}
 \description{
 Assignment of outer events proceeds in reverse (coalescent) time,
 starting from the sampled Compartments.
-TODO: access population dynamics through Run$get.counts() instead of 
-      cbind'ed events
 }
+\keyword{internal}
