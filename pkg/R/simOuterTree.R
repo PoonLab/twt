@@ -482,10 +482,13 @@ sim.outer.tree <- function(model) {
 #' 
 #' Assignment of outer events proceeds in reverse (coalescent) time,
 #' starting from the sampled Compartments.
-#' TODO: access population dynamics through Run$get.counts() instead of 
-#'       cbind'ed events
+#' @param run:  R6 object of class Run
+#' @param events:  data frame from .sample.outer.events()
 #' 
+#' @keywords internal
 .assign.events <- function(run, events) {
+  # TODO: access population dynamics through Run$get.counts() instead of 
+  #       cbind'ed events
   eventlog <- run$get.eventlog()
   eventlog$clear.events()
   
@@ -564,8 +567,10 @@ sim.outer.tree <- function(model) {
           type2 = e$s.type  # source (ancestral)
         )
         
-        # update recipient Compartment
-        recipient$set.branching.time(e$time)
+        if (e$event.type == 'transmission') {
+          # update recipient Compartment
+          recipient$set.branching.time(e$time)          
+        }
       }
       # otherwise recipient is not a sampled Compartment - ignore
     }
@@ -601,7 +606,9 @@ sim.outer.tree <- function(model) {
   }
   
   if (length(active) > 1) {
-    stop("Failed to reach index case.")
+    warning("Failed to converge to index case: there are ", length(active),
+            " active compartments at the root.", 
+            "You should discard this run and restart from the Model!")    
   }
 }
 

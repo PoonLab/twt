@@ -269,6 +269,7 @@ print.EventLogger <- function(eventlog) {
 #' structSI <- Model$new(settings)
 #' run <- sim.outer.tree(structSI)
 #' eventlog <- sim.inner.tree(run)
+#' 
 #' plot(eventlog, transmissions=T, migrations=T)
 #' 
 #' @export
@@ -284,6 +285,7 @@ plot.EventLogger <- function(eventlog, transmissions, migrations) {
     is.singleton <- ifelse(is.element(phy$event.type, c('coalescent', 'bottleneck')),
                            NA, phy$event.type=='transmission')
     
+    l <- tree.layout(phy, type='r')
     ggtree(phy) + geom_tiplab() + 
       geom_nodepoint(aes(fill=is.singleton), 
                      pch=21, stroke=1, size=2, 
