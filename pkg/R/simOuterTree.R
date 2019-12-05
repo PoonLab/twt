@@ -504,7 +504,13 @@ sim.outer.tree <- function(model, max.attempts=5) {
 #' 
 #' @return TRUE if events converge to index case, otherwise FALSE
 #'         to trigger sim.outer.tree() to re-run analysis
-#' 
+#' @examples
+#' # reproduce issue #103
+#' set.seed(5)
+#' run <- Run$new(model)
+#' eventlog <- run$get.eventlog()
+#' eventlog$store.fixed.samplings(model$get.fixed.samplings())
+#' events <- .sample.outer.events(run)
 #' @keywords internal
 .assign.events <- function(run, events) {
   # TODO: access population dynamics through Run$get.counts() instead of 
@@ -523,20 +529,19 @@ sim.outer.tree <- function(model, max.attempts=5) {
       break
     }
     
+    # go to the next event
+    e <- events[row, ]  
+    
     types <- sapply(active, function(comp) comp$get.type()$get.name())
+    n.active.recipients <- sum(types==e$r.type)
+    n.active.sources <- sum(types==e$s.type)
     
-    e <- events[row, ]  # go to the next event
-    
-    n.active.recipients <- sum(types == e$r.type)
-    n.active.sources <- sum(types == e$s.type)
     
     if ( is.element(e$event.type, c('transmission', 'migration')) ) {
       
       # total numbers of infected Compartments of respective Types
       n.recipients <- as.numeric(e[paste('I.', e$r.type, sep='')])
       n.sources <- as.numeric(e[paste('I.', e$s.type, sep='')])
-      
-      #print(c(n.recipients, n.active.recipients, n.sources, n.active.sources))
       
       if (runif(1, max=n.recipients) < n.active.recipients) {
         # recipient is an active Compartment
@@ -550,34 +555,49 @@ sim.outer.tree <- function(model, max.attempts=5) {
         }
         recipient <- sample(eligible, 1)[[1]]
         
-        if (e$event.type == 'transmission') {
-          # remove recipient from sampled infected Compartments
-          active[recipient$get.name()] <- NULL
-          types <- sapply(active, function(comp) comp$get.type()$get.name())
-        }
+        # recipient cannot be its own source
+        if (e$r.type == e$s.type) n.active.sources <- n.active.sources - 1
+      }
+      else {
+        # recipient is NOT an active Compartment
+        recipient <- run$generate.unsampled(e$r.type)
+        #active[[recipient$get.name()]] <- recipient
+      }
+      
         
-        # random sampling of source
-        if (e$r.type == e$s.type) {
-          # recipient cannot be its own source
-          n.active.sources <- n.active.sources - 1
-          n.sources <- n.sources - 1
+      if (e$r.type == e$s.type) {
+        # recipient cannot be its own source
+        n.sources <- n.sources - 1
+      }
+      
+      if (runif(1, max=n.sources) < n.active.sources) {
+        # source is an active Compartment
+        source <- recipient
+        while (source$get.name() == recipient$get.name()) {
+          # make sure source is different Compartment
+          source <- sample(active[types==e$s.type], 1)[[1]] 
         }
+      }
+      else {
+        # source is an unsampled Compartment 
+        source <- run$generate.unsampled(e$s.type)
+        active[[source$get.name()]] <- source
+        # if recipient is sampled, upgrade the source
+        if ( !recipient$is.unsampled() ) source$set.unsampled(FALSE)
+      }
+      
+      
+      if (e$event.type == 'transmission') {
+        # update recipient Compartment
+        recipient$set.branching.time(e$time)          
+        recipient$set.source(source)
         
-        if (runif(1, max=n.sources) < n.active.sources) {
-          # source is an active Compartment
-          source <- recipient
-          while (source$get.name() == recipient$get.name()) {
-            # make sure source is different Compartment
-            source <- sample(active[types==e$s.type], 1)[[1]] 
-          }
-        }
-        else {
-          # source is an unsampled Compartment 
-          source <- run$generate.unsampled(e$s.type)
-          active[[source$get.name()]] <- source
-        }
-        
-        # update event log
+        # remove recipient from active list
+        active[recipient$get.name()] <- NULL
+      }
+       
+      # update event log
+      if ( !recipient$is.unsampled() ) {
         eventlog$add.event(
           time = e$time,
           type = e$event.type,
@@ -586,37 +606,41 @@ sim.outer.tree <- function(model, max.attempts=5) {
           type1 = e$r.type,  # recipient (derived)
           type2 = e$s.type  # source (ancestral)
         )
-        
-        if (e$event.type == 'transmission') {
-          # update recipient Compartment
-          recipient$set.branching.time(e$time)          
-        }
       }
-      # otherwise recipient is not a sampled Compartment - ignore
+      
     }
     
     else if (e$event.type == 'transition') {
       # either infected or uninfected Compartments may transition
-      n.recipients <- as.numeric(e[paste('S.', e$r.type, sep='')]) + 
-        as.numeric(e[paste('I.', e$r.type, sep='')])
-      
-      if (runif(1, max=n.recipients) < n.active.recipients) {
-        # transitioning Compartment is a sampled one
-        compartment <- sample(active[types==e$r.type], 1)[[1]]
-        
-        # change the CompartmentType to ancestral ("source") state
-        old.type <- compartment$get.type()$get.name()
-        compartment$set.type(run$get.types()[[e$s.type]])
-        
-        eventlog$add.event(
-          time = e$time,
-          type = 'transition',
-          comp1 = compartment$get.name(),
-          type1 = old.type,
-          type2 = compartment$get.type()$get.name()
-        )
+      # look ahead to determine which
+      if (row > 1) {
+        next.e <- events[row-1, ]
+        key <- paste0('S.', e$r.type)
+        if (e[key] == next.e[key]) {
+          # transitioning Compartment was infected
+          n.recipients <- as.numeric(e[paste('I.', e$r.type, sep='')])
+          
+          if (runif(1, max=n.recipients) < n.active.recipients) {
+            # transitioning Compartment is a sampled one
+            compartment <- sample(active[types==e$r.type], 1)[[1]]
+            
+            # change the CompartmentType to ancestral ("source") state
+            old.type <- compartment$get.type()$get.name()
+            compartment$set.type(run$get.types()[[e$s.type]])
+            
+            eventlog$add.event(
+              time = e$time,
+              type = 'transition',
+              comp1 = compartment$get.name(),
+              type1 = old.type,
+              type2 = compartment$get.type()$get.name()
+            )
+          }
+          # otherwise ignore transition of unsampled Compartment
+        }
+        # otherwise transitioning Compartment was not infected
       }
-      # otherwise ignore transition of unsampled Compartment
+      # otherwise ignore first event (no more transmissions)
     }
     
     else {

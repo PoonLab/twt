@@ -255,6 +255,10 @@ Compartment <- R6Class("Compartment",
       }))
     },
     
+    set.unsampled = function(is.unsampled) {
+      private$unsampled <- is.unsampled
+    },
+    
     is.unsampled = function() {
       private$unsampled
     },
