@@ -127,6 +127,7 @@ test_that("check simple SI model", {
   
 
 test_that("assignment of transmission events", {
+  #set.seed(1)
   run <- Run$new(model.SI)
   events <- .sample.outer.events(run)
   
@@ -140,7 +141,13 @@ test_that("assignment of transmission events", {
   sampled <- names(run$get.compartments())
   all.cases.are.tips <- all(is.element(sampled, result$compartment1))
   
-  root <- unique(result$compartment2[!is.element(result$compartment2, result$compartment1)])
+  root <- unique(result$compartment2[
+    !is.element(result$compartment2, result$compartment1)
+    ])
+  if (length(root) > 1) {
+    print(events)
+    print(result)
+  }
   expect_equal(1, length(root))
   sampled.index.case <- is.element(root, sampled)
 
@@ -210,10 +217,6 @@ test_that("assignment of outer events", {
     !is.element(transmissions$compartment2, transmissions$compartment1)
     ])
   
-  # next test fails sporadically, trying to capture this
-  if (length(root) > 1) {
-    print(log)
-  }
   expect_equal(1, length(root))
   expect_equal(nrow(transmissions), length(unique(transmissions$compartment1)))
   

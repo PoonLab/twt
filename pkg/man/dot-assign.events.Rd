@@ -19,4 +19,12 @@ TRUE if events converge to index case, otherwise FALSE
 Assignment of outer events proceeds in reverse (coalescent) time,
 starting from the sampled Compartments.
 }
+\examples{
+# reproduce issue #103
+set.seed(5)
+run <- Run$new(model)
+eventlog <- run$get.eventlog()
+eventlog$store.fixed.samplings(model$get.fixed.samplings())
+events <- .sample.outer.events(run)
+}
 \keyword{internal}

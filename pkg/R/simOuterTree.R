@@ -531,11 +531,12 @@ sim.outer.tree <- function(model, max.attempts=5) {
     
     # go to the next event
     e <- events[row, ]  
+    #print(e)
+    #print(names(active))
     
     types <- sapply(active, function(comp) comp$get.type()$get.name())
     n.active.recipients <- sum(types==e$r.type)
     n.active.sources <- sum(types==e$s.type)
-    
     
     if ( is.element(e$event.type, c('transmission', 'migration')) ) {
       
@@ -543,8 +544,10 @@ sim.outer.tree <- function(model, max.attempts=5) {
       n.recipients <- as.numeric(e[paste('I.', e$r.type, sep='')])
       n.sources <- as.numeric(e[paste('I.', e$s.type, sep='')])
       
+      is.active.recipient <- FALSE
       if (runif(1, max=n.recipients) < n.active.recipients) {
         # recipient is an active Compartment
+        is.active.recipient <- TRUE
         
         # infection must precede first Lineage sampling time
         eligible <- Filter(function(comp) is.na(comp$get.sampling.time()) || 
@@ -583,21 +586,11 @@ sim.outer.tree <- function(model, max.attempts=5) {
         source <- run$generate.unsampled(e$s.type)
         active[[source$get.name()]] <- source
         # if recipient is sampled, upgrade the source
-        if ( !recipient$is.unsampled() ) source$set.unsampled(FALSE)
+        #if ( !recipient$is.unsampled() ) source$set.unsampled(FALSE)
       }
       
-      
-      if (e$event.type == 'transmission') {
-        # update recipient Compartment
-        recipient$set.branching.time(e$time)          
-        recipient$set.source(source)
-        
-        # remove recipient from active list
-        active[recipient$get.name()] <- NULL
-      }
-       
       # update event log
-      if ( !recipient$is.unsampled() ) {
+      if ( is.active.recipient ) {
         eventlog$add.event(
           time = e$time,
           type = e$event.type,
@@ -608,6 +601,14 @@ sim.outer.tree <- function(model, max.attempts=5) {
         )
       }
       
+      if (e$event.type == 'transmission') {
+        # update recipient Compartment
+        recipient$set.branching.time(e$time)          
+        recipient$set.source(source)
+        
+        # remove recipient from active list
+        active[recipient$get.name()] <- NULL
+      }
     }
     
     else if (e$event.type == 'transition') {
