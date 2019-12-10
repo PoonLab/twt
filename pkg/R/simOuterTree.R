@@ -544,11 +544,8 @@ sim.outer.tree <- function(model, max.attempts=5) {
       n.recipients <- as.numeric(e[paste('I.', e$r.type, sep='')])
       n.sources <- as.numeric(e[paste('I.', e$s.type, sep='')])
       
-      is.active.recipient <- FALSE
+      # check if recipient is an active Compartment
       if (runif(1, max=n.recipients) < n.active.recipients) {
-        # recipient is an active Compartment
-        is.active.recipient <- TRUE
-        
         # infection must precede first Lineage sampling time
         eligible <- Filter(function(comp) is.na(comp$get.sampling.time()) || 
                              e$time > comp$get.sampling.time(), 
@@ -563,8 +560,7 @@ sim.outer.tree <- function(model, max.attempts=5) {
       }
       else {
         # recipient is NOT an active Compartment
-        recipient <- run$generate.unsampled(e$r.type)
-        #active[[recipient$get.name()]] <- recipient
+        next
       }
       
         
@@ -590,16 +586,14 @@ sim.outer.tree <- function(model, max.attempts=5) {
       }
       
       # update event log
-      if ( is.active.recipient ) {
-        eventlog$add.event(
-          time = e$time,
-          type = e$event.type,
-          comp1 = recipient$get.name(),
-          comp2 = source$get.name(),
-          type1 = e$r.type,  # recipient (derived)
-          type2 = e$s.type  # source (ancestral)
-        )
-      }
+      eventlog$add.event(
+        time = e$time,
+        type = e$event.type,
+        comp1 = recipient$get.name(),
+        comp2 = source$get.name(),
+        type1 = e$r.type,  # recipient (derived)
+        type2 = e$s.type  # source (ancestral)
+      )
       
       if (e$event.type == 'transmission') {
         # update recipient Compartment
