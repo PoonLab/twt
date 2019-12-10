@@ -51,9 +51,9 @@ if (!require(devtools)) {
   # install devtools if not already present
   install.packages('devtools')
 }
-devtools::install_github("PoonLab/twt", subdir='pkg')
+devtools::install_github("PoonLab/twt")
 ```
-
+For details instructions, please refer to [INSTALL.md](INSTALL.md).
 
 ## Funding
 
