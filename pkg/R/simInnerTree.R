@@ -87,7 +87,7 @@ sim.inner.tree <- function(obj, e=NA) {
   row <- 1
   while (row <= nrow(events)) {
     
-    if (n.extant == 1) {
+    if ( n.extant==1 & length(run$get.extant.lineages(max(events$time)))==1 ) {
       # coalesced to final ancestral Lineage
       break
     }
@@ -505,7 +505,9 @@ sample.coalescents <- function(run, current.time){
       }
       
       # configure parameters
-      delta.t <- piece$endTime - current.time
+      delta.t <- ifelse(is.na(piece$endTime), 
+                        0, 
+                        piece$endTime - current.time)
       beta <- piece$slope
       n.0 <- piece$endPopn
       n.eff <- n.0 + beta * delta.t
