@@ -18,7 +18,7 @@ mod$get.types()
 
 # manually specify a CompartmentType object (usually done by YAML)
 host <- CompartmentType$new(name='host', branching.rates=c(host=0.1), 
-bottleneck.size=1, coalescent.rate=1, wait.time.distr='rexp(1,1)')
+bottleneck.size=1, coalescent.rate=1)
 
 }
 \section{Methods}{
@@ -28,7 +28,6 @@ bottleneck.size=1, coalescent.rate=1, wait.time.distr='rexp(1,1)')
 \item \href{#method-get.bottleneck.size}{\code{CompartmentType$get.bottleneck.size()}}
 \item \href{#method-get.name}{\code{CompartmentType$get.name()}}
 \item \href{#method-get.unsampled}{\code{CompartmentType$get.unsampled()}}
-\item \href{#method-get.susceptible}{\code{CompartmentType$get.susceptible()}}
 \item \href{#method-get.branching.rates}{\code{CompartmentType$get.branching.rates()}}
 \item \href{#method-get.branching.rate}{\code{CompartmentType$get.branching.rate()}}
 \item \href{#method-get.migration.rates}{\code{CompartmentType$get.migration.rates()}}
@@ -36,8 +35,6 @@ bottleneck.size=1, coalescent.rate=1, wait.time.distr='rexp(1,1)')
 \item \href{#method-get.transition.rates}{\code{CompartmentType$get.transition.rates()}}
 \item \href{#method-get.transition.rate}{\code{CompartmentType$get.transition.rate()}}
 \item \href{#method-get.coalescent.rate}{\code{CompartmentType$get.coalescent.rate()}}
-\item \href{#method-get.death.rate.distr}{\code{CompartmentType$get.death.rate.distr()}}
-\item \href{#method-get.wait.time.distr}{\code{CompartmentType$get.wait.time.distr()}}
 \item \href{#method-get.popn.growth.dynamics}{\code{CompartmentType$get.popn.growth.dynamics()}}
 \item \href{#method-get.transmission.times}{\code{CompartmentType$get.transmission.times()}}
 \item \href{#method-set.transmission.times}{\code{CompartmentType$set.transmission.times()}}
@@ -52,14 +49,11 @@ bottleneck.size=1, coalescent.rate=1, wait.time.distr='rexp(1,1)')
 \if{html}{\out{<div class="r">}}\preformatted{CompartmentType$new(
   name = NA,
   unsampled = NA,
-  susceptible = NA,
   branching.rates = NA,
   transition.rates = NA,
   migration.rates = NA,
   bottleneck.size = NA,
   coalescent.rate = NA,
-  death.rate.distr = NA,
-  wait.time.distr = NA,
   popn.growth.dynamics = NA,
   transmission.times = NA
 )}\if{html}{\out{</div>}}
@@ -87,14 +81,6 @@ bottleneck.size=1, coalescent.rate=1, wait.time.distr='rexp(1,1)')
 \subsection{Method \code{get.unsampled()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{CompartmentType$get.unsampled()}\if{html}{\out{</div>}}
-}
-
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-get.susceptible"></a>}}
-\subsection{Method \code{get.susceptible()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{CompartmentType$get.susceptible()}\if{html}{\out{</div>}}
 }
 
 }
@@ -151,22 +137,6 @@ bottleneck.size=1, coalescent.rate=1, wait.time.distr='rexp(1,1)')
 \subsection{Method \code{get.coalescent.rate()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{CompartmentType$get.coalescent.rate()}\if{html}{\out{</div>}}
-}
-
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-get.death.rate.distr"></a>}}
-\subsection{Method \code{get.death.rate.distr()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{CompartmentType$get.death.rate.distr()}\if{html}{\out{</div>}}
-}
-
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-get.wait.time.distr"></a>}}
-\subsection{Method \code{get.wait.time.distr()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{CompartmentType$get.wait.time.distr()}\if{html}{\out{</div>}}
 }
 
 }

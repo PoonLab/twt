@@ -9,14 +9,16 @@
 \arguments{
 \item{mx:}{rate matrix for source->recipient events}
 
-\item{size:}{vector of subpopulation sizes}
+\item{susceptible:}{named vector, number of uninfected Compartments per Type}
+
+\item{infected:}{named vector, number of infected Compartments per Type}
 }
 \value{
 matrix of same dimensions as 'mx'
 }
 \description{
 Helper function for .sample.outer.events - calculate population rates 
-given per-contact rate (\beta) and population sizes of source and
-recipient populations, *i.e.*, \beta*S*I
+given per-contact rate (\eqn{\beta}) and population sizes of source and
+recipient populations, *i.e.*, \eqn{\beta S I}
 }
 \keyword{internal}

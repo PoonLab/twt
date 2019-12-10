@@ -297,8 +297,8 @@ sim.outer.tree <- function(model, max.attempts=5) {
 #' .scale.contact.rates
 #' 
 #' Helper function for .sample.outer.events - calculate population rates 
-#' given per-contact rate (\beta) and population sizes of source and
-#' recipient populations, *i.e.*, \beta*S*I
+#' given per-contact rate (\eqn{\beta}) and population sizes of source and
+#' recipient populations, *i.e.*, \eqn{\beta S I}
 #' 
 #' @param mx:  rate matrix for source->recipient events
 #' @param susceptible:  named vector, number of uninfected Compartments per Type
