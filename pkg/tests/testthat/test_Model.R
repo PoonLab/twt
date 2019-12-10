@@ -33,7 +33,7 @@ test_that("Model loads types", {
   
   # TODO: run tests for each member of <result>
   expect_is(result[[1]], "CompartmentType")
-  expect_true(is.expression(parse(text=result[[1]]$get.wait.time.distr())))
+  #expect_true(is.expression(parse(text=result[[1]]$get.wait.time.distr())))
 })
 
 

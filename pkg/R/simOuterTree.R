@@ -301,7 +301,8 @@ sim.outer.tree <- function(model, max.attempts=5) {
 #' recipient populations, *i.e.*, \beta*S*I
 #' 
 #' @param mx:  rate matrix for source->recipient events
-#' @param size:  vector of subpopulation sizes
+#' @param susceptible:  named vector, number of uninfected Compartments per Type
+#' @param infected:  named vector, number of infected Compartments per Type
 #' @return  matrix of same dimensions as 'mx'
 #' 
 #' @keywords internal

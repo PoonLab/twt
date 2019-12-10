@@ -6,8 +6,7 @@
 Generic plot method for EventLogger class as an S3 object.
 Converts the EventLogger object into an ape:phylo S3 object.}
 \usage{
-\method{plot}{EventLogger}(eventlog, transmissions = T, migrations = T,
-  ...)
+\method{plot}{EventLogger}(eventlog, transmissions = T, migrations = T, ...)
 }
 \arguments{
 \item{eventlog:}{R6 object of class EventLogger}

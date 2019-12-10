@@ -4,8 +4,7 @@
 \alias{as.phylo.EventLogger}
 \title{as.phylo}
 \usage{
-\method{as.phylo}{EventLogger}(eventlog, transmissions = FALSE,
-  migrations = FALSE)
+\method{as.phylo}{EventLogger}(eventlog, transmissions = FALSE, migrations = FALSE)
 }
 \arguments{
 \item{eventlog:}{EventLogger object}

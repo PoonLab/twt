@@ -140,7 +140,7 @@ Model <- R6Class("Model",
       }
       
       required <- c('branching.rates', 'transition.rates', 'migration.rates', 
-                    'bottleneck.size', 'wait.time.distr')
+                    'bottleneck.size')
       
       unlist(sapply(names(settings$CompartmentTypes), function(x) {
         params <- settings$CompartmentTypes[[x]]
@@ -157,16 +157,6 @@ Model <- R6Class("Model",
                "declared in CoalescentType", x)
         }
         
-        # Generate wait time distribution between Compartment infection time and 
-        # its first sampling time
-        # code below is based directly from Poonlab/Kaphi/pkg/R/smcConfig.R
-        sublist <- params$wait.time.distr
-        rng.call <- paste('d', sublist$dist, '(x,', sep='')
-        args <- sapply(
-          sublist['hyperparameters'], 
-          function(x) paste(names(x), x, sep='=')
-          )
-        rng.call <- paste(rng.call, paste(args, collapse=','), ')', sep='')
         
         CompartmentType$new(
           name = x,
@@ -176,9 +166,6 @@ Model <- R6Class("Model",
           
           bottleneck.size = params$bottleneck.size,
           coalescent.rate = params$coalescent.rate,
-          
-          death.rate.distr = params$death.rate.distr,  # not implemented yet
-          wait.time.distr = rng.call,
           
           popn.growth.dynamics = private$init.popn.growth.dynamics(
             params$popn.growth.dynamics

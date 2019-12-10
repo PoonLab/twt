@@ -7,8 +7,6 @@
 #' @param name: a character string that uniquely identifies the class
 #' @param unsampled: if TRUE, no Compartments of this Type can contain sampled
 #' lineages (directly observed tips of the inner tree).
-#' @param susceptible: if TRUE, no Compartments of this Type contain either
-#' sampled or unsampled lineages.
 #' @param branching.rates: a named vector of transmission rates *to* other
 #' CompartmentTypes.
 #' @param tranistion.rates: a named vector of transition rates to other 
@@ -19,11 +17,6 @@
 #' to a Compartment of this Type.
 #' @param coalescent.rate: the rate at which lineages coalesce within a Compartment
 #' of this Type.
-#' @param death.rate.distr: a text expression for the waiting time distribution
-#' to a death event. Required for `popn.growth.dynamics` to override 
-#' `coalescent.rate`.
-#' @param wait.time.distr: a text expression for the waiting time distribution
-#' to a transmission event.
 #' @param popn.growth.dynamics: a text expression for population growth dynamics
 #' in forward time. If not NULL, can override `coalescent.rate`.
 #' @param transmission.times: numeric vector of transmission event times, 
@@ -39,20 +32,17 @@
 #' 
 #' # manually specify a CompartmentType object (usually done by YAML)
 #' host <- CompartmentType$new(name='host', branching.rates=c(host=0.1), 
-#' bottleneck.size=1, coalescent.rate=1, wait.time.distr='rexp(1,1)')
+#' bottleneck.size=1, coalescent.rate=1)
 #' 
 #' @export
 CompartmentType  <- R6Class(
   "CompartmentType",
   public = list(
-    initialize = function(name=NA, unsampled = NA,
-                          susceptible=NA, branching.rates=NA, transition.rates=NA,
-                          migration.rates=NA, bottleneck.size=NA,
-                          coalescent.rate=NA, death.rate.distr=NA, wait.time.distr=NA,
-                          popn.growth.dynamics=NA, transmission.times=NA) {
+    initialize = function(name=NA, unsampled = NA, branching.rates=NA, 
+                          transition.rates=NA, migration.rates=NA, bottleneck.size=NA,
+                          coalescent.rate=NA, popn.growth.dynamics=NA, transmission.times=NA) {
       private$name <- name
       private$unsampled <- unsampled
-      private$susceptible <- susceptible
       
       # named vector of transmission rates corresponding to different Compartment 
       # objects
@@ -63,8 +53,6 @@ CompartmentType  <- R6Class(
       
       # named vector of migration rates of different Compartments
       private$coalescent.rate <- coalescent.rate
-      private$death.rate.distr <- death.rate.distr
-      private$wait.time.distr <- wait.time.distr
       private$popn.growth.dynamics <- popn.growth.dynamics
       
       # populated after outer.tree.sim, tracked used and unused for migration 
@@ -83,10 +71,6 @@ CompartmentType  <- R6Class(
     
     get.unsampled = function() {
       private$unsampled
-    },
-    
-    get.susceptible = function() {
-      private$susceptible
     },
     
     get.branching.rates = function() {
@@ -117,14 +101,6 @@ CompartmentType  <- R6Class(
       private$coalescent.rate
     },
     
-    get.death.rate.distr = function() {
-      private$death.rate.distr
-    },
-    
-    get.wait.time.distr = function() {
-      private$wait.time.distr
-    },
-    
     get.popn.growth.dynamics = function() {
       private$popn.growth.dynamics
     },
@@ -145,14 +121,11 @@ CompartmentType  <- R6Class(
   private = list(
     name = NULL,
     unsampled = NULL,
-    susceptible = NULL,
     branching.rates = NULL,
     transition.rates = NULL,
     migration.rates = NULL,
     bottleneck.size = NULL,
     coalescent.rate = NULL,
-    death.rate.distr = NULL,
-    wait.time.distr = NULL,
     popn.growth.dynamics = NULL,
     transmission.times = NULL
   )
