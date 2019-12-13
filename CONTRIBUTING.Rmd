@@ -1,0 +1,35 @@
+# Contributing
+
+## Issues
+
+If you encounter an error while running `twt` or if you have a [feature request](https://xkcd.com/1425/), then please try to do the following:
+
+1. Run a search on our GitHub [issue tracker](https://github.com/PoonLab/twt/issues) to see if someone else has posted a similar bug or feature request.  Make sure to remove the `is:open` tag in the search query so that you check closed issues as well.  Doing this search may provide you with a solution right away, and at the very least this can reduce the number of duplicate issues.
+
+2. If you are reporting a bug, provide a [minimal reproducible example](https://stackoverflow.com/help/minimal-reproducible-example) if possible.  
+
+3. If you are pasting a large amount of code or console output, please enclose the text in triple back-ticks (```) so it will be rendered in fixed-width font with syntax highlighting inside a non-wrapping text box by the GitHub Markdown interpreter.
+
+
+## Contributing to development
+
+## Documentation
+
+`twt` is documented using [Roxygen2](https://cran.r-project.org/web/packages/roxygen2/vignettes/roxygen2.html), which automatically converts documentation embedded within the code into R documentation `.Rd` files.
+
+
+## Object-oriented programming with R6
+
+
+## Object classes
+
+
+### Model
+
+### Run
+
+### CompartmentType
+
+### Compartment
+
+### Lineage
