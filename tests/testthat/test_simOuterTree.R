@@ -1,5 +1,5 @@
 require(twt)
-setwd('~/git/twt/pkg/tests/testthat/')
+#setwd('~/git/twt/pkg/tests/testthat/')
 #source('pkg/R/simOuterTree.R')
 
 # chain
