@@ -24,6 +24,11 @@ knitr::opts_chunk$set(
 
 **trees[within](http://github.com/PoonLab/twt)trees** (`twt`) is an R package for the coalescent (reverse time) simulation of pathogen trees within host transmission trees.
 
+```{r echo=FALSE}
+# reduce overwrite of figures in repo
+set.seed(2)
+```
+
 ## Usage
 
 This illustrates a basic use case of the `twt` package, where we simulate the transmission (outer) tree and coalescent (inner) tree for 10 host individuals.
@@ -37,12 +42,12 @@ model <- Model$new(yaml.load_file(path))
 outer <- sim.outer.tree(model)
 # display the population trajectories
 plot(outer, type='s')
-# display the outer tree
+# display the outer tree, dark lines = sampled hosts, grey = unsampled
 plot(outer)
 
 # run an inner tree simulation
 inner <- sim.inner.tree(outer)
-# display the inner tree annotated with transmission events
+# display the inner tree annotated with transmission events (points)
 plot(inner)
 ```
 

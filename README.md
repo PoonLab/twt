@@ -30,24 +30,24 @@ outer <- sim.outer.tree(model)
 plot(outer, type='s')
 ```
 
-<img src="man/figures/README-unnamed-chunk-2-1.png" width="400" style="display: block; margin: auto;" />
+<img src="man/figures/README-unnamed-chunk-3-1.png" width="400" style="display: block; margin: auto;" />
 
 ``` r
-# display the outer tree
+# display the outer tree, dark lines = sampled hosts, grey = unsampled
 plot(outer)
 ```
 
-<img src="man/figures/README-unnamed-chunk-2-2.png" width="400" style="display: block; margin: auto;" />
+<img src="man/figures/README-unnamed-chunk-3-2.png" width="400" style="display: block; margin: auto;" />
 
 ``` r
 
 # run an inner tree simulation
 inner <- sim.inner.tree(outer)
-# display the inner tree annotated with transmission events
+# display the inner tree annotated with transmission events (points)
 plot(inner)
 ```
 
-<img src="man/figures/README-unnamed-chunk-2-3.png" width="400" style="display: block; margin: auto;" />
+<img src="man/figures/README-unnamed-chunk-3-3.png" width="400" style="display: block; margin: auto;" />
 
 ## Description
 
