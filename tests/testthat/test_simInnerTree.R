@@ -112,7 +112,7 @@ test_that("resolve_migration", {
 
 
 test_that("resolve coalescent", {
-  run <- init.branching.events(model)
+  run <- load.outer.tree(model)
   lineages <- run$get.lineages()
   lineage.names <- sapply(lineages, function(x) x$get.name())
   
@@ -141,7 +141,7 @@ test_that("resolve coalescent", {
     
   # if we re-initialize a Run from the same Model, these
   # lineages should be unchanged
-  run2 <- init.branching.events(model)
+  run2 <- load.outer.tree(model)
   comp <- run2$get.compartments()[[1]]
   run2.lineages <- comp$get.lineages()
   expect_equal(3, length(run2.lineages))
@@ -149,7 +149,7 @@ test_that("resolve coalescent", {
 
 
 test_that("resolve bottleneck", {
-  run <- init.branching.events(model)
+  run <- load.outer.tree(model)
   comp <- run$get.compartments()[[3]]
   expect_equal(1, comp$get.type()$get.bottleneck.size())
   
@@ -162,7 +162,7 @@ test_that("resolve bottleneck", {
 
 
 test_that("resolve transmission", {
-  run <- init.branching.events(model)
+  run <- load.outer.tree(model)
   
   # retrieve most recent transmission event
   eventlog <- run$get.eventlog()
@@ -226,7 +226,7 @@ test_that("random exponential deviate under linear decay", {
 
 test_that("simulate inner tree", {
   # user-specified transmission chain (A->B->C)
-  run <- init.branching.events(model)
+  run <- load.outer.tree(model)
   tree <- sim.inner.tree(run)
   result <- as.phylo(tree)
   expect_true(is.rooted(result))

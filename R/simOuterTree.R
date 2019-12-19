@@ -1,8 +1,9 @@
 
-#' eventlog.from.tree
+#' attach.tree
 #' 
-#' \code{eventlog.from.tree} converts a Newick tree string or ape::phylo object
-#' into a sequence of transmission events that are stored as an eventlog object
+#' \code{attach.tree} converts a Newick tree string or ape::phylo object
+#' into a sequence of transmission events that are stored as an eventlog object,
+#' bypassing outer tree simulation
 #' 
 #' @param tree: either a Newick tree string or an object of class 'phylo' (ape)
 #' that represents the transmission tree (history).  Internal node labels must 
@@ -14,21 +15,21 @@
 #'        nodes to different CompartmentTypes.
 #' 
 #' @return
-#'   An object of class EventLogger initialized with a list of fixed transmission
-#'   events that were extracted from 'tree'.
+#'   An object of class Model
 #' 
 #' @examples
-#' e <- eventlog.from.tree('(((A:1,B:1)B:1,C:1)C:1,D:1)D:1;')
+#' e <- attach.tree('(((A:1,B:1)B:1,C:1)C:1,D:1)D:1;')
 #' e  # print contents
 #' 
 #' 
-#' @seealso sim.outer.tree, init.branching.events
+#' @seealso sim.outer.tree, load.outer.tree
 #' @export
-eventlog.from.tree <- function(tree) {
-  # intiialize return value
-  #run <- Run$new(model)
-  #eventlog <- run$get.eventlog()
-  eventlog <- EventLogger$new()
+attach.tree <- function(tree, model) {
+  types <- model$get.types()
+  if (length(types) > 1) {
+    stop("Sorry, attach.tree() only supports Models with one CompartmentType for now.")
+  }
+  comps <- model$get.compartments()
   
   # check input
   if (is.character(tree)) {
@@ -41,10 +42,10 @@ eventlog.from.tree <- function(tree) {
   
   # tree should be rooted and binary
   if (!is.rooted(phy)) {
-    stop("Error in eventlog.from.tree(), tree must be rooted")
+    stop("Error in attach.tree(), tree must be rooted")
   }
   if (!is.binary(phy)) {
-    stop("Error in eventlog.from.tree(), tree must be binary")
+    stop("Error in attach.tree(), tree must be binary")
   }
   if (is.null(phy$node.label)) {
     stop('Node labels must be present in host transmission tree to indicate sources.')
@@ -56,7 +57,7 @@ eventlog.from.tree <- function(tree) {
     phy$labels <- paste0(phy$labels, "_1")
   }
   else {
-    stop("Error in eventlog.from.tree(): node labels cannot end with \"_1\"; ",
+    stop("Error in attach.tree(): node labels cannot end with \"_1\"; ",
          "this suffix will be automatically added by this function.")
   }
   
@@ -75,18 +76,18 @@ eventlog.from.tree <- function(tree) {
 
     if (source_label != recipient_label) {
       branching_time <- phy$edge.length[x]
-      eventlog$add.event('transmission', phy$heights[s_ind], NA, NA, 
-                  recipient_label, source_label)
+      #eventlog$add.event('transmission', phy$heights[s_ind], NA, NA, 
+      #            recipient_label, source_label)
     }  # otherwise no transmission on branch
   })
   
-  eventlog
+  model
 }
 
 
-#' init.branching.events
+#' load.outer.tree
 #' 
-#' `init.branching.events`` initializes a Run object from a Model object
+#' `load.outer.tree`` initializes a Run object from a Model object
 #' in which the user has explicitly listed transmission events; *i.e.*, 
 #' bypassing simulation of the outer tree.
 #' 
@@ -99,23 +100,18 @@ eventlog.from.tree <- function(tree) {
 #' settings <- yaml.load_file(path)
 #' mod <- Model$new(settings)
 #' 
-#' run <- init.branching.events(mod)
+#' run <- load.outer.tree(mod)
 #' plot(run$get.eventlog())
 #' 
 #' @seealso eventlog.from.tree, sim.outer.tree
 #' @export
-init.branching.events <- function(model) {
+load.outer.tree <- function(model) {
   # TODO: rename this to load.outer.tree
   
   # initialize Run object from Model
   run <- Run$new(model)
+  eventlog <- run$get.eventlog()
   
-  if (is.environment(eventlog)) {
-    # bind EventLogger to Run object
-    run$set.eventlog(eventlog)
-  } else {
-    eventlog <- run$get.eventlog()
-  }
   
   # store fixed sampling times of the tips for plotting functions
   eventlog$store.fixed.samplings(run$get.fixed.samplings())
@@ -146,8 +142,8 @@ init.branching.events <- function(model) {
         line2 = NA, 
         comp1 = comp$get.name(), 
         comp2 = source$get.name(),
-        type1 = comp$get.type()$get.name,
-        type2 = source$get.type()$get.name
+        type1 = comp$get.type()$get.name(),
+        type2 = source$get.type()$get.name()
         )
     }
     else {
@@ -156,7 +152,7 @@ init.branching.events <- function(model) {
         # the index case will have no branching time specified
       } 
       else {
-        stop ("Error in init.branching.events(): cannot parse Compartment ",
+        stop ("Error in load.outer.tree(): cannot parse Compartment ",
               "with branching.time ", branching.time, 
               " and source ", comp$get.source())
       }
@@ -177,7 +173,7 @@ init.branching.events <- function(model) {
 #'    that should be converted into an EventLogger object to use for
 #'    inner tree simulation (`eventlog.from.tree`).
 #' 2. User manually inputs a host transmission tree into YAML format under 
-#'    Compartments header (`init.branching.events`).
+#'    Compartments header (`load.outer.tree`).
 #' 3. No host tree provided, transmission events need to be simulated under
 #'    user-specified model (`sim.outer.tree`).
 #'    
@@ -210,7 +206,7 @@ init.branching.events <- function(model) {
 #' run <- sim.outer.tree(model)
 #' run$get.eventlog()
 #' 
-#' @seealso init.branching.events, eventlog.from.tree
+#' @seealso load.outer.tree
 #' @export
 sim.outer.tree <- function(model, max.attempts=5) {
   attempt <- 1

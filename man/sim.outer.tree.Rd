@@ -23,7 +23,7 @@ three use cases:
    that should be converted into an EventLogger object to use for
    inner tree simulation (`eventlog.from.tree`).
 2. User manually inputs a host transmission tree into YAML format under 
-   Compartments header (`init.branching.events`).
+   Compartments header (`load.outer.tree`).
 3. No host tree provided, transmission events need to be simulated under
    user-specified model (`sim.outer.tree`).
    
@@ -54,5 +54,5 @@ run$get.eventlog()
 
 }
 \seealso{
-init.branching.events, eventlog.from.tree
+load.outer.tree
 }
