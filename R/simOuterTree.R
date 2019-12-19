@@ -42,7 +42,17 @@ eventlog.from.tree <- function(tree) {
   if (is.null(phy$node.label)) {
     stop('Node labels must be present in host transmission tree to indicate sources.')
   }
+  
   phy$labels <- c(phy$tip.label, phy$node.label)
+  if (all(!grepl("_1$", phy$labels))) {
+    # add "_1" suffix to compartment names
+    phy$labels <- paste0(phy$labels, "_1")
+  }
+  else {
+    stop("Error in eventlog.from.tree(): node labels cannot end with \"_1\"; ",
+         "this suffix will be automatically added by this function.")
+  }
+  
   phy$depths <- node.depth.edgelength(phy)
   phy$heights <- max(phy$depths) - phy$depths
   

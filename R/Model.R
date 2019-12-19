@@ -213,12 +213,25 @@ Model <- R6Class("Model",
           nIndiv <- params$replicates
         }
         
+        # parse unsampled field
+        if (is.null(params$unsampled)) {
+          unsampled <- FALSE  # default to sampled
+        }
+        else {
+          unsampled <- as.logical(params$unsampled)
+          if (is.na(unsampled)) {
+            warning("Coercing ", params$unsampled, " to NA")
+            unsampled <- FALSE
+          }
+        }
+        
         sapply(1:nIndiv, function(obj) {
           Compartment$new(
             name = paste0(comp,'_', obj),  # unique identifier
             type = typeObj,
-            source = params$source,        
-            branching.time = params$branching.time
+            source = params$source,
+            branching.time = params$branching.time,
+            unsampled = unsampled
           )
         })
         

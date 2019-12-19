@@ -13,23 +13,23 @@ If you encounter an error while running `twt` or if you have a [feature request]
 
 ## Contributing to development
 
-## Documentation
+### Documentation
 
 `twt` is documented using [Roxygen2](https://cran.r-project.org/web/packages/roxygen2/vignettes/roxygen2.html), which automatically converts documentation embedded within the code into R documentation `.Rd` files.
 
 
-## Object-oriented programming with R6
+### Object-oriented programming with R6
 
 
-## Object classes
+### Object classes
 
 
-### Model
+#### Model
 
-### Run
+#### Run
 
-### CompartmentType
+#### CompartmentType
 
-### Compartment
+#### Compartment
 
-### Lineage
+#### Lineage
