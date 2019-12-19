@@ -498,6 +498,11 @@ sim.outer.tree <- function(model, max.attempts=5) {
     if (all(checks)) {
       break
     }
+    
+    warning(".sample.outer.events failed one or more checks with ", 
+            paste(infected, collapse=','), "\nAttempt ", attempt, 
+            " of ", max.attempts, immediate.=TRUE)
+    attempt <- attempt + 1
   }
  
   

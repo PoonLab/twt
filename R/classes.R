@@ -6,21 +6,23 @@
 #' 
 #' @param name: a character string that uniquely identifies the class
 #' @param unsampled: if TRUE, no Compartments of this Type can contain sampled
-#' lineages (directly observed tips of the inner tree).
+#'        lineages (directly observed tips of the inner tree).
 #' @param branching.rates: a named vector of transmission rates *to* other
-#' CompartmentTypes.
+#'        CompartmentTypes.
 #' @param tranistion.rates: a named vector of transition rates to other 
-#' CompartmentTypes.
+#'        CompartmentTypes.
 #' @param migration.rates: a named vector of migration rates *to* other 
-#' CompartmentTypes.
+#'        CompartmentTypes.
 #' @param bottleneck.size: the maximum number of lineages that can be transmitted
-#' to a Compartment of this Type.
-#' @param coalescent.rate: the rate at which lineages coalesce within a Compartment
-#' of this Type.
+#'        to a Compartment of this Type.
+#' @param effective.size: reciprocal of the rate at which lineages coalesce within 
+#'        a Compartment of this Type.
 #' @param popn.growth.dynamics: a text expression for population growth dynamics
-#' in forward time. If not NULL, can override `coalescent.rate`.
+#'        in forward time. If not NULL, can override `effective.size`.
+#' @param generation.time:  scales coalescent events to the time scale of 
+#'        outer events (including transmission).
 #' @param transmission.times: numeric vector of transmission event times, 
-#' populated by `outer.tree.sim` from class parameters.
+#'        populated by `outer.tree.sim` from class parameters.
 #' 
 #' @examples 
 #' 
@@ -40,7 +42,8 @@ CompartmentType  <- R6Class(
   public = list(
     initialize = function(name=NA, unsampled = NA, branching.rates=NA, 
                           transition.rates=NA, migration.rates=NA, bottleneck.size=NA,
-                          coalescent.rate=NA, popn.growth.dynamics=NA, transmission.times=NA) {
+                          effective.size=NA, popn.growth.dynamics=NA, 
+                          generation.time=NA, transmission.times=NA) {
       private$name <- name
       private$unsampled <- unsampled
       
@@ -52,8 +55,9 @@ CompartmentType  <- R6Class(
       private$bottleneck.size <- bottleneck.size
       
       # named vector of migration rates of different Compartments
-      private$coalescent.rate <- coalescent.rate
+      private$effective.size <- effective.size
       private$popn.growth.dynamics <- popn.growth.dynamics
+      private$generation.time <- generation.time
       
       # populated after outer.tree.sim, tracked used and unused for migration 
       # events in inner.tree.sim
@@ -97,13 +101,17 @@ CompartmentType  <- R6Class(
       private$transition.rates[[name.type]]
     },
     
-    get.coalescent.rate = function() {
-      private$coalescent.rate
+    get.effective.size = function() {
+      private$effective.size
     },
     
     get.popn.growth.dynamics = function() {
       private$popn.growth.dynamics
     },
+    
+    get.generation.time = function() {
+      private$generation.time
+    }
     
     get.transmission.times = function() {
       private$transmission.times
@@ -125,8 +133,9 @@ CompartmentType  <- R6Class(
     transition.rates = NULL,
     migration.rates = NULL,
     bottleneck.size = NULL,
-    coalescent.rate = NULL,
+    effective.size = NULL,
     popn.growth.dynamics = NULL,
+    generation.time = NULL,
     transmission.times = NULL
   )
 )
