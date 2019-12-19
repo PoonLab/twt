@@ -7,6 +7,11 @@
 #' @param tree: either a Newick tree string or an object of class 'phylo' (ape)
 #' that represents the transmission tree (history).  Internal node labels must 
 #' be present to indicate transmission sources.
+#' @param model:  an R6 model of class Model.  The Model should provide the parameters
+#'        of a CompartmentType and sampled Compartments.  Currently only one 
+#'        CompartmentType is supported by this method, until we can devise a 
+#'        procedure for the user to assign unsampled Compartments at internal
+#'        nodes to different CompartmentTypes.
 #' 
 #' @return
 #'   An object of class EventLogger initialized with a list of fixed transmission
@@ -21,7 +26,9 @@
 #' @export
 eventlog.from.tree <- function(tree) {
   # intiialize return value
-  e <- EventLogger$new()
+  #run <- Run$new(model)
+  #eventlog <- run$get.eventlog()
+  eventlog <- EventLogger$new()
   
   # check input
   if (is.character(tree)) {
@@ -68,24 +75,23 @@ eventlog.from.tree <- function(tree) {
 
     if (source_label != recipient_label) {
       branching_time <- phy$edge.length[x]
-      e$add.event('transmission', phy$heights[s_ind], NA, NA, 
+      eventlog$add.event('transmission', phy$heights[s_ind], NA, NA, 
                   recipient_label, source_label)
     }  # otherwise no transmission on branch
   })
   
-  e
+  eventlog
 }
 
 
 #' init.branching.events
 #' 
-#' `init.branching.events`` initializes an EventLogger object with 
-#' a list of fixed transmission events that are specified by the user 
-#' in a YAML file that has been parsed into a MODEL object.
+#' `init.branching.events`` initializes a Run object from a Model object
+#' in which the user has explicitly listed transmission events; *i.e.*, 
+#' bypassing simulation of the outer tree.
 #' 
-#' @param model: an object of class MODEL from which we will extract the 
-#' transmission tree information.
-#' @param eventlog: an object of class EventLog to update in-place
+#' @param model: R6 object of class Model
+#' @return R6 object of class Run
 #' 
 #' @examples
 #' # load model
@@ -98,7 +104,9 @@ eventlog.from.tree <- function(tree) {
 #' 
 #' @seealso eventlog.from.tree, sim.outer.tree
 #' @export
-init.branching.events <- function(model, eventlog=NA) {
+init.branching.events <- function(model) {
+  # TODO: rename this to load.outer.tree
+  
   # initialize Run object from Model
   run <- Run$new(model)
   
@@ -123,16 +131,24 @@ init.branching.events <- function(model, eventlog=NA) {
     if (is.numeric(branching.time)) {
       
       if ( is.element('R6', class(comp$get.source())) ) {
-        source <- comp$get.source()$get.name()
-      } 
-      else {
-        # FIXME: why is this necessary?
         source <- comp$get.source()
-      }
+      } 
+      #else {
+      #  # FIXME: why is this necessary?
+      #  source <- comp$get.source()
+      #}
       
       # add transmission event to EventLogger object
-      eventlog$add.event('transmission', branching.time, NA, NA, 
-                         comp$get.name(), source)
+      eventlog$add.event(
+        type = 'transmission', 
+        time = branching.time, 
+        line1 = NA, 
+        line2 = NA, 
+        comp1 = comp$get.name(), 
+        comp2 = source$get.name(),
+        type1 = comp$get.type()$get.name,
+        type2 = source$get.type()$get.name
+        )
     }
     else {
       
