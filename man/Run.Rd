@@ -16,22 +16,26 @@ is tracked at this level.
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}
 \describe{
-\item{\code{extant.lineages}}{list of Lineage objects with sampling time t=0 (most recent)}
+\item{\code{lineages:}}{list of Lineage objects}
 
-\item{\code{locations}}{a named list of Lineage objects keyed by Compartment}
+\item{\code{extant.lineages:}}{list of Lineage objects filtered by sampling time}
 
-\item{\code{counts}}{a data frame of population dynamics}
+\item{\code{locations:}}{a named list of Lineage objects keyed by Compartment}
+
+\item{\code{counts:}}{a data frame of population dynamics}
 }
 \if{html}{\out{</div>}}
 }
 \section{Active bindings}{
 \if{html}{\out{<div class="r6-active-bindings">}}
 \describe{
-\item{\code{extant.lineages}}{list of Lineage objects with sampling time t=0 (most recent)}
+\item{\code{lineages:}}{list of Lineage objects}
 
-\item{\code{locations}}{a named list of Lineage objects keyed by Compartment}
+\item{\code{extant.lineages:}}{list of Lineage objects filtered by sampling time}
 
-\item{\code{counts}}{a data frame of population dynamics}
+\item{\code{locations:}}{a named list of Lineage objects keyed by Compartment}
+
+\item{\code{counts:}}{a data frame of population dynamics}
 }
 \if{html}{\out{</div>}}
 }
@@ -161,6 +165,16 @@ is tracked at this level.
 \if{html}{\out{<div class="r">}}\preformatted{Run$add.lineage(lineage)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{time}}{= coalescent (cumulative time) of the simulation}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+a named list of Lineage objects.
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-remove.lineage"></a>}}

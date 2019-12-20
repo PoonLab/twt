@@ -3,14 +3,11 @@
 #' Simulate the coalescence of Lineages within Compartments, and resolve
 #' migration events that may involve sampled Lineages.
 #' 
-#' @param obj:  R6 object of class Model or Run.  If user provides a Model 
-#'        object, then an EventLogger object (such as produced from a Newick tree
-#'        string by `eventlog.from.tree`) must be provided.
-#'        The supplied or derived Run object tracks the locations of Lineage objects
-#'        among Compartments that are modified by transmission and migration; and 
-#'        tracks the presence/absence of Lineages that change with sampling, 
-#'        coalescence and bottleneck events.  
-#' @param e: (optional)  R6 object of class EventLogger
+#' @param run:  R6 object of class Run.  The Run object tracks the locations of 
+#'        Lineage objects among Compartments that are modified by transmission 
+#'        and migration; and tracks the presence/absence of Lineages that change 
+#'        with sampling, coalescence and bottleneck events.
+#'        
 #' @return R6 object of class EventLogger
 #' 
 #' @examples 
@@ -29,30 +26,7 @@
 #' plot(tree)  # converts to a Phylo object
 #' 
 #' @export
-sim.inner.tree <- function(obj, e=NA) {
-  
-  # handle arguments
-  if ( is.element('Run', class(obj)) ) {
-    run <- obj
-    if ( nrow(run$get.eventlog()$get.all.events()) == 0 ) {
-      stop("Error in sim.inner.tree(): empty EventLogger in Run object. ",
-           "Did you run sim.outer.tree() before calling this function?")
-    }
-  }
-  else if ( is.element('Model', class(obj)) ) {
-    if (is.environment(e)) {
-      run <- Run$new(obj)
-      # don't modify the original EventLogger object
-      run$set.eventlog(e$clone())
-    } 
-    else {
-      stop("You must provide an EventLogger to sim.inner.tree() if `mod` is a Model object")
-    }
-  }
-  else {
-    stop("sim.inner.tree(): argument `mod` must be R6 class Model or Run.")
-  }
-  
+sim.inner.tree <- function(run) {
   eventlog <- run$get.eventlog()
   events <- eventlog$get.all.events()
   
@@ -91,6 +65,7 @@ sim.inner.tree <- function(obj, e=NA) {
       # coalesced to final ancestral Lineage
       break
     }
+    print(n.extant)
     
     e <- events[row,]  # retrieve outer event
     
@@ -108,6 +83,7 @@ sim.inner.tree <- function(obj, e=NA) {
         current.time <- current.time + c.time
         .resolve.coalescent(run, comp, time=current.time)
         
+        print('coalescent')
         next  # try another coalescent event (no change to row)
       }
     }
@@ -125,7 +101,8 @@ sim.inner.tree <- function(obj, e=NA) {
     else {
       stop("Error in simInnerTree: unknown event type ", e$event.type)
     }
-      
+    print(e$event.type)
+    
     # move to next event
     row <- row+1
     current.time <- e$time
@@ -443,7 +420,8 @@ sample.coalescents <- function(run, current.time){
   b.time <- comp$get.branching.time()
   
   ctype <- comp$get.type()
-  c.rate <- ctype$get.coalescent.rate()
+  eff.size <- ctype$get.effective.size()
+  gen.time <- ctype$get.generation.time()
   pieces <- as.data.frame(ctype$get.popn.growth.dynamics())
   
   k <- length(run$get.extant.lineages(time=time, comp=comp))
@@ -454,19 +432,17 @@ sample.coalescents <- function(run, current.time){
   if ( is.null(b.time) || is.na(as.logical(b.time)) ) {
     # no branching time, handle index case
     if (is.null(pieces) || nrow(pieces) == 0) {
-      if (is.null(c.rate)) {
+      if (is.null(eff.size)) {
         stop("Error in rexp.coal: CompartmentType ", ctype$get.name(), 
-             " has no defined coalescent rate nor growth model.")
+             " has no defined effective size nor growth model.")
       }
-      return(rexp(n=1, rate=choose(k,2) * c.rate))
+      return(gen.time*rexp(n=1, rate=choose(k,2) / eff.size))
     }
     else {
       # assume we are at last stage of piecewise growth
-      # TODO: it would be more accurate to use sampling time distribution
-      #       to determine infection time of index case (but what if index
-      #       case is unsampled?)
-      c.rate <- 1. / pieces$startPopn[which.max(pieces$startTime)]
-      return(rexp(n=1, rate=choose(k,2) * c.rate))
+      # FIXME: should use infection time of index case
+      eff.size <- pieces$startPopn[which.max(pieces$startTime)]
+      return(gen.time*rexp(n=1, rate=choose(k,2) / eff.size))
     }
   }
   
@@ -478,13 +454,13 @@ sample.coalescents <- function(run, current.time){
   
   
   if (is.null(pieces) || nrow(pieces) == 0) {
-    if (is.null(c.rate)) {
+    if (is.null(eff.size)) {
       stop("Error in rexp.coal: CompartmentType ", ctype$get.name(), 
-           " has no defined coalescent rate nor growth model.")
+           " has no defined effective size nor growth model.")
     }
     else {
       # constant coalescent rate
-      return(rexp(n=1, rate=choose(k,2)*c.rate))
+      return(gen.time*rexp(n=1, rate=choose(k,2) / eff.size))
     }
   }
   else {
@@ -513,10 +489,10 @@ sample.coalescents <- function(run, current.time){
       n.eff <- n.0 + beta * delta.t
       
       # for derivation see https://github.com/PoonLab/twt/issues/90
-      wait <- ifelse(beta==0, 
-                     -n.eff/choose(k,2) * log(runif(1)),
-                     n.eff/beta * (runif(1)^(-beta/choose(k, 2)) - 1)
-                     )
+      wait <- gen.time * 
+        ifelse( beta == 0, 
+               -n.eff/choose(k,2) * log(runif(1)),
+               n.eff/beta * (runif(1)^(-beta/choose(k, 2)) - 1) )
       result <- time + (f.time - (current.time-wait))
 
       if (i == nrow(pieces) ||  # last interval

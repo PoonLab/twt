@@ -1,5 +1,3 @@
-context("load inputs")
-
 library(twt)
 #setwd('~/git/treeswithintrees')
 #source('pkg/R/loadInputs.R')

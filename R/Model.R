@@ -150,10 +150,10 @@ Model <- R6Class("Model",
           stop(paste("CompartmentTypes:", x, " missing required field(s): ", required[missing]))
         }
         
-        # CompartmentType must specify EITHER coalescent.rate or piecewise linear model
-        if (!is.element('coalescent.rate', names(params)) &&
+        # CompartmentType must specify EITHER effective.size or piecewise linear model
+        if (!is.element('effective.size', names(params)) &&
             !is.element('popn.growth.dynamics', names(params))) {
-          stop("Either `coalescent.rate` or `popn.growth.dynamics` must be",
+          stop("Either `effective.size` or `popn.growth.dynamics` must be",
                "declared in CoalescentType", x)
         }
         
@@ -165,14 +165,13 @@ Model <- R6Class("Model",
           migration.rates = eval(parse(text=paste('list', params$migration.rates))),
           
           bottleneck.size = params$bottleneck.size,
-          coalescent.rate = params$coalescent.rate,
+          effective.size = params$effective.size,
           
           popn.growth.dynamics = private$init.popn.growth.dynamics(
             params$popn.growth.dynamics
-            )
-          # transmission.times parameter populated later when simulating outer tree 
-          # (simOuterTree.R) to be used when simulating migration events in inner 
-          # tree (simInnerTree.R)
+            ),
+          
+          generation.time = params$generation.time
         )
       }))
     },

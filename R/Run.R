@@ -11,14 +11,15 @@
 #' 
 #' @param model: an object of class Model
 #' 
-#' @field extant.lineages  list of Lineage objects with sampling time t=0 (most recent)
-#' @field locations  a named list of Lineage objects keyed by Compartment
-#' @field counts  a data frame of population dynamics
+#' @field lineages:  list of Lineage objects
+#' @field extant.lineages:  list of Lineage objects filtered by sampling time
+#' @field locations:  a named list of Lineage objects keyed by Compartment
+#' @field counts:  a data frame of population dynamics
 #' 
 #' @export
 Run <- R6Class(
   "Run",
-  lock_objects = FALSE,
+  #lock_objects = FALSE,
   
   public = list(
     
@@ -46,7 +47,7 @@ Run <- R6Class(
       private$fixed.samplings <- model$get.fixed.samplings()
       
       #private$extant.lineages <- private$get.extant.lineages(0)
-      private$extant.lineages <- private$retrieve.extant.lineages(0)
+      #private$extant.lineages <- private$retrieve.extant.lineages(0)
       private$locations <- private$locate.lineages()
       
       # placeholder to be populated by sim.outer.tree()
@@ -71,25 +72,25 @@ Run <- R6Class(
     get.unsampled.hosts = function() { private$unsampled.hosts },
     
     get.extant.lineages = function(time, comp=NA) {
-      # Retrieves a list of Lineage objects that are extant at the 
-      # specified time.
-      # Caches the result in member variable 'extant.lineages'.
-      # Note that because Lineages are being added and removed through
-      # coalescent and bottleneck events, the output will change
-      # over the course of inner tree simulation.
-      # 
-      # @param time = coalescent (cumulative time) of the simulation
-      # @return  a named list of Lineage objects.
+      #' Retrieves a list of Lineage objects that are extant at the 
+      #' specified time.
+      #' Note that because Lineages are being added and removed through
+      #' coalescent and bottleneck events, the output will change
+      #' over the course of inner tree simulation.
+      #' 
+      #' @param time = coalescent (cumulative time) of the simulation
+      #' @return  a named list of Lineage objects.
       
-      # store in private variable for other functions to access
-      private$extant.lineages <- private$retrieve.extant.lineages(time)
+      extant.lineages <- unlist(sapply(private$lineages, function(b){
+        if (b$get.sampling.time() <= time) { b }
+      }))
       
       if (is.environment(comp)) {
         Filter(function(x) x$get.location()$get.name()==comp$get.name(), 
-               private$extant.lineages)
+               extant.lineages)
       }
       else {
-        return(private$extant.lineages) 
+        return(extant.lineages) 
       }
 
     },
@@ -156,9 +157,14 @@ Run <- R6Class(
 
   
   private = list(
+    eventlog = NULL,
+    initial.conds = NULL,
+    types = NULL,
+    compartments = NULL,
     
     unsampled.hosts = NULL,
-    extant.lineages = NULL,
+    lineages = NULL,
+    fixed.samplings = NULL,
     
     locations = NULL,
     counts = NULL,
@@ -168,15 +174,6 @@ Run <- R6Class(
     
     
     # private functions
-    
-    retrieve.extant.lineages = function(time) {
-      # initializes list of Lineages with sampling.time t=0
-      unlist(sapply(private$lineages, function(b){
-        if (b$get.sampling.time() <= time) {b}
-      }))
-    },
-    
-    
     locate.lineages = function() {
       # Report host locations of all extant lineages into a list,
       # given last time user called `get.extant.lineages`

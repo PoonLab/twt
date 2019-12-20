@@ -1,5 +1,5 @@
-library(twt)
-#setwd('~/git/twt/pkg/tests/testthat')
+require(twt)
+#setwd('~/git/twt/tests/testthat')
 #source('pkg/R/loadInputs.R')
 
 

@@ -111,7 +111,7 @@ CompartmentType  <- R6Class(
     
     get.generation.time = function() {
       private$generation.time
-    }
+    },
     
     get.transmission.times = function() {
       private$transmission.times
@@ -129,9 +129,11 @@ CompartmentType  <- R6Class(
   private = list(
     name = NULL,
     unsampled = NULL,
+    
     branching.rates = NULL,
     transition.rates = NULL,
     migration.rates = NULL,
+    
     bottleneck.size = NULL,
     effective.size = NULL,
     popn.growth.dynamics = NULL,

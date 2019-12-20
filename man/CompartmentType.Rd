@@ -34,8 +34,9 @@ bottleneck.size=1, coalescent.rate=1)
 \item \href{#method-get.migration.rate}{\code{CompartmentType$get.migration.rate()}}
 \item \href{#method-get.transition.rates}{\code{CompartmentType$get.transition.rates()}}
 \item \href{#method-get.transition.rate}{\code{CompartmentType$get.transition.rate()}}
-\item \href{#method-get.coalescent.rate}{\code{CompartmentType$get.coalescent.rate()}}
+\item \href{#method-get.effective.size}{\code{CompartmentType$get.effective.size()}}
 \item \href{#method-get.popn.growth.dynamics}{\code{CompartmentType$get.popn.growth.dynamics()}}
+\item \href{#method-get.generation.time}{\code{CompartmentType$get.generation.time()}}
 \item \href{#method-get.transmission.times}{\code{CompartmentType$get.transmission.times()}}
 \item \href{#method-set.transmission.times}{\code{CompartmentType$set.transmission.times()}}
 \item \href{#method-set.migration.rate}{\code{CompartmentType$set.migration.rate()}}
@@ -53,8 +54,9 @@ bottleneck.size=1, coalescent.rate=1)
   transition.rates = NA,
   migration.rates = NA,
   bottleneck.size = NA,
-  coalescent.rate = NA,
+  effective.size = NA,
   popn.growth.dynamics = NA,
+  generation.time = NA,
   transmission.times = NA
 )}\if{html}{\out{</div>}}
 }
@@ -133,10 +135,10 @@ bottleneck.size=1, coalescent.rate=1)
 
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-get.coalescent.rate"></a>}}
-\subsection{Method \code{get.coalescent.rate()}}{
+\if{html}{\out{<a id="method-get.effective.size"></a>}}
+\subsection{Method \code{get.effective.size()}}{
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{CompartmentType$get.coalescent.rate()}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{CompartmentType$get.effective.size()}\if{html}{\out{</div>}}
 }
 
 }
@@ -145,6 +147,14 @@ bottleneck.size=1, coalescent.rate=1)
 \subsection{Method \code{get.popn.growth.dynamics()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{CompartmentType$get.popn.growth.dynamics()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-get.generation.time"></a>}}
+\subsection{Method \code{get.generation.time()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{CompartmentType$get.generation.time()}\if{html}{\out{</div>}}
 }
 
 }
