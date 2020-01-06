@@ -78,21 +78,24 @@ Run <- R6Class(
       #' coalescent and bottleneck events, the output will change
       #' over the course of inner tree simulation.
       #' 
-      #' @param time = coalescent (cumulative time) of the simulation
+      #' @param time: coalescent (cumulative time) of the simulation
+      #' @param comp: R6 object of class Compartment
+      #' 
       #' @return  a named list of Lineage objects.
-      
-      extant.lineages <- unlist(sapply(private$lineages, function(b){
-        if (b$get.sampling.time() <= time) { b }
-      }))
-      
+      #' 
       if (is.environment(comp)) {
-        Filter(function(x) x$get.location()$get.name()==comp$get.name(), 
-               extant.lineages)
-      }
+        extant.lineages <- unlist(sapply(comp$get.lineages(), function(b) {
+          if (is.element(b$get.name(), names(private$lineages)) & 
+              b$get.sampling.time() <= time) { b }
+        }))
+      }      
       else {
-        return(extant.lineages) 
+        extant.lineages <- unlist(sapply(private$lineages, function(b){
+          if (b$get.sampling.time() <= time) { b }
+        }))  
       }
-
+      
+      return(extant.lineages)
     },
     
     add.lineage = function(lineage) {

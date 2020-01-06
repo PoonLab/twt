@@ -65,7 +65,7 @@ sim.inner.tree <- function(run) {
       # coalesced to final ancestral Lineage
       break
     }
-    print(n.extant)
+    #print(n.extant)
     
     e <- events[row,]  # retrieve outer event
     
@@ -101,7 +101,7 @@ sim.inner.tree <- function(run) {
     else {
       stop("Error in simInnerTree: unknown event type ", e$event.type)
     }
-    print(e$event.type)
+    #print(e$event.type)
     
     # move to next event
     row <- row+1

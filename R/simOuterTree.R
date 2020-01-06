@@ -229,8 +229,8 @@ sim.outer.tree <- function(model, max.attempts=5) {
       break
     }
     
-    attempt <- attempt+1  # else try again
-    warning("Failed to resolve outer tree, starting attempt ", attempt)
+    attempt <- attempt + 1  # else try again
+    warning("Failed to resolve outer tree, starting attempt ", attempt, immediate.=TRUE)
   }
   
   if (attempt == max.attempts) {
@@ -609,6 +609,8 @@ sim.outer.tree <- function(model, max.attempts=5) {
         # source is an unsampled Compartment 
         source <- run$generate.unsampled(e$s.type)
         active[[source$get.name()]] <- source
+        #types[[source$get.name()]] <- source$get.type()
+        
         # if recipient is sampled, upgrade the source
         #if ( !recipient$is.unsampled() ) source$set.unsampled(FALSE)
       }
@@ -630,6 +632,7 @@ sim.outer.tree <- function(model, max.attempts=5) {
         
         # remove recipient from active list
         active[recipient$get.name()] <- NULL
+        #types[recipient$get.name()] <- NULL
       }
     }
     
