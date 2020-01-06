@@ -140,7 +140,7 @@ Model <- R6Class("Model",
       }
       
       required <- c('branching.rates', 'transition.rates', 'migration.rates', 
-                    'bottleneck.size')
+                    'bottleneck.size', 'generation.time')
       
       unlist(sapply(names(settings$CompartmentTypes), function(x) {
         params <- settings$CompartmentTypes[[x]]

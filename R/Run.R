@@ -316,11 +316,8 @@ plot.Run <- function(run, type='t', ...) {
   #. <- sapply(nodes, function(node) {
   for (i in 1:length(nodes)) {
     node <- nodes[i]
-    is.sampled <- FALSE
-    if (is.element(node, names(comps))) {
-      is.sampled <- TRUE
-      comp <- comps[[node]]
-    }
+    comp <- comps[[node]]
+    is.sampled <- !comp$is.unsampled()
     
     if (node != root) {
       row <- trans[trans$compartment1 == node,]
@@ -336,8 +333,15 @@ plot.Run <- function(run, type='t', ...) {
       samp.time <- -max(sapply(comp$get.lineages(), 
                               function(line) line$get.sampling.time()))
     } else {
-      samp.time <- min(c(trans$time[trans$compartment2==node],
-                         migrations$time[migrations$compartment2==node]))
+      # unsampled compartment - right limit at first transmission or migration event
+      if (nrow(migrations) > 0) {
+        samp.time <- min(c(trans$time[trans$compartment2==node],
+                           migrations$time[migrations$compartment2==node]))  
+      } else {
+        if (is.element(node, trans$compartment2)) {
+          samp.time <- trans$time[trans$compartment2 == node]  
+        }
+      }
     }
     
     segments(x0=-inf.time, x1=-samp.time, y0=which(nodes==node), 
@@ -371,6 +375,9 @@ plot.Run <- function(run, type='t', ...) {
 #' @keywords internal
 .plot.dynamics <- function(run, ...) {
   counts <- run$get.counts()
+  if (is.null(counts)) {
+    stop("Run object does not have counts field, may have been loaded from YAML")
+  }
   
   # set up plot region
   par(mar=c(5,5,1,5), xpd=NA)
