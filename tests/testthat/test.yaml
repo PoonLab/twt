@@ -10,11 +10,8 @@ CompartmentTypes:
     branching.rates: (host=0.1)
     migration.rates: ()
     transition.rates: ()
+    generation.time: 1
     bottleneck.size: 1
-    wait.time.distr:
-      distr: 'exp'
-      hyperparameters:
-        rate: 20
     popn.growth.dynamics:
       piece1:
         startTime: 0

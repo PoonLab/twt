@@ -12,10 +12,7 @@ CompartmentTypes:
     transition.rates: ()
     migration.rates: (blood=0.0, cell=0.0)        
     bottleneck.size: 1                            # assume a single virus enters an uninfected cell
-    wait.time.distr:                              # distribution of waiting time between infection time and first sampling time of a Compartment
-      distr: 'exp'
-      hyperparameters:
-        rate: 20
+    generation.time: 1
     popn.growth.dynamics:                         # no replication in blood 
       piece1:
         startTime: 0

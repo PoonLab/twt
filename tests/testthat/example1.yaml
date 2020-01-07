@@ -14,12 +14,9 @@ CompartmentTypes:
     branching.rates: (host=0.2)     # only one CompartmentType, in this case represents transmission rates
     migration.rates: ()             # assume no migration
     transition.rates: ()
-    coalescent.rate: 1.5
+    effective.size: 2
+    generation.time: 1
     bottleneck.size: 1              # bottleneck size when transmission event occurs
-    wait.time.distr:
-      distr: 'exp'
-      hyperparameters:
-        rate: 20
     popn.growth.dynamics:
       piece1:
         startTime: 0

@@ -297,7 +297,7 @@ sim.inner.tree <- function(run) {
   
   # determine how many extant Lineages in recipient (if any) were 
   # transferred by migration (secondary contact) from source
-  eff.size <- 1/recipient$get.type()$get.coalescent.rate()
+  eff.size <- recipient$get.type()$get.effective.size()
   bottleneck.size <- recipient$get.type()$get.bottleneck.size()
   
   # sampling without replacement (hypergeometric distribution)

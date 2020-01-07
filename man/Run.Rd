@@ -168,7 +168,9 @@ is tracked at this level.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{time}}{= coalescent (cumulative time) of the simulation}
+\item{\code{time:}}{coalescent (cumulative time) of the simulation}
+
+\item{\code{comp:}}{R6 object of class Compartment}
 }
 \if{html}{\out{</div>}}
 }
