@@ -83,7 +83,7 @@ sim.inner.tree <- function(run) {
         current.time <- current.time + c.time
         .resolve.coalescent(run, comp, time=current.time)
         
-        print('coalescent')
+        #print('coalescent')
         next  # try another coalescent event (no change to row)
       }
     }
@@ -365,7 +365,7 @@ sim.inner.tree <- function(run) {
 #' # and constant coalescent rate 1.0
 #' path <- system.file('extdata', 'SI.yaml', package='twt')
 #' settings <- yaml.load_file(path)
-#' mod <- MODEL$new(settings)
+#' mod <- Model$new(settings)
 #' run <- Run$new(mod)
 #' 
 #' # these should average 0.333
@@ -385,15 +385,8 @@ sample.coalescents <- function(run, current.time){
     }
   )
   
-  # counts the number of extant lineages in one compartment
-  # calculated for parameter `k` in function `wait.time`
-  num.ext.lineages <- function(x) {
-    length(which(ext.lineages.compnames==x$get.name()))
-  }
-  
-  # retrieves compartments with multiple extant lineages
-  counts <- sapply(comps, function(x) num.ext.lineages(x))
-  ext.comps <- comps[counts >= 2]
+  counts <- table(ext.lineages.compnames)
+  ext.comps <- comps[names(counts)[counts>1]]
   
   # calculate waiting times per Compartment
   sapply(ext.comps, function(comp) {

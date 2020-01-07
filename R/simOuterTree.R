@@ -562,7 +562,9 @@ sim.outer.tree <- function(model, max.attempts=5) {
     #print(e)
     #print(names(active))
     
+    # FIXME: this is time-consuming
     types <- sapply(active, function(comp) comp$get.type()$get.name())
+    
     n.active.recipients <- sum(types==e$r.type)
     n.active.sources <- sum(types==e$s.type)
     
