@@ -42,13 +42,13 @@ Run <- R6Class(
       names(private$lineages) <- sapply(private$lineages, function(l) {
         l$get.name()
       })
-      
-      
+      private$sampling.times <- lapply(private$lineages, 
+                                       function(x) x$get.sampling.time())
+      private$locations <- lapply(private$lineages,
+                                  function(x) x$get.location()$get.name())
+        
       private$fixed.samplings <- model$get.fixed.samplings()
       
-      #private$extant.lineages <- private$get.extant.lineages(0)
-      #private$extant.lineages <- private$retrieve.extant.lineages(0)
-      private$locations <- private$locate.lineages()
       
       # placeholder to be populated by sim.outer.tree()
       # not used if user supplies transmission history
@@ -70,6 +70,17 @@ Run <- R6Class(
     get.compartments = function() { private$compartments },
     get.lineages = function() { private$lineages },
     get.unsampled.hosts = function() { private$unsampled.hosts },
+    
+    get.num.extant = function(time, location=NA) {
+      if (is.na(location)) {
+        sum(private$sampling.times <= time)  
+      }
+      else {
+        sum(private$sampling.times[
+          names(which(private$locations == location))
+          ] <= time)
+      }
+    },
     
     get.extant.lineages = function(time, comp=NA) {
       #' Retrieves a list of Lineage objects that are extant at the 
@@ -104,9 +115,12 @@ Run <- R6Class(
         stop("Error in add.lineage(): <lineage> must be R6 class Lineage object.")
       }
       #private$lineages[[length(private$lineages)+1]] <- lineage
-      private$lineages[[lineage$get.name()]] <- lineage
+      l.name <- lineage$get.name()
+      private$lineages[[l.name]] <- lineage
+      private$sampling.times[[l.name]] <- lineage$get.sampling.time()
       
       comp <- lineage$get.location()
+      private$locations[[l.name]] <- comp$get.name()
       comp$add.lineage(lineage)
     },
     
@@ -121,7 +135,11 @@ Run <- R6Class(
              paste(names(private$lineages), collapse=',')))
       }
       
-      private$lineages[[lineage$get.name()]] <- NULL
+      l.name <- lineage$get.name()
+      private$lineages[[l.name]] <- NULL
+      private$sampling.times[[l.name]] <- NULL
+      private$locations[[l.name]] <- NULL
+      
       comp <- lineage$get.location()
       comp$remove.lineage(lineage)
     },
@@ -165,32 +183,13 @@ Run <- R6Class(
     unsampled.hosts = NULL,
     lineages = NULL,
     fixed.samplings = NULL,
+    sampling.times = NULL,
     
     locations = NULL,
     counts = NULL,
     
-    node.ident = 1,  # used in simulation of inner tree for generating 
+    node.ident = 1  # used in simulation of inner tree for generating 
                      # unique idents for internal nodes of ancestral lineages
-    
-    
-    # private functions
-    locate.lineages = function() {
-      # Report host locations of all extant lineages into a list,
-      # given last time user called `get.extant.lineages`
-      #
-      # @return  List of form { host1 = c(line1, line2, line3), ... }
-      
-      private$locations <- list()      # reset list
-      for (node in private$extant.lineages) {
-        compName <- node$get.location()$get.name()
-        
-        if ( !is.element(compName, names(private$locations)) ) {
-          private$locations[[compName]] <- list()
-        }
-        private$locations[[compName]] <- c(private$locations[[compName]], node$get.name())
-      }
-      private$locations
-    }
     
   )
   
