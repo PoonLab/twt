@@ -13,6 +13,14 @@ the numbers of pairs of Lineages that can coalesce over time.  In addition,
 the number of unsampled compartments is stochastic outcome of the model that
 is tracked at this level.
 }
+\note{
+https://github.com/r-lib/roxygen2/issues/415
+Retrieves a list of Lineage objects that are extant at the 
+specified time.
+Note that because Lineages are being added and removed through
+coalescent and bottleneck events, the output will change
+over the course of inner tree simulation.
+}
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}
 \describe{

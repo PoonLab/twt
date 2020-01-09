@@ -17,12 +17,11 @@
 #' @field counts:  a data frame of population dynamics
 #' 
 #' @export
-Run <- R6Class(
-  "Run",
+#' @note https://github.com/r-lib/roxygen2/issues/415
+Run <- R6Class("Run",
   #lock_objects = FALSE,
   
   public = list(
-    
     initialize = function(model) {
       private$eventlog <- EventLogger$new()
       
@@ -293,7 +292,7 @@ plot.Run <- function(run, type='t', ...) {
 #' @keywords internal
 .plot.outer.tree <- function(run, ...) {
   e <- run$get.eventlog()
-  comps <- run$get.compartments()
+  comps <- c(run$get.compartments(), run$get.unsampled.hosts())
   types <- run$get.types()
   
   events <- e$get.all.events()

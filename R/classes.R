@@ -143,6 +143,9 @@ CompartmentType  <- R6Class(
 )
 
 
+print.CompartmentType <- function(obj) {
+  cat(paste(obj$name, ":"))
+}
 
 
 #' Compartment

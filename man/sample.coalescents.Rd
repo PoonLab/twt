@@ -22,7 +22,7 @@ Draw waiting times for all compartments that have two or more extant lineages.
 # and constant coalescent rate 1.0
 path <- system.file('extdata', 'SI.yaml', package='twt')
 settings <- yaml.load_file(path)
-mod <- MODEL$new(settings)
+mod <- Model$new(settings)
 run <- Run$new(mod)
 
 # these should average 0.333

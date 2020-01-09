@@ -356,7 +356,7 @@ sim.outer.tree <- function(model, max.attempts=5) {
 #'         event type, recipient CompartmentType and source CompartmentType
 #'         
 #' @keywords internal
-.sample.outer.events <- function(run, max.attempts=10) {
+.sample.outer.events <- function(run, max.attempts=10, chunk.size=1e4) {
   # extract objects from Run object
   comps <- run$get.compartments()
   types <- run$get.types()  # CompartmentType objects
@@ -377,10 +377,16 @@ sim.outer.tree <- function(model, max.attempts=5) {
     susceptible[init.conds$indexType] <- susceptible[init.conds$indexType] - 1
     infected[init.conds$indexType] <- 1
     
-    # prepare outcome containers
-    events <- data.frame(time=numeric(), event.type=character(), r.type=character(), 
-                         s.type=character(), stringsAsFactors = FALSE)
-    counts <- c()
+    # pre-allocate outcome containers
+    events <- data.frame(
+      time=numeric(chunk.size), 
+      event.type=character(chunk.size), 
+      r.type=character(chunk.size), 
+      s.type=character(chunk.size), 
+      stringsAsFactors = FALSE
+      )
+    counts <- matrix(NA, nrow=chunk.size, ncol=length(c(susceptible, infected)))
+    row.num <- 1
     
     # simulate trajectories in forward time (indexed in reverse, ha ha!)
     current.time <- init.conds$originTime
@@ -423,8 +429,9 @@ sim.outer.tree <- function(model, max.attempts=5) {
         }
         
         # update counts
-        susceptible[recipient$get.name()] <- susceptible[recipient$get.name()] - 1
-        infected[recipient$get.name()] <- infected[recipient$get.name()] + 1
+        r.name <- recipient$get.name()
+        susceptible[r.name] <- susceptible[r.name] - 1
+        infected[r.name] <- infected[r.name] + 1
       }
       else {
         total.s.rate <- sum(s.rates)
@@ -444,15 +451,17 @@ sim.outer.tree <- function(model, max.attempts=5) {
           }
           
           # susceptible or infected?
-          sus <- susceptible[source$get.name()]
-          inf <- infected[source$get.name()]
+          s.name <- source$get.name()
+          r.name <- recipient$get.name()
+          sus <- susceptible[s.name]
+          inf <- infected[s.name]
           if (runif(1, max=sus+inf) < sus) {
-            susceptible[source$get.name()] <- sus - 1
-            susceptible[recipient$get.name()] <- susceptible[recipient$get.name()] + 1
+            susceptible[s.name] <- sus - 1
+            susceptible[r.name] <- susceptible[r.name] + 1
           } 
           else {
-            infected[source$get.name()] <- inf - 1
-            infected[recipient$get.name()] <- infected[recipient$get.name()] + 1
+            infected[s.name] <- inf - 1
+            infected[r.name] <- infected[r.name] + 1
           }
         }
         else {
@@ -473,18 +482,30 @@ sim.outer.tree <- function(model, max.attempts=5) {
       }
       
       # append counts to outcome container after event
-      counts <- rbind(counts, c(susceptible, infected))
+      #counts <- rbind(counts, c(susceptible, infected))
+      counts[row.num, ] <- c(susceptible, infected)
       
       # append event
-      events <- rbind(events, data.frame(
-        time=current.time, 
-        event.type=event.type,
-        r.type=recipient$get.name(),
-        s.type=source$get.name(),
-        stringsAsFactors=FALSE
-      ))
-
+      events[row.num, ] <- c(current.time, event.type, recipient$get.name(), source$get.name())
+      
+      # go to next row
+      row.num <- row.num + 1
+      if (row.num > nrow(counts)) {
+        # time to allocate more space
+        counts <- rbind(counts, matrix(NA, nrow=chunk.size, ncol=ncol(counts)))
+        events <- rbind(events, data.frame(
+          time=numeric(chunk.size), 
+          event.type=character(chunk.size), 
+          r.type=character(chunk.size), 
+          s.type=character(chunk.size), 
+          stringsAsFactors = FALSE
+        ))
+      }
     } 
+    
+    # trim unused rows
+    counts <- counts[!is.na(counts[,1]), ]
+    events <- events[events$event.type != '', ]
     
     # check that there are enough Compartments of each Type (ignoring
     # sampling times)
@@ -517,9 +538,12 @@ sim.outer.tree <- function(model, max.attempts=5) {
   counts <- as.data.frame(counts)
   names(counts) <- c(paste('S.', names(susceptible), sep=''), 
                      paste('I.', names(infected), sep=''))
-  run$set.counts(cbind(time=events$time, counts))  # store for plotting
+  run$set.counts(cbind(time=as.double(events$time), counts))  # store for plotting
   
-  cbind(events, counts)
+  result <- cbind(events, counts)
+  result$time <- as.double(result$time)
+  result$event.type <- as.factor(result$event.type)
+  result
 }
 
 
@@ -548,6 +572,8 @@ sim.outer.tree <- function(model, max.attempts=5) {
   
   # start with sampled infected Compartments
   active <- run$get.compartments()
+  types <- sapply(active, function(comp) comp$get.type()$get.name())
+  samp.times <- sapply(active, function(comp) comp$get.sampling.time())
   
   # iterate through events in reverse time (start with most recent)
   for (row in seq(nrow(events), 1, -1)) {
@@ -559,11 +585,6 @@ sim.outer.tree <- function(model, max.attempts=5) {
     
     # go to the next event
     e <- events[row, ]  
-    #print(e)
-    #print(names(active))
-    
-    # FIXME: this is time-consuming
-    types <- sapply(active, function(comp) comp$get.type()$get.name())
     
     n.active.recipients <- sum(types==e$r.type)
     n.active.sources <- sum(types==e$s.type)
@@ -577,9 +598,13 @@ sim.outer.tree <- function(model, max.attempts=5) {
       # check if recipient is an active Compartment
       if (runif(1, max=n.recipients) < n.active.recipients) {
         # infection must precede first Lineage sampling time
-        eligible <- Filter(function(comp) is.na(comp$get.sampling.time()) || 
-                             e$time > comp$get.sampling.time(), 
-                           active[types==e$r.type])
+        
+        # FIXME: this is slow
+        #eligible <- Filter(function(comp) is.na(comp$get.sampling.time()) || 
+        #                     e$time > comp$get.sampling.time(), 
+        #                   active[types==e$r.type])
+        eligible <- active[which(types==e$r.type & (is.na(samp.times) || samp.times < e$time))]
+          
         if (length(eligible) == 0) {
           stop("Error in .assign.events(): No eligible compartments for transmission event ", e)
         }
@@ -611,8 +636,13 @@ sim.outer.tree <- function(model, max.attempts=5) {
         # source is an unsampled Compartment 
         source <- run$generate.unsampled(e$s.type)
         active[[source$get.name()]] <- source
+
+        types <- c(types, source$get.type()$get.name())
+        names(types)[length(types)] <- source$get.name()
         #types[[source$get.name()]] <- source$get.type()
         
+        samp.times <- c(samp.times, NA)
+        names(samp.times)[length(samp.times)] <- source$get.name()
         # if recipient is sampled, upgrade the source
         #if ( !recipient$is.unsampled() ) source$set.unsampled(FALSE)
       }
@@ -634,6 +664,8 @@ sim.outer.tree <- function(model, max.attempts=5) {
         
         # remove recipient from active list
         active[recipient$get.name()] <- NULL
+        types <- types[-which(names(types)==recipient$get.name())]
+        samp.times <- samp.times[-which(names(samp.times)==recipient$get.name())]
         #types[recipient$get.name()] <- NULL
       }
     }
@@ -663,6 +695,9 @@ sim.outer.tree <- function(model, max.attempts=5) {
               type1 = old.type,
               type2 = compartment$get.type()$get.name()
             )
+            
+            # update <types> vector
+            types[compartment$get.name()] <- compartment$get.type()$get.name()
           }
           # otherwise ignore transition of unsampled Compartment
         }
