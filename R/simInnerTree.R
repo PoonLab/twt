@@ -49,8 +49,9 @@ sim.inner.tree <- function(run) {
   
   # initialize simulation at most recent sampling time
   current.time <- 0.
-  extant.lineages <- run$get.extant.lineages(current.time)
-  n.extant <- length(extant.lineages)
+  
+  #extant.lineages <- run$get.extant.lineages(current.time)
+  n.extant <- run$get.num.extant(current.time)
   if (n.extant == 0) {
     stop ('There must be at least one lineage sampled at time t=0.')
   }
@@ -61,13 +62,15 @@ sim.inner.tree <- function(run) {
   row <- 1
   while (row <= nrow(events)) {
     
-    if ( n.extant==1 & length(run$get.extant.lineages(max(events$time)))==1 ) {
+    if ( n.extant == 1 & 
+         run$get.num.extant(max(events$time)) == 1 ) {
+         #length(run$get.extant.lineages(max(events$time)))==1 ) {
       # coalesced to final ancestral Lineage
       break
     }
     #print(n.extant)
     
-    e <- events[row,]  # retrieve outer event
+    e <- events[row, ]  # retrieve outer event
     
     # draw waiting times for coalescence of extant lineages (named vector)
     c.times <- sample.coalescents(run, current.time)
@@ -106,8 +109,8 @@ sim.inner.tree <- function(run) {
     # move to next event
     row <- row+1
     current.time <- e$time
-    extant.lineages <- run$get.extant.lineages(current.time)
-    n.extant <- length(extant.lineages)
+    #extant.lineages <- run$get.extant.lineages(current.time)
+    n.extant <- run$get.num.extant(current.time)
   }
  
   # coalesce residual Lineages in root Compartment
@@ -123,7 +126,7 @@ sim.inner.tree <- function(run) {
     current.time <- current.time + c.time
     .resolve.coalescent(run, comp, current.time)
     
-    n.extant <- length(run$get.extant.lineages(current.time))
+    n.extant <- run$get.num.extant(current.time) #length(run$get.extant.lineages(current.time))
   }
   
   return(eventlog)
@@ -210,6 +213,7 @@ sim.inner.tree <- function(run) {
     # move "surviving" Lineage to source Compartment
     recipient$remove.lineage(lineage)
     lineage$set.location(source)
+    run$move.lineage(lineage, source)
     source$add.lineage(lineage)
   }
   
@@ -311,6 +315,9 @@ sim.inner.tree <- function(run) {
       recipient$remove.lineage(line)
       line$set.location(source)
       source$add.lineage(line)
+      
+      # update Run object
+      run$move.lineage(line, source)
     }
     
     # update eventlog
@@ -378,15 +385,11 @@ sample.coalescents <- function(run, current.time){
   compnames <- names(comps)
   
   # retrieves compartment names for extant lineages
-  ext.lineages.compnames <- sapply(
-    run$get.extant.lineages(current.time),
-    function(x) {
-      x$get.location()$get.name()
-    }
-  )
+  ext.lineages.compnames <- run$get.locations()
   
-  counts <- table(ext.lineages.compnames)
-  ext.comps <- comps[names(counts)[counts>1]]
+  # retrieves compartments with multiple extant lineages
+  counts <- table(unlist(ext.lineages.compnames))
+  ext.comps <- comps[names(counts)[counts >= 2]]
   
   # calculate waiting times per Compartment
   sapply(ext.comps, function(comp) {
@@ -417,7 +420,8 @@ sample.coalescents <- function(run, current.time){
   gen.time <- ctype$get.generation.time()
   pieces <- as.data.frame(ctype$get.popn.growth.dynamics())
   
-  k <- length(run$get.extant.lineages(time=time, comp=comp))
+  #k <- length(run$get.extant.lineages(time=time, comp=comp))
+  k <- run$get.num.extant(time, comp$get.name())
   if (k < 2) {
     stop("Error in rexp.coal: called on Compartment with <2 lineages.")
   }
