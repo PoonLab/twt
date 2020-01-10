@@ -15,10 +15,6 @@ CompartmentTypes:
     effective.size: 10
     generation.time: 1
     bottleneck.size: 1
-    wait.time.distr:
-      distr: 'exp'
-      hyperparameters:
-        rate: 20
 
 Compartments:
   'A':

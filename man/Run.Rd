@@ -15,11 +15,8 @@ is tracked at this level.
 }
 \note{
 https://github.com/r-lib/roxygen2/issues/415
-Retrieves a list of Lineage objects that are extant at the 
-specified time.
-Note that because Lineages are being added and removed through
-coalescent and bottleneck events, the output will change
-over the course of inner tree simulation.
+count the number of Lineages that are extant (has been sampled)
+more recently than the user-specified time
 }
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}
@@ -61,9 +58,13 @@ over the course of inner tree simulation.
 \item \href{#method-get.compartments}{\code{Run$get.compartments()}}
 \item \href{#method-get.lineages}{\code{Run$get.lineages()}}
 \item \href{#method-get.unsampled.hosts}{\code{Run$get.unsampled.hosts()}}
+\item \href{#method-get.num.extant}{\code{Run$get.num.extant()}}
+\item \href{#method-get.sampling.times}{\code{Run$get.sampling.times()}}
 \item \href{#method-get.extant.lineages}{\code{Run$get.extant.lineages()}}
 \item \href{#method-add.lineage}{\code{Run$add.lineage()}}
 \item \href{#method-remove.lineage}{\code{Run$remove.lineage()}}
+\item \href{#method-move.lineage}{\code{Run$move.lineage()}}
+\item \href{#method-get.locations}{\code{Run$get.locations()}}
 \item \href{#method-get.node.ident}{\code{Run$get.node.ident()}}
 \item \href{#method-generate.unsampled}{\code{Run$generate.unsampled()}}
 \item \href{#method-clear.unsampled}{\code{Run$clear.unsampled()}}
@@ -159,6 +160,40 @@ over the course of inner tree simulation.
 
 }
 \if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-get.num.extant"></a>}}
+\subsection{Method \code{get.num.extant()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Run$get.num.extant(time, location = NA)}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-get.sampling.times"></a>}}
+\subsection{Method \code{get.sampling.times()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Run$get.sampling.times()}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{time:}}{reference time point}
+
+\item{\code{location:}}{(optional) name of Compartment object}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+integer, number of extant lineages
+
+Retrieves a list of Lineage objects that are extant at the 
+specified time.
+Note that because Lineages are being added and removed through
+coalescent and bottleneck events, the output will change
+over the course of inner tree simulation.
+}
+}
+\if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.extant.lineages"></a>}}
 \subsection{Method \code{get.extant.lineages()}}{
 \subsection{Usage}{
@@ -191,6 +226,22 @@ a named list of Lineage objects.
 \subsection{Method \code{remove.lineage()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Run$remove.lineage(lineage)}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-move.lineage"></a>}}
+\subsection{Method \code{move.lineage()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Run$move.lineage(lineage, comp)}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-get.locations"></a>}}
+\subsection{Method \code{get.locations()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Run$get.locations()}\if{html}{\out{</div>}}
 }
 
 }

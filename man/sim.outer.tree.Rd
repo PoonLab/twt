@@ -21,7 +21,7 @@ we need to initialize the list of fixed events.  We anticipate
 three use cases:
 1. User provides a string or object representing the transmission tree
    that should be converted into an EventLogger object to use for
-   inner tree simulation (`eventlog.from.tree`).
+   inner tree simulation (`attach.tree`).
 2. User manually inputs a host transmission tree into YAML format under 
    Compartments header (`load.outer.tree`).
 3. No host tree provided, transmission events need to be simulated under

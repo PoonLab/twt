@@ -28,5 +28,5 @@ plot(run$get.eventlog())
 
 }
 \seealso{
-eventlog.from.tree, sim.outer.tree
+attach.tree, sim.outer.tree
 }

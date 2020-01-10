@@ -33,4 +33,5 @@ e  # print contents
 }
 \seealso{
 sim.outer.tree, load.outer.tree
+DEPRECATED
 }

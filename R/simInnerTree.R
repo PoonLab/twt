@@ -418,6 +418,8 @@ sample.coalescents <- function(run, current.time){
   ctype <- comp$get.type()
   eff.size <- ctype$get.effective.size()
   gen.time <- ctype$get.generation.time()
+  
+  # FIXME: this is time-consuming
   pieces <- as.data.frame(ctype$get.popn.growth.dynamics())
   
   #k <- length(run$get.extant.lineages(time=time, comp=comp))

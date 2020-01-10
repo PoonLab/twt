@@ -23,7 +23,7 @@
 #' 
 #' 
 #' @seealso sim.outer.tree, load.outer.tree
-#' @export
+#' DEPRECATED
 attach.tree <- function(tree, model) {
   types <- model$get.types()
   if (length(types) > 1) {
@@ -101,9 +101,9 @@ attach.tree <- function(tree, model) {
 #' mod <- Model$new(settings)
 #' 
 #' run <- load.outer.tree(mod)
-#' plot(run$get.eventlog())
+#' plot(run)
 #' 
-#' @seealso eventlog.from.tree, sim.outer.tree
+#' @seealso attach.tree, sim.outer.tree
 #' @export
 load.outer.tree <- function(model) {
   # TODO: rename this to load.outer.tree
@@ -171,7 +171,7 @@ load.outer.tree <- function(model) {
 #' three use cases:
 #' 1. User provides a string or object representing the transmission tree
 #'    that should be converted into an EventLogger object to use for
-#'    inner tree simulation (`eventlog.from.tree`).
+#'    inner tree simulation (`attach.tree`).
 #' 2. User manually inputs a host transmission tree into YAML format under 
 #'    Compartments header (`load.outer.tree`).
 #' 3. No host tree provided, transmission events need to be simulated under

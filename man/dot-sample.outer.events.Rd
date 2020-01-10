@@ -4,7 +4,7 @@
 \alias{.sample.outer.events}
 \title{.sample.outer.events}
 \usage{
-.sample.outer.events(run, max.attempts = 10)
+.sample.outer.events(run, max.attempts = 10, chunk.size = 10000)
 }
 \arguments{
 \item{run:}{R6 object of class Run}
