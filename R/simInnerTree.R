@@ -49,6 +49,7 @@ sim.inner.tree <- function(run) {
   
   # initialize simulation at most recent sampling time
   current.time <- 0.
+  
   #extant.lineages <- run$get.extant.lineages(current.time)
   n.extant <- run$get.num.extant(current.time)
   if (n.extant == 0) {
@@ -61,12 +62,13 @@ sim.inner.tree <- function(run) {
   row <- 1
   while (row <= nrow(events)) {
     
-    if ( n.extant==1 & run$get.num.extant(max(events$time))==1 ) {
+    if ( n.extant == 1 & 
+         run$get.num.extant(max(events$time)) == 1 ) {
          #length(run$get.extant.lineages(max(events$time)))==1 ) {
       # coalesced to final ancestral Lineage
       break
     }
-    print(n.extant)
+    #print(n.extant)
     
     e <- events[row, ]  # retrieve outer event
     
@@ -84,7 +86,7 @@ sim.inner.tree <- function(run) {
         current.time <- current.time + c.time
         .resolve.coalescent(run, comp, time=current.time)
         
-        print('coalescent')
+        #print('coalescent')
         next  # try another coalescent event (no change to row)
       }
     }
@@ -102,7 +104,7 @@ sim.inner.tree <- function(run) {
     else {
       stop("Error in simInnerTree: unknown event type ", e$event.type)
     }
-    print(e$event.type)
+    #print(e$event.type)
     
     # move to next event
     row <- row+1
@@ -211,6 +213,7 @@ sim.inner.tree <- function(run) {
     # move "surviving" Lineage to source Compartment
     recipient$remove.lineage(lineage)
     lineage$set.location(source)
+    run$move.lineage(lineage, source)
     source$add.lineage(lineage)
   }
   
@@ -298,7 +301,7 @@ sim.inner.tree <- function(run) {
   
   # determine how many extant Lineages in recipient (if any) were 
   # transferred by migration (secondary contact) from source
-  eff.size <- 1/recipient$get.type()$get.coalescent.rate()
+  eff.size <- recipient$get.type()$get.effective.size()
   bottleneck.size <- recipient$get.type()$get.bottleneck.size()
   
   # sampling without replacement (hypergeometric distribution)
@@ -312,6 +315,9 @@ sim.inner.tree <- function(run) {
       recipient$remove.lineage(line)
       line$set.location(source)
       source$add.lineage(line)
+      
+      # update Run object
+      run$move.lineage(line, source)
     }
     
     # update eventlog
@@ -379,22 +385,11 @@ sample.coalescents <- function(run, current.time){
   compnames <- names(comps)
   
   # retrieves compartment names for extant lineages
-  ext.lineages.compnames <- sapply(
-    run$get.extant.lineages(current.time),
-    function(x) {
-      x$get.location()$get.name()
-    }
-  )
-  
-  # counts the number of extant lineages in one compartment
-  # calculated for parameter `k` in function `wait.time`
-  num.ext.lineages <- function(x) {
-    length(which(ext.lineages.compnames==x$get.name()))
-  }
+  ext.lineages.compnames <- run$get.locations()
   
   # retrieves compartments with multiple extant lineages
-  counts <- sapply(comps, function(x) num.ext.lineages(x))
-  ext.comps <- comps[counts >= 2]
+  counts <- table(unlist(ext.lineages.compnames))
+  ext.comps <- comps[names(counts)[counts >= 2]]
   
   # calculate waiting times per Compartment
   sapply(ext.comps, function(comp) {

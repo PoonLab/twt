@@ -42,8 +42,10 @@ Run <- R6Class(
       names(private$lineages) <- sapply(private$lineages, function(l) {
         l$get.name()
       })
+      
       private$sampling.times <- lapply(private$lineages, 
                                        function(x) x$get.sampling.time())
+      
       private$locations <- lapply(private$lineages,
                                   function(x) x$get.location()$get.name())
         
@@ -72,6 +74,12 @@ Run <- R6Class(
     get.unsampled.hosts = function() { private$unsampled.hosts },
     
     get.num.extant = function(time, location=NA) {
+      #' count the number of Lineages that are extant (has been sampled)
+      #' more recently than the user-specified time
+      #' @param time:  reference time point
+      #' @param location: (optional) name of Compartment object
+      #' @return integer, number of extant lineages
+      #' 
       if (is.na(location)) {
         sum(private$sampling.times <= time)  
       }
@@ -80,6 +88,10 @@ Run <- R6Class(
           names(which(private$locations == location))
           ] <= time)
       }
+    },
+    
+    get.sampling.times = function() {
+      private$sampling.times
     },
     
     get.extant.lineages = function(time, comp=NA) {
@@ -144,6 +156,13 @@ Run <- R6Class(
       comp$remove.lineage(lineage)
     },
     
+    move.lineage = function(lineage, comp) {
+      private$locations[[lineage$get.name()]] <- comp$get.name()
+    },
+    
+    get.locations = function() {
+      private$locations
+    },
     
     get.node.ident = function(prefix="Node") {
       # returns unique identity for internal nodes (inner tree sim, ancestral lineages)
@@ -289,7 +308,7 @@ plot.Run <- function(run, type='t', ...) {
 #' @keywords internal
 .plot.outer.tree <- function(run, ...) {
   e <- run$get.eventlog()
-  comps <- run$get.compartments()
+  comps <- c(run$get.compartments(), run$get.unsampled.hosts())
   types <- run$get.types()
   
   events <- e$get.all.events()

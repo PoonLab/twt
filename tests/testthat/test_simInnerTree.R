@@ -74,7 +74,7 @@ test_that("resolve_migration", {
   #expect_equal(5, result)
   
   # effective population size = 10
-  expect_equal(0.1, recipient$get.type()$get.coalescent.rate())
+  expect_equal(10, recipient$get.type()$get.effective.size())
   expect_null(recipient$get.type()$get.popn.growth.dynamics())
   expect_equal(1, recipient$get.type()$get.bottleneck.size())
   
