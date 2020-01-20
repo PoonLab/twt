@@ -106,7 +106,6 @@ attach.tree <- function(tree, model) {
 #' @seealso attach.tree, sim.outer.tree
 #' @export
 load.outer.tree <- function(model) {
-  # TODO: rename this to load.outer.tree
   
   # initialize Run object from Model
   run <- Run$new(model)
