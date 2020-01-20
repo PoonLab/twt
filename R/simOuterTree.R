@@ -124,14 +124,21 @@ load.outer.tree <- function(model) {
     branching.time <- comp$get.branching.time()
     
     if (is.numeric(branching.time)) {
-      
-      if ( is.element('R6', class(comp$get.source())) ) {
-        source <- comp$get.source()
-      } 
-      #else {
-      #  # FIXME: why is this necessary?
-      #  source <- comp$get.source()
-      #}
+      s.name <- comp$get.source()
+      if (is.element('R6', class(s.name))) {
+        # used for unit testing
+        source <- s.name
+      }
+      else {
+        source <- comps[[s.name]]
+        if (is.null(source)) {
+          source <- comps[[paste(s.name, "1", sep="_")]]
+          if (is.null(source)) {
+            stop("Model missing Compartment ", s.name, " named as source for ", 
+                 comp$get.name())
+          }
+        }  
+      }
       
       # add transmission event to EventLogger object
       eventlog$add.event(

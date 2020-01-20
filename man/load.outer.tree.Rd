@@ -24,7 +24,7 @@ settings <- yaml.load_file(path)
 mod <- Model$new(settings)
 
 run <- load.outer.tree(mod)
-plot(run$get.eventlog())
+plot(run)
 
 }
 \seealso{

@@ -179,9 +179,9 @@ Run <- R6Class("Run",
       # @param type.name = unique name of CompartmentType
       
       new.host <- Compartment$new(
-        name=paste0('US_', type.name, '_', length(private$unsampled.hosts)+1),
-        type=private$types[[type.name]], 
-        unsampled=TRUE
+        name = paste0('US_', type.name, '_', length(private$unsampled.hosts)+1),
+        type = private$types[[type.name]], 
+        unsampled = TRUE
         )
       
       private$unsampled.hosts[[new.host$get.name()]] <- new.host
