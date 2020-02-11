@@ -160,7 +160,7 @@ Model <- R6Class("Model",
         
         CompartmentType$new(
           name = x,
-          branching.rates = eval(parse(text=paste('list', params$branching.rates))),
+          branching.rates = lapply(params$branching.rates, function(x) eval(parse(text=paste('list', x)))),
           transition.rates = eval(parse(text=paste('list', params$transition.rates))),
           migration.rates = eval(parse(text=paste('list', params$migration.rates))),
           
