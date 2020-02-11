@@ -260,7 +260,7 @@ sim.outer.tree <- function(model, max.attempts=5) {
 #'          CompartmentType to CompartmentType
 #'          
 #' @keywords internal
-.get.rate.matrices <- function(types) {
+.get.rate.matrices <- function(types, current.time) {
   n <- length(types)
   dimnames <- list(names(types), names(types))
   
@@ -274,7 +274,7 @@ sim.outer.tree <- function(model, max.attempts=5) {
     s.name <- source$get.name()
     for (r.name in names(types)) {
       # column = recipient
-      t.rate <- source$get.branching.rate(r.name)
+      t.rate <- source$get.branching.rate(as.character(current.time), r.name)
       if (is.null(t.rate)) {
         # user did not specify transmission rate
         t.rate <- 0

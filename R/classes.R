@@ -81,8 +81,8 @@ CompartmentType  <- R6Class(
       private$branching.rates
     },
     
-    get.branching.rate = function(name.type) {
-      private$branching.rates[[name.type]]
+    get.branching.rate = function(current.time=1, name.type) {
+      private$branching.rates[[current.time]][[name.type]]
     },
     
     get.migration.rates = function() {
