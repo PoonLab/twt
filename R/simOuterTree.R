@@ -375,7 +375,14 @@ sim.outer.tree <- function(model, max.attempts=5) {
   current.time <- init.conds$originTime
   
   # extract transmission, migration and transition rates as convenient named matrices
-  popn.rates <- .get.rate.matrices(types, cuttent.time)
+  popn.rates <- .get.rate.matrices(types, current.time)
+  
+  # get rate change times
+  rate.changes <- unlist(lapply(types, function(x) names(x$get.branching.rates())))
+  rate.changes <- as.numeric(unique(rate.changes))
+  rate.changes <- rate.changes[order(rate.changes, decreasing = T)]
+  rate.change.index <- which(rate.changes == current.time) + 1
+  next.rate.change <- rate.changes[rate.change.index]
   
   attempt <- 1
   while (attempt < max.attempts) {
@@ -417,6 +424,24 @@ sim.outer.tree <- function(model, max.attempts=5) {
       if (current.time < 0) {
         # end of simulation
         break
+      }
+      
+      # does a rate change occur before the next event?
+      if (current.time < next.rate.change) {
+        # increment index by 1
+        rate.change.index <- rate.change.index + 1
+        
+        # are there more rate changes
+        if (length(rate.changes) >= rate.change.index) {
+          next.rate.change <- rate.changes[rate.change.index]
+        }
+        
+        # get new rates
+        current.time <- next.rate.change
+        popn.rates <- .get.rate.matrices(types, current.time)
+        
+        # Recalculate next event with new rates
+        next
       }
       
       # which event?
