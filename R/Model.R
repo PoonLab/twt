@@ -155,7 +155,12 @@ Model <- R6Class("Model",
           if (!is.element(settings$InitialConditions$originTime, names(params$branching.rates))) {
             stop("Must declared branching rate for origin time ",
                  settings$InitialConditions$originTime,
-                 " in CoalescentType ", x)
+                 " in CompartmentType ", x)
+          }
+          
+          if (all(!is.na(as.numeric(names(params$branching.rates))))) {
+            stop("Time-hetetrogeneous branching rates must be declared with numeric time labels ",
+                 "in CompartmentType ", x)
           }
         }
         
