@@ -11,12 +11,8 @@ CompartmentTypes:
     migration.rates: ()                # no migration (assume no superinfection)
     transition.rates: ()
     effective.size: 100.0
-    generation.time: 1
+    generation.time: 0.01
     bottleneck.size: 1                 # bottleneck size when transmission event occurs
-    wait.time.distr:                   # distribution of waiting time between infection time and first sampling time of a Compartment
-      distr: 'exp'
-      hyperparameters:
-        rate: 20
 
 Compartments:
   'I':
