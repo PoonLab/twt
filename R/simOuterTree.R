@@ -371,8 +371,11 @@ sim.outer.tree <- function(model, max.attempts=5) {
   init.conds <- run$get.initial.conds()
   popn.totals <- init.conds$size  # list of CompartmentType->size
   
+  # simulate trajectories in forward time (indexed in reverse, ha ha!)
+  current.time <- init.conds$originTime
+  
   # extract transmission, migration and transition rates as convenient named matrices
-  popn.rates <- .get.rate.matrices(types)
+  popn.rates <- .get.rate.matrices(types, cuttent.time)
   
   attempt <- 1
   while (attempt < max.attempts) {
@@ -393,9 +396,6 @@ sim.outer.tree <- function(model, max.attempts=5) {
       )
     counts <- matrix(NA, nrow=chunk.size, ncol=length(c(susceptible, infected)))
     row.num <- 1
-    
-    # simulate trajectories in forward time (indexed in reverse, ha ha!)
-    current.time <- init.conds$originTime
     
     while (current.time >= 0) {
       # scale per-contact rates
