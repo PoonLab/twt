@@ -150,6 +150,15 @@ Model <- R6Class("Model",
           stop(paste("CompartmentTypes:", x, " missing required field(s): ", required[missing]))
         }
         
+        # CompartmentType must specify EITHER one overall rate or a rate for the origin time
+        if (!is.null(names(params$branching.rates))) {
+          if (!is.element(settings$InitialConditions$originTime, names(params$branching.rates))) {
+            stop("Must declared branching rate for origin time ",
+                 settings$InitialConditions$originTime,
+                 " in CoalescentType ", x)
+          }
+        }
+        
         # CompartmentType must specify EITHER effective.size or piecewise linear model
         if (!is.element('effective.size', names(params)) &&
             !is.element('popn.growth.dynamics', names(params))) {
