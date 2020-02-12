@@ -274,7 +274,7 @@ sim.outer.tree <- function(model, max.attempts=5) {
     s.name <- source$get.name()
     for (r.name in names(types)) {
       # column = recipient
-      t.rate <- source$get.branching.rate(as.character(current.time), r.name)
+      t.rate <- source$get.branching.rate(current.time, r.name)
       if (is.null(t.rate)) {
         # user did not specify transmission rate
         t.rate <- 0
@@ -380,9 +380,12 @@ sim.outer.tree <- function(model, max.attempts=5) {
   # get rate change times
   rate.changes <- unlist(lapply(types, function(x) names(x$get.branching.rates())))
   rate.changes <- as.numeric(unique(rate.changes))
-  rate.changes <- rate.changes[order(rate.changes, decreasing = T)]
-  rate.change.index <- which(rate.changes == current.time) + 1
-  next.rate.change <- rate.changes[rate.change.index]
+  if (length(rate.changes) > 1) {
+    rate.changes <- rate.changes[order(rate.changes, decreasing = T)]
+    rate.change.index <- which(rate.changes == current.time) + 1
+    next.rate.change <- rate.changes[rate.change.index]
+  } else next.rate.change <- NULL
+
   
   attempt <- 1
   while (attempt < max.attempts) {
@@ -426,24 +429,28 @@ sim.outer.tree <- function(model, max.attempts=5) {
         break
       }
       
-      # does a rate change occur before the next event?
-      if (current.time < next.rate.change) {
-        # increment index by 1
-        rate.change.index <- rate.change.index + 1
+      # are there rate changes?
+      if (!is.null(next.rate.change)){
         
-        # are there more rate changes
-        if (length(rate.changes) >= rate.change.index) {
-          next.rate.change <- rate.changes[rate.change.index]
+        # does a rate change occur before the next event?
+        if (current.time < next.rate.change) {
+          # increment index by 1
+          rate.change.index <- rate.change.index + 1
+          
+          # are there more rate changes
+          if (length(rate.changes) >= rate.change.index) {
+            next.rate.change <- rate.changes[rate.change.index]
+          }
+          
+          # get new rates
+          current.time <- next.rate.change
+          popn.rates <- .get.rate.matrices(types, current.time)
+          
+          # Recalculate next event with new rates
+          next
         }
-        
-        # get new rates
-        current.time <- next.rate.change
-        popn.rates <- .get.rate.matrices(types, current.time)
-        
-        # Recalculate next event with new rates
-        next
       }
-      
+
       # which event?
       if ( runif(1, max=total.rate) <= sum(t.rates) ) {
         event.type <- 'transmission'
