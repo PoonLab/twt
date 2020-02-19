@@ -158,9 +158,11 @@ Model <- R6Class("Model",
                  " in CompartmentType ", x)
           }
           
-          if (all(!is.na(as.numeric(names(params$branching.rates))))) {
-            stop("Time-hetetrogeneous branching rates must be declared with numeric time labels ",
-                 "in CompartmentType ", x)
+          if (!all(!is.na(as.numeric(names(params$branching.rates))))) {
+            wrong_labs <- names(params$branching.rates)[is.na(as.numeric(names(params$branching.rates)))]
+            stop("Time-hetetrogeneous branching rates must be declared with numeric time labels '",
+                 wrong_labs,
+                 "' in CompartmentType ", x, " failed coercion to numeric")
           }
         }
         
