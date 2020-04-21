@@ -1,0 +1,33 @@
+---
+title: "An introduction to twt"
+author: "Art Poon"
+date: "4/21/2020"
+output: rmarkdown::html_vignette
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+*treeswithintrees* (twt) is an R package for simulating the proliferation of pathogen (parasite) lineages that are being transmitted between individual hosts, or between compartments within a single host.
+Put another way, *twt* uses discrete-event simulation methods to generate random outcomes from a nested branching process defined by the user.
+*twt* performs a simulation in two stages.
+First, 
+
+## Installation
+
+If you have already installed the `devtools` package in your R framework, then the easiest way to install *twt* is to use the following commands:
+```{r}
+require(devtools)
+devtools::install_github('PoonLab/twt')
+```
+
+However, the `devtools` package installs a large number of package dependencies, some of which have to be compiled locally.  Some users may prefer to 
+
+
+## Basic example
+
+First, we load the package:
+```{r}
+require(twt)
+```
