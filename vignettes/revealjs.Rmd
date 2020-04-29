@@ -1,0 +1,53 @@
+---
+output: 
+  revealjs::revealjs_presentation:
+    css: style.css
+    center: true
+    highlight: breezedark
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## *treeswithintrees*: an R package for exact discrete-event simulation of virus phylogenies
+
+**Art Poon**  
+Western University, Canada
+
+
+## Phylodynamics and simulation
+
+* [Phylodynamics](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1002947) is the reconstruction of epidemiological and immunological processes from the shape of the virus phylogeny.
+
+* Simulation is an important technique to:
+  * quickly characterize a model
+  * validate methods to fit a model to data
+  * fit a model with likelihood-free methods
+
+
+## State of the art
+
+* Several programs that enable the user to simulate trees under customized dynamic models.
+  * [phydynR](https://github.com/emvolz-phylodynamics/phydynR) uses coalescent simulation given deterministic solution of dynamic system.
+  * [phylodyn](https://github.com/mdkarcher/phylodyn) simulates coalescent trees under arbitrary effective population size trends.
+  * [MASTER](http://tgvaughan.github.io/MASTER/) provides a flexible language for the forward discrete-event simulation of models.
+  * [TreeModelAdequacy](https://github.com/sebastianduchene/tree_model_adequacy) uses simulation to assess whether a phylodynamic model can reproduce features of the data.
+
+
+## Unmet needs
+
+* Issues with approximate numerical solution of phylodynamic models as systems of differential equations. 
+* Exploring stochastic dynamics of systems (deterministic solutions too limited).
+* More flexible model specification: *e.g.*, arbitrary coalescent rate variation within hosts; variation in host attributes over time.
+* A more feature-rich visualization toolkit.
+
+
+## Object-oriented programming in R
+
+```{r echo=TRUE}
+require(twt, quietly=TRUE)
+class(Model)
+```
+
+## Model specification with YAML
