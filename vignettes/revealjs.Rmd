@@ -3,7 +3,7 @@ output:
   revealjs::revealjs_presentation:
     css: style.css
     center: true
-    highlight: breezedark
+    highlight: zenburn
 ---
 
 ```{r setup, include=FALSE}
@@ -43,11 +43,79 @@ Western University, Canada
 * A more feature-rich visualization toolkit.
 
 
-## Object-oriented programming in R
+## Proposed workflow
 
-```{r echo=TRUE}
-require(twt, quietly=TRUE)
-class(Model)
-```
+* Forward-time simulation of compartmental dynamics:
+  * transmission - movement of virus to uninfected host
+  * migration - movement of virus to infected host (superinfection)
+  * transition - a given host changes between states
+  
+* Reverse-time simulation of (outer) transmission tree relating sampled hosts
+* Coalescent simulation of (inner) virus phylogeny 
+
+## Object classes
+
+* `Model`
+  * `CompartmentType` - *e.g.*, susceptible hosts
+  * `Compartment` - individual instances of a given `CompartmentType`
+  * `Lineage` - a sampled lineage of the virus tree
+* `Run` - derived class of `Model` that contains outer tree
+* `EventLogger` - data frame of both outer and inner tree events
+
 
 ## Model specification with YAML
+
+```yaml
+InitialConditions:
+  originTime: 10.0
+  size:
+    host: 100
+  indexType: 'host'
+CompartmentTypes:
+  'host':
+    branching.rates: (host=0.01)
+    effective.size: 100.0
+    generation.time: 0.01
+    bottleneck.size: 1
+Compartments:
+  'I':
+    type: host
+    replicates: 10
+Lineages:
+  'I':
+    type: 'virus'
+    sampling.time: 0             
+    location: I
+    replicates: 3     
+```
+
+
+## Example
+
+* SI model with 2 host types, 5 lineages sampled from each of 10 hosts
+
+```{r echo=TRUE, message=FALSE}
+require(twt)
+path <- system.file('extdata', 'structSI.yaml', package='twt')
+mod <- Model$new(yaml.load_file(path)); mod
+```
+
+
+## Outer tree
+```{r echo=TRUE, fig.width=10, fig.height=5}
+set.seed(1); run <- sim.outer.tree(mod)
+par(mfrow=c(1,2)); plot(run, 's'); plot(run)
+```
+
+## Piece-wise linear coalescent model
+```{r}
+
+
+```
+
+
+## Inner tree
+```{r echo=TRUE, fig.height=5, fig.width=5}
+phy <- sim.inner.tree(run)
+plot(phy, cex=0.8)
+```

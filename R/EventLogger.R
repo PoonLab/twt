@@ -11,7 +11,7 @@
 #' # manually initialize an EventLog object
 #' e <- EventLogger$new()
 #' # note this log entry is not linked to existing Lineage or Compartment objects
-#' e$add.event("transmission", time=1, line1="NA", comp1="hist1", comp2="host2")
+#' e$add.event("transmission", time=1, line1="NA", comp1="host1", comp2="host2")
 #' e$get.all.events()
 #' 
 #' @export
