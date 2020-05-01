@@ -393,7 +393,7 @@ sample.coalescents <- function(run, current.time){
   
   # calculate waiting times per Compartment
   sapply(ext.comps, function(comp) {
-    k <- run$get.num.extant(time, comp$get.name())
+    k <- run$get.num.extant(current.time, comp$get.name())
     .rexp.coal(k, comp, current.time)
   })
 }
