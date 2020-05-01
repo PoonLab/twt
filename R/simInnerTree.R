@@ -393,7 +393,8 @@ sample.coalescents <- function(run, current.time){
   
   # calculate waiting times per Compartment
   sapply(ext.comps, function(comp) {
-    .rexp.coal(run, comp, current.time)
+    k <- run$get.num.extant(time, comp$get.name())
+    .rexp.coal(k, comp, current.time)
   })
 }
 
@@ -405,14 +406,18 @@ sample.coalescents <- function(run, current.time){
 #' this Compartment's transmission event, it will be discarded by 
 #' sim.inner.tree().
 #' 
-#' @param run:  R6 object of class Run
+#' @param k:  integer, number of extant lineages
 #' @param comp:  R6 object of class Compartment
 #' @param time:  double, current simulation (reverse) time
 #' 
 #' @return  Random variate from waiting time distribution.
 #' 
 #' @keywords internal
-.rexp.coal <- function(run, comp, time) {
+.rexp.coal <- function(k, comp, time) {
+  if (k < 2) {
+    stop("Error in rexp.coal: called on Compartment with <2 lineages.")
+  }
+  
   b.time <- comp$get.branching.time()
   
   ctype <- comp$get.type()
@@ -423,11 +428,8 @@ sample.coalescents <- function(run, current.time){
   pieces <- as.data.frame(ctype$get.popn.growth.dynamics())
   
   #k <- length(run$get.extant.lineages(time=time, comp=comp))
-  k <- run$get.num.extant(time, comp$get.name())
-  if (k < 2) {
-    stop("Error in rexp.coal: called on Compartment with <2 lineages.")
-  }
-  
+  #
+
   if ( is.null(b.time) || is.na(as.logical(b.time)) ) {
     # no branching time, handle index case
     if (is.null(pieces) || nrow(pieces) == 0) {
@@ -484,6 +486,9 @@ sample.coalescents <- function(run, current.time){
                         0, 
                         piece$endTime - current.time)
       beta <- piece$slope
+      if (is.na(beta) & piece$startPopn == piece$endPopn) {
+        beta <- 0
+      }
       n.0 <- piece$endPopn
       n.eff <- n.0 + beta * delta.t
       

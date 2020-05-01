@@ -188,7 +188,7 @@ test_that("resolve transmission", {
 
 
 test_that("random exponential deviate under linear decay", {
-  # SI model, 10 compartments with 3 Lineages each
+  # SI model, 10 compartments with 3 Lineages each sampled at time 0
   settings <- yaml.load_file("example2.yaml")
   model <- Model$new(settings)
   
@@ -205,9 +205,8 @@ test_that("random exponential deviate under linear decay", {
   
   ctype <- comp$get.type()
   pieces <- as.data.frame(ctype$get.popn.growth.dynamics())
-  piece <- pieces[1,]
+  piece <- pieces[1,]  # beta = -3.8, N_0 = 20, k=3
   
-  # beta = -4, N_0 = 20, k=3
   result <- replicate(1e3, .rexp.coal(run, comp, 0))
   expected <- -(piece$endPopn + piece$slope * (piece$endTime-comp$get.branching.time())) /
     piece$slope
