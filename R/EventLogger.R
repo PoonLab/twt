@@ -426,8 +426,7 @@ as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE
   }
   
   # need to reorder edges to sequence of derived nodes
-  index2 <- match(nodes, edges$lineage2)
-  index1 <- match(nodes, edges$lineage1)
+  #index2 <- match(nodes, edges$lineage2)
   
   # create phylo object
   phy <- list(
@@ -436,11 +435,11 @@ as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE
     Nnode = length(internals),
     edge = edgelist,
     edge.length = edge.length,
-    event.type = edges$event.type[index2],
-    compartment1 = edges$compartment1[index1],
-    compartment2 = edges$compartment2[index1],
-    type1 = edges$type1[index1],
-    type2 = edges$type2[index1]
+    event.type = edges$event.type,
+    compartment1 = edges$compartment1,
+    compartment2 = edges$compartment2,
+    type1 = edges$type1,
+    type2 = edges$type2
     )
   attr(phy, 'class') <- 'phylo'
   phy

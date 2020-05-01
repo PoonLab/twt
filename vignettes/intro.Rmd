@@ -6,28 +6,102 @@ output: rmarkdown::html_vignette
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, fig.width=4, fig.height=4)
 ```
 
 *treeswithintrees* (twt) is an R package for simulating the proliferation of pathogen (parasite) lineages that are being transmitted between individual hosts, or between compartments within a single host.
-Put another way, *twt* uses discrete-event simulation methods to generate random outcomes from a nested branching process defined by the user.
-*twt* performs a simulation in two stages.
-First, 
+Put another way, *twt* uses discrete-event simulation methods to generate the 
+"outer" tree that represents the transmission of pathogens among hosts or compartments, and then generates a nested "inner" tree that represents the common ancestry of pathogen lineages sampled from different hosts/compartments.
+
 
 ## Installation
 
 If you have already installed the `devtools` package in your R framework, then the easiest way to install *twt* is to use the following commands:
-```{r}
+```R
 require(devtools)
 devtools::install_github('PoonLab/twt')
 ```
 
-However, the `devtools` package installs a large number of package dependencies, some of which have to be compiled locally.  Some users may prefer to 
+However, the `devtools` package installs a large number of package dependencies, some of which have to be compiled locally.  Some users may prefer to avoid downloading and compiling all of these packages, and simply download and install the *twt* package itself to save time and computing resources:
 
+```console
+art@Kestrel:~/Downloads$ wget --quiet https://github.com/PoonLab/twt/archive/master.zip
+art@Kestrel:~/Downloads$ unzip -q master.zip 
+art@Kestrel:~/Downloads$ cd twt-master/
+art@Kestrel:~/Downloads/twt-master$ R CMD INSTALL .
+* installing to library ‘/home/art/R/x86_64-pc-linux-gnu-library/3.6’
+* installing *source* package ‘twt’ ...
+** using staged installation
+** R
+** inst
+** byte-compile and prepare package for lazy loading
+** help
+*** installing help indices
+*** copying figures
+** building package indices
+** installing vignettes
+** testing if installed package can be loaded from temporary location
+** testing if installed package can be loaded from final location
+** testing if installed package keeps a record of temporary installation path
+* DONE (twt)
+```
 
 ## Basic example
 
-First, we load the package:
-```{r}
-require(twt)
+Here is a quick example of a simple workflow in *twt*:
+```{r fig.width=7}
+suppressMessages(require(twt, quietly=TRUE))
+
+# load the model
+path <- system.file('extdata', 'SI.yaml', package='twt')
+settings <- yaml.load_file(path)
+model <- Model$new(settings)
+
+# run the simulation
+set.seed(1)
+run <- sim.outer.tree(model)
+phy <- sim.inner.tree(run)
+
+# generate plots
+par(mfrow=c(1,2))
+plot(run)
+plot(phy)
 ```
+
+### What's going on?
+
+Let's break down this example.  To run a simulation, we have to specify the model to simulate. 
+*twt* provides a number of example models that were installed into your R package directory.
+You can access the model files by using the `system.file` command: 
+```{r}
+path <- system.file('extdata', 'SI.yaml', package='twt')
+path  # display the absolute path 
+```
+
+The file `SI.yaml` is a plain text file that contains a description of the model in the YAML (yet another markup language) format.  It is imported into `R` as a List object.  In a later section, we will go into the details of how to specify models in YAML.
+```{r}
+settings <- yaml.load_file(path)
+str(settings)  # compact display of object structure
+```
+
+To construct a Model object, we use the following command:
+```{r}
+model <- Model$new(settings=settings, name="SI")
+model
+```
+
+This command may look strange to some R users who aren't used to using the R6 framework for [object-oriented programming](https://adv-r.hadley.nz/oo.html).
+In *twt*, `Model` is one of several classes of objects that we have implemented.
+To create an instance of a `Model`, we have to call its `new` method and pass our imported YAML object as the required input.
+The `name` argument is optional - it provides a means of labelling different `Model` objects to keep track of what they are intended to represent.
+
+Running `sim.outer.tree` causes *twt* to simulate the population dynamics of uninfected and infected compartments over time.  Since we loaded the basic susceptible-infected (SI) compartmental model, there are only two populations of hosts (compartments).  This is more apparent if we modify the `plot` function to display the simulated population trajectories over time:
+```{r fig.width=5}
+run <- sim.outer.tree(model)
+plot(run, type='s')
+```
+
+
+
+
+

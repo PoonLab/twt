@@ -119,3 +119,8 @@ par(mfrow=c(1,2)); plot(run, 's'); plot(run)
 phy <- sim.inner.tree(run)
 plot(phy, cex=0.8)
 ```
+
+
+## Computing time
+
+* estimate time complexity for different population sizes, numbers of lineages..
