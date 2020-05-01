@@ -360,6 +360,10 @@ as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE
         stop("Error in as.phylo.EventLogger: found multiple origins for ",
              "node ", node)
       }
+      if (nrow(e) == 0) {
+        # transmission/migration event that involves root node
+        next
+      }
       parent <- e$lineage2
       
       # modify Lineage names in sequence of events
