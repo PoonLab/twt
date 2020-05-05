@@ -260,7 +260,7 @@ sim.outer.tree <- function(model, max.attempts=5) {
 #'          CompartmentType to CompartmentType
 #'          
 #' @keywords internal
-.get.rate.matrices <- function(types) {
+.get.rate.matrices <- function(types, current.time) {
   n <- length(types)
   dimnames <- list(names(types), names(types))
   
@@ -274,7 +274,7 @@ sim.outer.tree <- function(model, max.attempts=5) {
     s.name <- source$get.name()
     for (r.name in names(types)) {
       # column = recipient
-      t.rate <- source$get.branching.rate(r.name)
+      t.rate <- source$get.branching.rate(current.time, r.name)
       if (is.null(t.rate)) {
         # user did not specify transmission rate
         t.rate <- 0
@@ -371,8 +371,21 @@ sim.outer.tree <- function(model, max.attempts=5) {
   init.conds <- run$get.initial.conds()
   popn.totals <- init.conds$size  # list of CompartmentType->size
   
+  # simulate trajectories in forward time (indexed in reverse, ha ha!)
+  current.time <- init.conds$originTime
+  
   # extract transmission, migration and transition rates as convenient named matrices
-  popn.rates <- .get.rate.matrices(types)
+  popn.rates <- .get.rate.matrices(types, current.time)
+  
+  # get rate change times
+  rate.changes <- unlist(lapply(types, function(x) names(x$get.branching.rates())))
+  rate.changes <- as.numeric(unique(rate.changes))
+  if (length(rate.changes) > 1) {
+    rate.changes <- rate.changes[order(rate.changes, decreasing = T)]
+    rate.change.index <- which(rate.changes == current.time) + 1
+    next.rate.change <- rate.changes[rate.change.index]
+  } else next.rate.change <- NULL
+
   
   attempt <- 1
   while (attempt < max.attempts) {
@@ -393,9 +406,6 @@ sim.outer.tree <- function(model, max.attempts=5) {
       )
     counts <- matrix(NA, nrow=chunk.size, ncol=length(c(susceptible, infected)))
     row.num <- 1
-    
-    # simulate trajectories in forward time (indexed in reverse, ha ha!)
-    current.time <- init.conds$originTime
     
     while (current.time >= 0) {
       # scale per-contact rates
@@ -419,6 +429,28 @@ sim.outer.tree <- function(model, max.attempts=5) {
         break
       }
       
+      # are there rate changes?
+      if (!is.null(next.rate.change)){
+        
+        # does a rate change occur before the next event?
+        if (current.time < next.rate.change) {
+          # increment index by 1
+          rate.change.index <- rate.change.index + 1
+          
+          # are there more rate changes
+          if (length(rate.changes) >= rate.change.index) {
+            next.rate.change <- rate.changes[rate.change.index]
+          }
+          
+          # get new rates
+          current.time <- next.rate.change
+          popn.rates <- .get.rate.matrices(types, current.time)
+          
+          # Recalculate next event with new rates
+          next
+        }
+      }
+
       # which event?
       if ( runif(1, max=total.rate) <= sum(t.rates) ) {
         event.type <- 'transmission'

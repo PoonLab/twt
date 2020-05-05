@@ -150,6 +150,22 @@ Model <- R6Class("Model",
           stop(paste("CompartmentTypes:", x, " missing required field(s): ", required[missing]))
         }
         
+        # CompartmentType must specify EITHER one overall rate or a rate for the origin time
+        if (!is.null(names(params$branching.rates))) {
+          if (!is.element(settings$InitialConditions$originTime, names(params$branching.rates))) {
+            stop("Must declared branching rate for origin time ",
+                 settings$InitialConditions$originTime,
+                 " in CompartmentType ", x)
+          }
+          
+          if (!all(!is.na(as.numeric(names(params$branching.rates))))) {
+            wrong_labs <- names(params$branching.rates)[is.na(as.numeric(names(params$branching.rates)))]
+            stop("Time-hetetrogeneous branching rates must be declared with numeric time labels '",
+                 wrong_labs,
+                 "' in CompartmentType ", x, " failed coercion to numeric")
+          }
+        }
+        
         # CompartmentType must specify EITHER effective.size or piecewise linear model
         if (!is.element('effective.size', names(params)) &&
             !is.element('popn.growth.dynamics', names(params))) {
@@ -160,7 +176,7 @@ Model <- R6Class("Model",
         
         CompartmentType$new(
           name = x,
-          branching.rates = eval(parse(text=paste('list', params$branching.rates))),
+          branching.rates = lapply(params$branching.rates, function(x) eval(parse(text=paste('list', x)))),
           transition.rates = eval(parse(text=paste('list', params$transition.rates))),
           migration.rates = eval(parse(text=paste('list', params$migration.rates))),
           
