@@ -314,7 +314,7 @@ plot.Run <- function(run, type='t', ...) {
   types <- run$get.types()
   
   events <- e$get.all.events()
-  trans <- events[events$event.type=='transmission',]
+  trans <- events[events$event.type=='transmission', ]
   migrations <- events[events$event.type=='migration', ]
   
   # find root

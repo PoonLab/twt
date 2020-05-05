@@ -274,20 +274,22 @@ print.EventLogger <- function(eventlog) {
 #' plot(eventlog, transmissions=T, migrations=T)
 #' 
 #' @export
-plot.EventLogger <- function(eventlog, transmissions=T, migrations=T, ...) {
+plot.EventLogger <- function(eventlog, transmissions=T, migrations=T, 
+                             transitions=T, ...) {
   phy <- as.phylo(eventlog, transmissions=transmissions, 
-                  migrations=migrations)
-  l <- tree.layout(phy, type='r')
+                  migrations=migrations, transitions=transitions)
+  L <- tree.layout(phy, type='r')
   
   # call plot.phylo S3 method
   #plot(phy)
   if (transmissions | migrations) {
-    is.singleton <- ifelse(is.element(phy$event.type, c('coalescent', 'bottleneck')),
-                           NA, phy$event.type=='transmission')
-    cex <- ifelse(is.na(is.singleton), 0, 1)
-    bg <- ifelse(is.singleton, 'dodgerblue', 'orange')
-    plot(l, ...)
-    points(l, cex=cex, pch=21, bg=bg)
+    is.transm <- L$edges$parent[L$edges$event.type=='transmission']
+    is.migrat <- L$edges$parent[L$edges$event.type=='migration']
+    is.transi <- L$edges$parent[L$edges$event.type=='transition']
+    plot(L, ...)
+    points(L$nodes$x[is.transm], L$nodes$y[is.transm], pch=16)
+    points(L$nodes$x[is.migrat], L$nodes$y[is.migrat], pch=21, bg='white')
+    points(L$nodes$x[is.transi], L$nodes$y[is.transi], pch=22, bg='white')
   }
   else {
     plot(l, ...)
@@ -302,8 +304,12 @@ plot.EventLogger <- function(eventlog, transmissions=T, migrations=T, ...) {
 #' coalescent tree w/ option to include/exclude transmission events.
 #' 
 #' @param eventlog: EventLogger object
-#' @param transmissions: logical; if TRUE, transmission events included, 
-#' else excluded otherwise.
+#' @param transmissions: logical; if TRUE, include transmission events as
+#'                       singleton nodes in tree. 
+#' @param migrations: logical; if TRUE, include migration events as singleton
+#'                    nodes in tree.
+#' @param transitions: logical, if TRUE, include transition events as 
+#'                     singletone nodes in tree.
 #' @return ape::phylo object
 #' 
 #' @examples 
@@ -324,7 +330,8 @@ plot.EventLogger <- function(eventlog, transmissions=T, migrations=T, ...) {
 #' points(l, cex=cex, pch=21, bg=bg)
 #' 
 #' @export
-as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE) {
+as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE,
+                                 transitions=FALSE) {
 
     # retrieve fixed sampling times of tips
   fixed.sampl <- eventlog$get.fixed.samplings()
@@ -343,11 +350,12 @@ as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE
   if (length(root) == 0) stop("Error in as.phylo.EventLogger(): failed to locate root.")
   
   
-  if (transmissions | migrations) {
+  if (transmissions | migrations | transitions) {
     # retrieve transmission/migration events
     targets <- c()
     if (migrations) targets <- c(targets, 'migration')
     if (transmissions) targets <- c(targets, 'transmission')
+    if (transitions) targets <- c(targets, 'transition')
     
     tm.events <- events[!is.na(events$lineage1) & 
                           is.element(events$event.type, targets), ]

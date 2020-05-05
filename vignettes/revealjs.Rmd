@@ -108,16 +108,22 @@ par(mfrow=c(1,2)); plot(run, 's'); plot(run)
 ```
 
 ## Piece-wise linear coalescent model
-```{r}
+<img src="test-piecewise.png" width="600px" height="500px"/>
 
-
-```
 
 
 ## Inner tree
-```{r echo=TRUE, fig.height=5, fig.width=5}
-phy <- sim.inner.tree(run)
-plot(phy, cex=0.8)
+```{r echo=TRUE, fig.height=4.5, fig.width=6}
+eventlog <- sim.inner.tree(run)
+plot(eventlog, cex.lab=0.7)
+par(xpd=NA); legend(x=0, y=0, legend=c('transmission', 'migration'), pch=c(16, 21), bg=c(NA, 'white'), horiz=T); par(xpd=FALSE)
+```
+
+
+## Inner tree (2)
+```{r echo=TRUE, fig.height=4.5, fig.width=6}
+L <- tree.layout(as.phylo(eventlog, transmissions=T, migrations=T))
+plot(L, type='n', cex.lab=0.5); lines(L, col=ifelse(grepl("host1|I1", L$edges$compartment1), 'blue', 'red'), lwd=1.5)
 ```
 
 
