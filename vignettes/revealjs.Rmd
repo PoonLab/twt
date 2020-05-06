@@ -10,10 +10,12 @@ output:
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
+
 ## *treeswithintrees*: an R package for exact discrete-event simulation of virus phylogenies
 
-**Art Poon**  
+**Garway T Ng and Art Poon**  
 Western University, Canada
+Department of Pathology and Laboratory Medicine
 
 
 ## Phylodynamics and simulation
@@ -67,26 +69,28 @@ Western University, Canada
 
 ```yaml
 InitialConditions:
-  originTime: 10.0
+  originTime: 10.0  # time frame of simulation
   size:
-    host: 100
+    host: 100  # number of hosts
   indexType: 'host'
 CompartmentTypes:
   'host':
-    branching.rates: (host=0.01)
-    effective.size: 100.0
+    branching.rates: (host=0.01)  # transmission rate
+    migration.rates: ()  ## not in use
+    transition.rates: ()  ## not in use
+    effective.size: 100.0  # of virus pop'n within host
     generation.time: 0.01
-    bottleneck.size: 1
+    bottleneck.size: 1  # on either transmission or migration
 Compartments:
   'I':
     type: host
-    replicates: 10
+    replicates: 10  # number of sampled hosts
 Lineages:
   'I':
     type: 'virus'
-    sampling.time: 0             
+    sampling.time: 0  # this can be varied per Lineage
     location: I
-    replicates: 3     
+    replicates: 3  # per sampled host
 ```
 
 
@@ -148,15 +152,40 @@ plot(L, type='n', cex.lab=0.5); lines(L, col=ifelse(grepl("host1|I1", L$edges$co
 
 ## Computing time
 
-```{r}
+* 10 replicate simulations (on a lame 2013 iMac) under SI model, with 3 lineages per sampled host
+```{r fig.height=5, fig.width=10}
 
+x <- c(10, 50, 100, 200, 300, 500)
+y <- c(10.691, 17.636, 34.294, 93.058, 192.254, 626.171) / 10
+
+par(mar=c(5,5,2,1), mfrow=c(1,2))
+
+plot(x,y, type='l', col='cadetblue', xlab='Number of sampled hosts', ylab='Average time per tree (seconds)', lwd=2, cex.lab=1.2)
+title(main="Host population 1000", adj=0, font.main=1, cex=1)
+points(x, y, pch=21, col='cadetblue', bg='white', lwd=2.5, cex=1.5)
+
+x <- c(100, 200, 500, 1000, 2000, 5000, 7500, 1e4)
+y <- c(2.118, 2.858, 5.631, 10.691, 19.551, 45.405, 69.069, 107.805)
+plot(x, y, type='l', col='salmon', xlab='Host population size', ylab='Average time per tree (seconds)', lwd=2, cex.lab=1.2)
+title(main="10 sampled hosts", adj=0, font.main=1, cex=1)
+points(x, y, pch=21, col='salmon', bg='white', lwd=2.5, cex=1.5)
 ```
 
 
 ## Availability
 
+* http://github.com/PoonLab/twt
+* Released under [GNU Affero General Public License 3.0](https://www.gnu.org/licenses/agpl-3.0.en.html)
+* Earlier documentation as wiki being transferred to [RMarkdown](https://rmarkdown.rstudio.com/) vignettes (like this presentation).
+
 
 ## Acknowledgements
 
+* Early implementations by Garway (Tammy) Ng
+<table>
+<tr><td><img src="tammy.jpg" height="250px"/></td><td><img src="commits.png" height="250px"/></td></tr>
+</table>
+
+* Development was supported the Government of Canada through [Genome Canada](https://www.genomecanada.ca/) and the [Ontario Genomics Institute](https://www.ontariogenomics.ca/) (OGI-131), and from the [Canadian Institutes for Health Research](https://cihr-irsc.gc.ca/e/193.html) (PJT-155990).
 
 
