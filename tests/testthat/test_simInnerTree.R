@@ -207,7 +207,8 @@ test_that("random exponential deviate under linear decay", {
   pieces <- as.data.frame(ctype$get.popn.growth.dynamics())
   piece <- pieces[1,]  # beta = -3.8, N_0 = 20, k=3
   
-  result <- replicate(1e3, .rexp.coal(run, comp, 0))
+  k <- run$get.num.extant(0, comp$get.name())
+  result <- replicate(1e3, .rexp.coal(k, comp, 0))
   expected <- -(piece$endPopn + piece$slope * (piece$endTime-comp$get.branching.time())) /
     piece$slope
   expect_gt(0.1, expected - max(result))

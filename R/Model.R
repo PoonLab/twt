@@ -153,7 +153,7 @@ Model <- R6Class("Model",
         # CompartmentType must specify EITHER one overall rate or a rate for the origin time
         if (!is.null(names(params$branching.rates))) {
           if (!is.element(settings$InitialConditions$originTime, names(params$branching.rates))) {
-            stop("Must declared branching rate for origin time ",
+            stop("Must declare branching rate for origin time ",
                  settings$InitialConditions$originTime,
                  " in CompartmentType ", x)
           }
@@ -173,10 +173,16 @@ Model <- R6Class("Model",
                "declared in CoalescentType", x)
         }
         
+        rate.changes <- lapply(params$branching.rates, function(x) {
+          eval(parse(text=paste('list', x))) 
+          })
+        if (length(rate.changes) > 1) {
+          rate.changes <- rate.changes[order(as.numeric(names(rate.changes)), decreasing=T)]
+        }
         
         CompartmentType$new(
           name = x,
-          branching.rates = lapply(params$branching.rates, function(x) eval(parse(text=paste('list', x)))),
+          branching.rates = rate.changes,
           transition.rates = eval(parse(text=paste('list', params$transition.rates))),
           migration.rates = eval(parse(text=paste('list', params$migration.rates))),
           

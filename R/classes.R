@@ -83,25 +83,17 @@ CompartmentType  <- R6Class(
     
     get.branching.rate = function(current.time, name.type) {
       
-      # Get timing of rate changes
-      rate.changes <- as.numeric(names(private$branching.rates))
-      rate.changes <- rate.changes[order(rate.changes, decreasing = T)]
-      
-      # Does this CompartmentType have multiple rates?
-      if (length(rate.changes) > 1) {
-        
-        # Is there a rate for the current time?
-        if (current.time %in% rate.changes) {
-          private$branching.rates[[as.character(current.time)]][[name.type]]
-        }
-        else {
-          index <- max(which(rate.changes > current.time))
-          private$branching.rates[[as.character(index)]][[name.type]]
-        }
-      }
-      else {
+      if (length(private$branching.rates) == 1) {
+        # constant rate over time
         private$branching.rates[[1]][[name.type]]
       }
+      else {
+        # rate heterogeneity
+        rate.changes <- as.numeric(names(private$branching.rates))
+        index <- max(which(rate.changes >= current.time))
+        private$branching.rates[[index]][[name.type]]
+      }
+
     },
     
     get.migration.rates = function() {

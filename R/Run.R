@@ -299,6 +299,7 @@ plot.Run <- function(run, type='t', ...) {
 #' an outer transmission tree.
 #' 
 #' @param e: EventLogger object
+#' @param segments.lwd:  line width for segments
 #' 
 #' @examples
 #' path <- system.file('extdata', 'structSI.yaml', package='twt')
@@ -308,7 +309,7 @@ plot.Run <- function(run, type='t', ...) {
 #' plot(run)
 #' 
 #' @keywords internal
-.plot.outer.tree <- function(run, ...) {
+.plot.outer.tree <- function(run, segments.lwd=5, ...) {
   e <- run$get.eventlog()
   comps <- c(run$get.compartments(), run$get.unsampled.hosts())
   types <- run$get.types()
@@ -365,7 +366,7 @@ plot.Run <- function(run, type='t', ...) {
     }
     
     segments(x0=-inf.time, x1=-samp.time, y0=which(nodes==node), 
-             lwd=5, lend=2, col=ifelse(is.sampled, 'black', 'grey'))
+             lwd=segments.lwd, lend=2, col=ifelse(is.sampled, 'black', 'grey'))
     
     if (!is.na(source)) {
       arrows(x0=-inf.time, y1=which(nodes==node), y0=which(nodes==source), 
@@ -400,9 +401,9 @@ plot.Run <- function(run, type='t', ...) {
   }
   
   # set up plot region
-  par(mar=c(5,5,1,5), xpd=NA)
   plot(NA, xlim=rev(range(counts$time)), ylim=range(counts[,-1]), bty='n',
        xlab='Coalescent time', ylab='Population size', ...)
+  par(xpd=NA)
   for (i in 2:ncol(counts)) {
     label <- names(counts)[i]
     ctype <- gsub("[SI]\\.(.+)", "\\1", label)
@@ -411,6 +412,7 @@ plot.Run <- function(run, type='t', ...) {
           lwd=2)
     text(x=0, y=counts[nrow(counts), i], label=label, adj=0)
   }
+  par(xpd=FALSE)
 }
 
 

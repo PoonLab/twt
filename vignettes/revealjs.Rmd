@@ -107,6 +107,25 @@ set.seed(1); run <- sim.outer.tree(mod)
 par(mfrow=c(1,2)); plot(run, 's'); plot(run)
 ```
 
+## Time heterogeneity
+
+```{r echo=T, fig.width=9, fig.height=4.5}
+m2 <- Model$new(yaml.load_file('../tests/testthat/epoch.yaml'))
+set.seed(1); run2 <- sim.outer.tree(m2)
+par(mfrow=c(1,2)); plot(run2, 's', mar=c(5,5,0,2)); abline(v=3, lty=2, lwd=2); plot(run2, segments.lwd=3)
+```
+
+
+## Resolving within-host events
+
+* Coalescent rate $\propto$ 1 / eff. population size
+* Force coalescence to type-specific bottleneck size ($n$) at infection time of host.
+* Number of sampled lineages ($k$) following migration event to another host:
+$$P(k)= {K\choose k} {N-K\choose n-k} \Big/ { N\choose n }$$
+  
+  where $N$ = eff. pop. size and $K$ = num. extant lineages.
+
+
 ## Piece-wise linear coalescent model
 <img src="test-piecewise.png" width="600px" height="500px"/>
 
@@ -114,13 +133,13 @@ par(mfrow=c(1,2)); plot(run, 's'); plot(run)
 
 ## Inner tree
 ```{r echo=TRUE, fig.height=4.5, fig.width=6}
-eventlog <- sim.inner.tree(run)
+set.seed(3); eventlog <- sim.inner.tree(run)
 plot(eventlog, cex.lab=0.7)
 par(xpd=NA); legend(x=0, y=0, legend=c('transmission', 'migration'), pch=c(16, 21), bg=c(NA, 'white'), horiz=T); par(xpd=FALSE)
 ```
 
 
-## Inner tree (2)
+## Colouring inner tree by host type
 ```{r echo=TRUE, fig.height=4.5, fig.width=6}
 L <- tree.layout(as.phylo(eventlog, transmissions=T, migrations=T))
 plot(L, type='n', cex.lab=0.5); lines(L, col=ifelse(grepl("host1|I1", L$edges$compartment1), 'blue', 'red'), lwd=1.5)
@@ -129,4 +148,15 @@ plot(L, type='n', cex.lab=0.5); lines(L, col=ifelse(grepl("host1|I1", L$edges$co
 
 ## Computing time
 
-* estimate time complexity for different population sizes, numbers of lineages..
+```{r}
+
+```
+
+
+## Availability
+
+
+## Acknowledgements
+
+
+

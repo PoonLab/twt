@@ -380,12 +380,15 @@ sim.outer.tree <- function(model, max.attempts=5) {
   # get rate change times
   rate.changes <- unlist(lapply(types, function(x) names(x$get.branching.rates())))
   rate.changes <- as.numeric(unique(rate.changes))
+  rate.change.index <- 1
+  next.rate.change <- NULL 
   if (length(rate.changes) > 1) {
-    rate.changes <- rate.changes[order(rate.changes, decreasing = T)]
-    rate.change.index <- which(rate.changes == current.time) + 1
-    next.rate.change <- rate.changes[rate.change.index]
-  } else next.rate.change <- NULL
-
+    # already sorted in descending order at CompartmentType init
+    rate.change.index <- max(which(rate.changes >= current.time))
+    if (rate.change.index < length(rate.changes)) {
+      next.rate.change <- rate.changes[rate.change.index+1]
+    }
+  }
   
   attempt <- 1
   while (attempt < max.attempts) {
@@ -408,6 +411,7 @@ sim.outer.tree <- function(model, max.attempts=5) {
     row.num <- 1
     
     while (current.time >= 0) {
+      
       # scale per-contact rates
       t.rates <- .scale.contact.rates(popn.rates[['transmission']], susceptible, infected)
       m.rates <- .scale.contact.rates(popn.rates[['migration']], infected, infected)
@@ -430,20 +434,21 @@ sim.outer.tree <- function(model, max.attempts=5) {
       }
       
       # are there rate changes?
-      if (!is.null(next.rate.change)){
-        
-        # does a rate change occur before the next event?
+      if (!is.null(next.rate.change)) {
         if (current.time < next.rate.change) {
-          # increment index by 1
-          rate.change.index <- rate.change.index + 1
+          # reset simulation time to start of next interval
+          current.time <- next.rate.change
           
-          # are there more rate changes
-          if (length(rate.changes) >= rate.change.index) {
-            next.rate.change <- rate.changes[rate.change.index]
+          # find the next valid time interval
+          rate.change.index <- max(which(rate.changes >= current.time))
+          
+          if (rate.change.index < length(rate.changes)) {
+            next.rate.change <- rate.changes[rate.change.index+1]
+          } else {
+            next.rate.change <- NULL
           }
           
           # get new rates
-          current.time <- next.rate.change
           popn.rates <- .get.rate.matrices(types, current.time)
           
           # Recalculate next event with new rates
