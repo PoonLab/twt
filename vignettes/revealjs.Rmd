@@ -96,7 +96,7 @@ Lineages:
 
 ## Example
 
-* SI model with 2 host types, 5 lineages sampled from each of 10 hosts
+* SI model with 2 host types - 10 hosts sampled from a population of 100
 
 ```{r echo=TRUE, message=FALSE}
 require(twt)
@@ -138,8 +138,8 @@ $$P(k)= {K\choose k} {N-K\choose n-k} \Big/ { N\choose n }$$
 ## Inner tree
 ```{r echo=TRUE, fig.height=4.5, fig.width=6}
 set.seed(3); eventlog <- sim.inner.tree(run)
-plot(eventlog, cex.lab=0.7)
-par(xpd=NA); legend(x=0, y=0, legend=c('transmission', 'migration'), pch=c(16, 21), bg=c(NA, 'white'), horiz=T); par(xpd=FALSE)
+plot(eventlog, cex.lab=0.6)
+par(xpd=NA); legend(x=0, y=0, legend=c('transmission', 'migration'), pch=c(16, 21), bg=c(NA, 'white'), horiz=T); text(x=9, y=52, label='Default labels {Compartment}__{Lineage}, where I1_4 is 4th Compartment of type I1', cex=0.8); par(xpd=FALSE)
 ```
 
 
