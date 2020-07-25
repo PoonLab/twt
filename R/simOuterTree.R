@@ -214,7 +214,7 @@ load.outer.tree <- function(model) {
 #' 
 #' @seealso load.outer.tree
 #' @export
-sim.outer.tree <- function(model, max.attempts=5) {
+sim.outer.tree <- function(model, max.attempts=5, skip.assign=F) {
   attempt <- 1
   
   while (attempt <= max.attempts) {
@@ -228,6 +228,9 @@ sim.outer.tree <- function(model, max.attempts=5) {
     
     # sample events based on population dynamics and rates
     events <- .sample.outer.events(run)
+    if (skip.assign) {
+      return(events)
+    }
     
     # assign events only to history of sampled Compartments
     resolved <- .assign.events(run, events)
