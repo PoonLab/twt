@@ -15,6 +15,9 @@
 #'        CompartmentTypes.
 #' @param bottleneck.size: the maximum number of lineages that can be transmitted
 #'        to a Compartment of this Type.
+#' @param bottleneck.theta: optional, theta/size parameter of negative binomial.
+#'        Converges to Poisson distribution with larger values.  Defaults to 0 
+#'        for constant bottleneck size.
 #' @param effective.size: reciprocal of the rate at which lineages coalesce within 
 #'        a Compartment of this Type.
 #' @param popn.growth.dynamics: a text expression for population growth dynamics
@@ -41,7 +44,8 @@ CompartmentType  <- R6Class(
   "CompartmentType",
   public = list(
     initialize = function(name=NA, unsampled = NA, branching.rates=NA, 
-                          transition.rates=NA, migration.rates=NA, bottleneck.size=NA,
+                          transition.rates=NA, migration.rates=NA, 
+                          bottleneck.size=NA, bottleneck.theta=NA,
                           effective.size=NA, popn.growth.dynamics=NA, 
                           generation.time=NA, transmission.times=NA) {
       private$name <- name
@@ -53,6 +57,7 @@ CompartmentType  <- R6Class(
       private$transition.rates <- transition.rates
       private$migration.rates <- migration.rates
       private$bottleneck.size <- bottleneck.size
+      private$bottleneck.theta <- bottleneck.theta
       
       # named vector of migration rates of different Compartments
       private$effective.size <- effective.size
@@ -67,6 +72,9 @@ CompartmentType  <- R6Class(
     # accessor functions
     get.bottleneck.size = function() {
       private$bottleneck.size
+    },
+    get.bottleneck.theta = function() {
+      private$bottleneck.theta
     },
     
     get.name = function() {
@@ -146,6 +154,8 @@ CompartmentType  <- R6Class(
     migration.rates = NULL,
     
     bottleneck.size = NULL,
+    bottleneck.theta = NULL,
+    
     effective.size = NULL,
     popn.growth.dynamics = NULL,
     generation.time = NULL,

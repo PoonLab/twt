@@ -187,6 +187,8 @@ Model <- R6Class("Model",
           migration.rates = eval(parse(text=paste('list', params$migration.rates))),
           
           bottleneck.size = params$bottleneck.size,
+          bottleneck.theta = ifelse(is.null(params$bottleneck.theta), 0, 
+                                params$bottleneck.theta),
           effective.size = params$effective.size,
           
           popn.growth.dynamics = private$init.popn.growth.dynamics(

@@ -241,7 +241,14 @@ sim.inner.tree <- function(run) {
          " has no assigned branching time.")
   }
   
-  bottleneck.size <- comp$get.type()$get.bottleneck.size()
+  mean.size <- comp$get.type()$get.bottleneck.size()
+  theta <- comp$get.type()$get.bottleneck.theta()
+  if (theta == 0) {
+    bottleneck.size <- mean.size
+  } else {
+    bottleneck.size <- rztnbinom(n=1, mu=mean.size, theta=theta)  
+  }
+  
   if (!is.numeric(bottleneck.size)) {
     stop("Error in .resolve.bottleneck: Compartment ", comp$get.name(),
          " has no bottleneck size specified.")
