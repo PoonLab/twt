@@ -374,11 +374,8 @@ sim.outer.tree <- function(model, max.attempts=5, skip.assign=F) {
   init.conds <- run$get.initial.conds()
   popn.totals <- init.conds$size  # list of CompartmentType->size
   
-  # simulate trajectories in forward time (indexed in reverse, ha ha!)
-  current.time <- init.conds$originTime
-  
   # extract transmission, migration and transition rates as convenient named matrices
-  popn.rates <- .get.rate.matrices(types, current.time)
+  popn.rates <- .get.rate.matrices(types, init.conds$originTime)
   
   # get rate change times
   rate.changes <- unlist(lapply(types, function(x) names(x$get.branching.rates())))
@@ -387,7 +384,7 @@ sim.outer.tree <- function(model, max.attempts=5, skip.assign=F) {
   next.rate.change <- NULL 
   if (length(rate.changes) > 1) {
     # already sorted in descending order at CompartmentType init
-    rate.change.index <- max(which(rate.changes >= current.time))
+    rate.change.index <- max(which(rate.changes >= init.conds$originTime))
     if (rate.change.index < length(rate.changes)) {
       next.rate.change <- rate.changes[rate.change.index+1]
     }
@@ -395,6 +392,8 @@ sim.outer.tree <- function(model, max.attempts=5, skip.assign=F) {
   
   attempt <- 1
   while (attempt < max.attempts) {
+    # simulate trajectories in forward time (indexed in reverse, ha ha!)
+    current.time <- init.conds$originTime
     
     # initialize populations at origin (named vectors)
     susceptible <- unlist(init.conds$size)
