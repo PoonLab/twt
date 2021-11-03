@@ -109,7 +109,7 @@ Model <- R6Class("Model",
         if (!is.numeric(size)) {
           stop(paste("InitialConditions:size:", typename, " not numeric"))
         }
-        result$size[typename] <- size
+        result$size[typename] <- floor(size)
       }
        
       
