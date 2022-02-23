@@ -258,7 +258,7 @@ Compartment <- R6Class("Compartment",
     },
     
     set.sampling.time = function() {
-      private$sampling.time <- max(sapply(private$lineages, function(line) {
+      private$sampling.time <- min(sapply(private$lineages, function(line) {
         line$get.sampling.time()
       }))
     },
