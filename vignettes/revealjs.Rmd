@@ -113,11 +113,11 @@ par(mfrow=c(1,2)); plot(run, 's'); plot(run)
 
 ## Time heterogeneity
 
-```{r echo=T, fig.width=9, fig.height=4.5}
-m2 <- Model$new(yaml.load_file('../tests/testthat/epoch.yaml'))
-set.seed(1); run2 <- sim.outer.tree(m2)
-par(mfrow=c(1,2)); plot(run2, 's', mar=c(5,5,0,2)); abline(v=3, lty=2, lwd=2); plot(run2, segments.lwd=3)
-```
+#```{r echo=T, fig.width=9, fig.height=4.5}
+#m2 <- Model$new(yaml.load_file('../tests/testthat/epoch.yaml'))
+#set.seed(1); run2 <- sim.outer.tree(m2)
+#par(mfrow=c(1,2)); plot(run2, 's', mar=c(5,5,0,2)); abline(v=3, lty=2, lwd=2); plot(run2, segments.lwd=3)
+#```
 
 
 ## Resolving within-host events
@@ -182,9 +182,7 @@ points(x, y, pch=21, col='salmon', bg='white', lwd=2.5, cex=1.5)
 ## Acknowledgements
 
 * Early implementations by Garway (Tammy) Ng
-<table>
-<tr><td><img src="tammy.jpg" height="250px"/></td><td><img src="commits.png" height="250px"/></td></tr>
-</table>
+
 
 * Development was supported the Government of Canada through [Genome Canada](https://www.genomecanada.ca/) and the [Ontario Genomics Institute](https://www.ontariogenomics.ca/) (OGI-131), and from the [Canadian Institutes for Health Research](https://cihr-irsc.gc.ca/e/193.html) (PJT-155990).
 

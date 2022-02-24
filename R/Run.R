@@ -394,7 +394,7 @@ plot.Run <- function(run, type='t', ...) {
 #' @param ...:  additional arguments passed to generic plot()
 #' 
 #' @keywords internal
-.plot.dynamics <- function(run, ...) {
+.plot.dynamics <- function(run, cex=1, ...) {
   counts <- run$get.counts()
   if (is.null(counts)) {
     stop("Run object does not have counts field, may have been loaded from YAML")
@@ -410,7 +410,7 @@ plot.Run <- function(run, type='t', ...) {
     lines(counts$time, counts[,i], type='s', 
           col=ifelse(startsWith(label, 'S'), 'dodgerblue', 'firebrick2'),
           lwd=2)
-    text(x=0, y=counts[nrow(counts), i], label=label, adj=0)
+    text(x=0, y=counts[nrow(counts), i], label=label, adj=0, cex=cex)
   }
   par(xpd=FALSE)
 }

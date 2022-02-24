@@ -399,10 +399,15 @@ sample.coalescents <- function(run, current.time){
   ext.comps <- comps[names(counts)[counts >= 2]]
   
   # calculate waiting times per Compartment
-  sapply(ext.comps, function(comp) {
+  res <- sapply(ext.comps, function(comp) {
     k <- run$get.num.extant(current.time, comp$get.name())
-    .rexp.coal(k, comp, current.time)
+    if (k < 2) {
+      NA
+    } else {
+      .rexp.coal(k, comp, current.time)
+    }
   })
+  res[!is.na(res)]
 }
 
 
