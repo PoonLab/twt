@@ -648,8 +648,11 @@ sim.outer.tree <- function(model, max.attempts=5, skip.assign=F) {
         #eligible <- Filter(function(comp) is.na(comp$get.sampling.time()) || 
         #                     e$time > comp$get.sampling.time(), 
         #                   active[types==e$r.type])
-        eligible <- active[which(types==e$r.type & (is.na(samp.times) || samp.times < e$time))]
-          
+        # eligible <- active[which(types==e$r.type & (is.na(samp.times) || samp.times < e$time))]
+        eligible <- active[intersect(which(types==e$r.type), 
+                                     union(which(samp.times<e$time),
+                                           which(is.na(samp.times))))] 
+        
         if (length(eligible) == 0) {
           stop("Error in .assign.events(): No eligible compartments for transmission event ", e)
         }
