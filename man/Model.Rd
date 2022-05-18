@@ -68,6 +68,7 @@ mod
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-new"></a>}}
+\if{latex}{\out{\hypertarget{method-new}{}}}
 \subsection{Method \code{new()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Model$new(settings = NA, name = NA)}\if{html}{\out{</div>}}
@@ -76,6 +77,7 @@ mod
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.initial.conds"></a>}}
+\if{latex}{\out{\hypertarget{method-get.initial.conds}{}}}
 \subsection{Method \code{get.initial.conds()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Model$get.initial.conds()}\if{html}{\out{</div>}}
@@ -84,6 +86,7 @@ mod
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.types"></a>}}
+\if{latex}{\out{\hypertarget{method-get.types}{}}}
 \subsection{Method \code{get.types()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Model$get.types()}\if{html}{\out{</div>}}
@@ -92,6 +95,7 @@ mod
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.compartments"></a>}}
+\if{latex}{\out{\hypertarget{method-get.compartments}{}}}
 \subsection{Method \code{get.compartments()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Model$get.compartments()}\if{html}{\out{</div>}}
@@ -100,6 +104,7 @@ mod
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.lineages"></a>}}
+\if{latex}{\out{\hypertarget{method-get.lineages}{}}}
 \subsection{Method \code{get.lineages()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Model$get.lineages()}\if{html}{\out{</div>}}
@@ -108,6 +113,7 @@ mod
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.names"></a>}}
+\if{latex}{\out{\hypertarget{method-get.names}{}}}
 \subsection{Method \code{get.names()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Model$get.names(listR6obj)}\if{html}{\out{</div>}}
@@ -116,6 +122,7 @@ mod
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.fixed.samplings"></a>}}
+\if{latex}{\out{\hypertarget{method-get.fixed.samplings}{}}}
 \subsection{Method \code{get.fixed.samplings()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Model$get.fixed.samplings()}\if{html}{\out{</div>}}
@@ -124,6 +131,7 @@ mod
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-clone"></a>}}
+\if{latex}{\out{\hypertarget{method-clone}{}}}
 \subsection{Method \code{clone()}}{
 The objects of this class are cloneable with this method.
 \subsection{Usage}{

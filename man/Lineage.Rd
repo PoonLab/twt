@@ -40,6 +40,7 @@ comp$add.lineage(lin)
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-new"></a>}}
+\if{latex}{\out{\hypertarget{method-new}{}}}
 \subsection{Method \code{new()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Lineage$new(name = NA, type = NA, sampling.time = NA, location = NA)}\if{html}{\out{</div>}}
@@ -48,6 +49,7 @@ comp$add.lineage(lin)
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-copy"></a>}}
+\if{latex}{\out{\hypertarget{method-copy}{}}}
 \subsection{Method \code{copy()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Lineage$copy(deep = FALSE)}\if{html}{\out{</div>}}
@@ -56,6 +58,7 @@ comp$add.lineage(lin)
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.name"></a>}}
+\if{latex}{\out{\hypertarget{method-get.name}{}}}
 \subsection{Method \code{get.name()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Lineage$get.name()}\if{html}{\out{</div>}}
@@ -64,6 +67,7 @@ comp$add.lineage(lin)
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.type"></a>}}
+\if{latex}{\out{\hypertarget{method-get.type}{}}}
 \subsection{Method \code{get.type()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Lineage$get.type()}\if{html}{\out{</div>}}
@@ -72,6 +76,7 @@ comp$add.lineage(lin)
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.sampling.time"></a>}}
+\if{latex}{\out{\hypertarget{method-get.sampling.time}{}}}
 \subsection{Method \code{get.sampling.time()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Lineage$get.sampling.time()}\if{html}{\out{</div>}}
@@ -80,6 +85,7 @@ comp$add.lineage(lin)
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.location"></a>}}
+\if{latex}{\out{\hypertarget{method-get.location}{}}}
 \subsection{Method \code{get.location()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Lineage$get.location()}\if{html}{\out{</div>}}
@@ -88,6 +94,7 @@ comp$add.lineage(lin)
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-set.location"></a>}}
+\if{latex}{\out{\hypertarget{method-set.location}{}}}
 \subsection{Method \code{set.location()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Lineage$set.location(comp)}\if{html}{\out{</div>}}
@@ -96,6 +103,7 @@ comp$add.lineage(lin)
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-set.location.by.name"></a>}}
+\if{latex}{\out{\hypertarget{method-set.location.by.name}{}}}
 \subsection{Method \code{set.location.by.name()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Lineage$set.location.by.name(locationList, new.locationName)}\if{html}{\out{</div>}}
@@ -104,6 +112,7 @@ comp$add.lineage(lin)
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-clone"></a>}}
+\if{latex}{\out{\hypertarget{method-clone}{}}}
 \subsection{Method \code{clone()}}{
 The objects of this class are cloneable with this method.
 \subsection{Usage}{

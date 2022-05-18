@@ -26,6 +26,7 @@ bottleneck.size=1, coalescent.rate=1)
 \itemize{
 \item \href{#method-new}{\code{CompartmentType$new()}}
 \item \href{#method-get.bottleneck.size}{\code{CompartmentType$get.bottleneck.size()}}
+\item \href{#method-get.bottleneck.theta}{\code{CompartmentType$get.bottleneck.theta()}}
 \item \href{#method-get.name}{\code{CompartmentType$get.name()}}
 \item \href{#method-get.unsampled}{\code{CompartmentType$get.unsampled()}}
 \item \href{#method-get.branching.rates}{\code{CompartmentType$get.branching.rates()}}
@@ -45,6 +46,7 @@ bottleneck.size=1, coalescent.rate=1)
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-new"></a>}}
+\if{latex}{\out{\hypertarget{method-new}{}}}
 \subsection{Method \code{new()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{CompartmentType$new(
@@ -54,6 +56,7 @@ bottleneck.size=1, coalescent.rate=1)
   transition.rates = NA,
   migration.rates = NA,
   bottleneck.size = NA,
+  bottleneck.theta = NA,
   effective.size = NA,
   popn.growth.dynamics = NA,
   generation.time = NA,
@@ -64,6 +67,7 @@ bottleneck.size=1, coalescent.rate=1)
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.bottleneck.size"></a>}}
+\if{latex}{\out{\hypertarget{method-get.bottleneck.size}{}}}
 \subsection{Method \code{get.bottleneck.size()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{CompartmentType$get.bottleneck.size()}\if{html}{\out{</div>}}
@@ -71,7 +75,17 @@ bottleneck.size=1, coalescent.rate=1)
 
 }
 \if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-get.bottleneck.theta"></a>}}
+\if{latex}{\out{\hypertarget{method-get.bottleneck.theta}{}}}
+\subsection{Method \code{get.bottleneck.theta()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{CompartmentType$get.bottleneck.theta()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.name"></a>}}
+\if{latex}{\out{\hypertarget{method-get.name}{}}}
 \subsection{Method \code{get.name()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{CompartmentType$get.name()}\if{html}{\out{</div>}}
@@ -80,6 +94,7 @@ bottleneck.size=1, coalescent.rate=1)
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.unsampled"></a>}}
+\if{latex}{\out{\hypertarget{method-get.unsampled}{}}}
 \subsection{Method \code{get.unsampled()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{CompartmentType$get.unsampled()}\if{html}{\out{</div>}}
@@ -88,6 +103,7 @@ bottleneck.size=1, coalescent.rate=1)
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.branching.rates"></a>}}
+\if{latex}{\out{\hypertarget{method-get.branching.rates}{}}}
 \subsection{Method \code{get.branching.rates()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{CompartmentType$get.branching.rates()}\if{html}{\out{</div>}}
@@ -96,14 +112,16 @@ bottleneck.size=1, coalescent.rate=1)
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.branching.rate"></a>}}
+\if{latex}{\out{\hypertarget{method-get.branching.rate}{}}}
 \subsection{Method \code{get.branching.rate()}}{
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{CompartmentType$get.branching.rate(name.type)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{CompartmentType$get.branching.rate(current.time, name.type)}\if{html}{\out{</div>}}
 }
 
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.migration.rates"></a>}}
+\if{latex}{\out{\hypertarget{method-get.migration.rates}{}}}
 \subsection{Method \code{get.migration.rates()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{CompartmentType$get.migration.rates()}\if{html}{\out{</div>}}
@@ -112,6 +130,7 @@ bottleneck.size=1, coalescent.rate=1)
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.migration.rate"></a>}}
+\if{latex}{\out{\hypertarget{method-get.migration.rate}{}}}
 \subsection{Method \code{get.migration.rate()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{CompartmentType$get.migration.rate(name.type)}\if{html}{\out{</div>}}
@@ -120,6 +139,7 @@ bottleneck.size=1, coalescent.rate=1)
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.transition.rates"></a>}}
+\if{latex}{\out{\hypertarget{method-get.transition.rates}{}}}
 \subsection{Method \code{get.transition.rates()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{CompartmentType$get.transition.rates()}\if{html}{\out{</div>}}
@@ -128,6 +148,7 @@ bottleneck.size=1, coalescent.rate=1)
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.transition.rate"></a>}}
+\if{latex}{\out{\hypertarget{method-get.transition.rate}{}}}
 \subsection{Method \code{get.transition.rate()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{CompartmentType$get.transition.rate(name.type)}\if{html}{\out{</div>}}
@@ -136,6 +157,7 @@ bottleneck.size=1, coalescent.rate=1)
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.effective.size"></a>}}
+\if{latex}{\out{\hypertarget{method-get.effective.size}{}}}
 \subsection{Method \code{get.effective.size()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{CompartmentType$get.effective.size()}\if{html}{\out{</div>}}
@@ -144,6 +166,7 @@ bottleneck.size=1, coalescent.rate=1)
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.popn.growth.dynamics"></a>}}
+\if{latex}{\out{\hypertarget{method-get.popn.growth.dynamics}{}}}
 \subsection{Method \code{get.popn.growth.dynamics()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{CompartmentType$get.popn.growth.dynamics()}\if{html}{\out{</div>}}
@@ -152,6 +175,7 @@ bottleneck.size=1, coalescent.rate=1)
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.generation.time"></a>}}
+\if{latex}{\out{\hypertarget{method-get.generation.time}{}}}
 \subsection{Method \code{get.generation.time()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{CompartmentType$get.generation.time()}\if{html}{\out{</div>}}
@@ -160,6 +184,7 @@ bottleneck.size=1, coalescent.rate=1)
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.transmission.times"></a>}}
+\if{latex}{\out{\hypertarget{method-get.transmission.times}{}}}
 \subsection{Method \code{get.transmission.times()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{CompartmentType$get.transmission.times()}\if{html}{\out{</div>}}
@@ -168,6 +193,7 @@ bottleneck.size=1, coalescent.rate=1)
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-set.transmission.times"></a>}}
+\if{latex}{\out{\hypertarget{method-set.transmission.times}{}}}
 \subsection{Method \code{set.transmission.times()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{CompartmentType$set.transmission.times(vector.transm.times)}\if{html}{\out{</div>}}
@@ -176,6 +202,7 @@ bottleneck.size=1, coalescent.rate=1)
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-set.migration.rate"></a>}}
+\if{latex}{\out{\hypertarget{method-set.migration.rate}{}}}
 \subsection{Method \code{set.migration.rate()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{CompartmentType$set.migration.rate(recipient.type, new.migr.rate)}\if{html}{\out{</div>}}
@@ -184,6 +211,7 @@ bottleneck.size=1, coalescent.rate=1)
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-clone"></a>}}
+\if{latex}{\out{\hypertarget{method-clone}{}}}
 \subsection{Method \code{clone()}}{
 The objects of this class are cloneable with this method.
 \subsection{Usage}{

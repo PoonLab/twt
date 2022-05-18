@@ -276,8 +276,8 @@ plot.Run <- function(run, type='t', ...) {
 
 #' .reorder.events
 #' 
-#' A helper function that recursively geneates a list of node labels
-#' by post-order traversal (outputting children before parents).
+#' A helper function that recursively generates a list of node labels
+#' by post-order traversal (outputting parents after children).
 #' 
 #' @keywords internal
 .reorder.events <- function(events, node, result=c()) {
@@ -290,6 +290,65 @@ plot.Run <- function(run, type='t', ...) {
   }
   result <- c(result, node)
   return(result)
+}
+
+
+#' as.phylo.Run
+#' Generic method for Run objects - convert Run object (outer tree 
+#' simulation) into an object of class `phylo`
+#' @param run:  R6 object of class `Run` 
+#' @return S3 object of class `phylo`
+#' @export
+as.phylo.Run <- function(run) {
+  eventlog <- run$get.eventlog()
+  comps <- c(run$get.compartments(), run$get.unsampled.hosts())
+  
+  # retrieve fixed sampling times of tips
+  fixed.sampl <- eventlog$get.fixed.samplings()
+  
+  # retrieve events from log
+  events <- eventlog$get.all.events()
+  trans <- events[events$event.type=='transmission', ]
+  
+  # gather lists of node names
+  nodes <- union(trans$compartment1, trans$compartment2)
+  sources <- unique(trans$compartment2)
+  tips <- trans$compartment1[!is.element(trans$compartment1, sources)]
+  internals <- setdiff(nodes, tips)
+  
+  # root is not the child of any node
+  root <- sources[!is.element(sources, trans$compartment1)]
+  if (length(root) > 1) {
+    stop("Detected multiple roots in Run object: ", 
+         paste(root, collapse=", "))
+  }
+  if (length(root) == 0) stop("Error in as.phylo.Run(): failed to locate root")
+  
+  # returns vector of node names in preorder (parent before children)
+  preorder <- rev(.reorder.events(trans, root))
+  
+  # reorder node lists
+  tips <- preorder[is.element(preorder, tips)]
+  internals <- preorder[is.element(preorder, internals)]
+  # numbered 1:n for tips, (n+1):(n+m) for internal nodes, starting with root
+  nodes <- c(tips, internals)
+  
+  # generate edgelist
+  edges <- trans[na.omit(match(preorder, trans$compartment1)), ]
+  edgelist <- as.matrix(t(sapply(1:nrow(edges), function(i) {
+    c(which(nodes==edges$compartment2[i]), which(nodes==edges$compartment1[i])) 
+  })))
+  
+  # create phylo object
+  phy <- list(
+    tip.label = tips,
+    node.label = internals,
+    Nnode = length(internals),
+    edge = edgelist,
+    edge.length = rep(1, times=nrow(edgelist))
+  )
+  attr(phy, 'class') <- 'phylo'
+  phy
 }
 
 

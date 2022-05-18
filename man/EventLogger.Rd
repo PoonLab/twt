@@ -12,7 +12,7 @@ coalescent events.
 # manually initialize an EventLog object
 e <- EventLogger$new()
 # note this log entry is not linked to existing Lineage or Compartment objects
-e$add.event("transmission", time=1, line1="NA", comp1="hist1", comp2="host2")
+e$add.event("transmission", time=1, line1="NA", comp1="host1", comp2="host2")
 e$get.all.events()
 
 }
@@ -34,6 +34,7 @@ e$get.all.events()
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-new"></a>}}
+\if{latex}{\out{\hypertarget{method-new}{}}}
 \subsection{Method \code{new()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{EventLogger$new(events = NA)}\if{html}{\out{</div>}}
@@ -42,6 +43,7 @@ e$get.all.events()
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.all.events"></a>}}
+\if{latex}{\out{\hypertarget{method-get.all.events}{}}}
 \subsection{Method \code{get.all.events()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{EventLogger$get.all.events()}\if{html}{\out{</div>}}
@@ -50,6 +52,7 @@ e$get.all.events()
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.events"></a>}}
+\if{latex}{\out{\hypertarget{method-get.events}{}}}
 \subsection{Method \code{get.events()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{EventLogger$get.events(event.type)}\if{html}{\out{</div>}}
@@ -58,6 +61,7 @@ e$get.all.events()
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-add.event"></a>}}
+\if{latex}{\out{\hypertarget{method-add.event}{}}}
 \subsection{Method \code{add.event()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{EventLogger$add.event(
@@ -88,6 +92,7 @@ recipient (should only be one entry with Compartment as recipient)}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-clear.events"></a>}}
+\if{latex}{\out{\hypertarget{method-clear.events}{}}}
 \subsection{Method \code{clear.events()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{EventLogger$clear.events()}\if{html}{\out{</div>}}
@@ -96,6 +101,7 @@ recipient (should only be one entry with Compartment as recipient)}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-blank.events"></a>}}
+\if{latex}{\out{\hypertarget{method-blank.events}{}}}
 \subsection{Method \code{blank.events()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{EventLogger$blank.events()}\if{html}{\out{</div>}}
@@ -104,6 +110,7 @@ recipient (should only be one entry with Compartment as recipient)}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-record.transmission"></a>}}
+\if{latex}{\out{\hypertarget{method-record.transmission}{}}}
 \subsection{Method \code{record.transmission()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{EventLogger$record.transmission(recipient, lineages)}\if{html}{\out{</div>}}
@@ -124,6 +131,7 @@ through a migration event}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-record.migration"></a>}}
+\if{latex}{\out{\hypertarget{method-record.migration}{}}}
 \subsection{Method \code{record.migration()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{EventLogger$record.migration(recipient, source, time, lineages)}\if{html}{\out{</div>}}
@@ -145,6 +153,7 @@ through a migration event}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.fixed.samplings"></a>}}
+\if{latex}{\out{\hypertarget{method-get.fixed.samplings}{}}}
 \subsection{Method \code{get.fixed.samplings()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{EventLogger$get.fixed.samplings()}\if{html}{\out{</div>}}
@@ -153,6 +162,7 @@ through a migration event}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-store.fixed.samplings"></a>}}
+\if{latex}{\out{\hypertarget{method-store.fixed.samplings}{}}}
 \subsection{Method \code{store.fixed.samplings()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{EventLogger$store.fixed.samplings(model.fixed.samplings)}\if{html}{\out{</div>}}
@@ -161,6 +171,7 @@ through a migration event}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-clone"></a>}}
+\if{latex}{\out{\hypertarget{method-clone}{}}}
 \subsection{Method \code{clone()}}{
 The objects of this class are cloneable with this method.
 \subsection{Usage}{

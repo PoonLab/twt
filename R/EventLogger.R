@@ -17,6 +17,8 @@
 #' @export
 EventLogger <- R6Class("EventLogger", 
   public = list(
+    #' @description Create a new EventLogger object
+    #' @param events: optionally, provide a data frame
     initialize = function(events = NA) {
       if (is.na(events)) {
         self$clear.events()
@@ -333,7 +335,7 @@ plot.EventLogger <- function(eventlog, transmissions=T, migrations=T,
 as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE,
                                  transitions=FALSE) {
 
-    # retrieve fixed sampling times of tips
+  # retrieve fixed sampling times of tips
   fixed.sampl <- eventlog$get.fixed.samplings()
   
   # retrieve events from log
@@ -402,7 +404,7 @@ as.phylo.EventLogger <- function(eventlog, transmissions=FALSE, migrations=FALSE
   internals <- setdiff(nodes, tips)
   
 
-  # populate edge list by postorder traversal (children before parent)
+  # populate edge list by preorder traversal (parent before children)
   preorder <- .reorder.inner.events(core.events, root, order='preorder')
   
   # reorder node lists

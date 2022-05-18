@@ -46,6 +46,7 @@ hostN$set.type(host1$get.type())
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-new"></a>}}
+\if{latex}{\out{\hypertarget{method-new}{}}}
 \subsection{Method \code{new()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Compartment$new(
@@ -62,6 +63,7 @@ hostN$set.type(host1$get.type())
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-copy"></a>}}
+\if{latex}{\out{\hypertarget{method-copy}{}}}
 \subsection{Method \code{copy()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Compartment$copy(deep = FALSE)}\if{html}{\out{</div>}}
@@ -70,6 +72,7 @@ hostN$set.type(host1$get.type())
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.name"></a>}}
+\if{latex}{\out{\hypertarget{method-get.name}{}}}
 \subsection{Method \code{get.name()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Compartment$get.name()}\if{html}{\out{</div>}}
@@ -78,6 +81,7 @@ hostN$set.type(host1$get.type())
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.type"></a>}}
+\if{latex}{\out{\hypertarget{method-get.type}{}}}
 \subsection{Method \code{get.type()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Compartment$get.type()}\if{html}{\out{</div>}}
@@ -86,6 +90,7 @@ hostN$set.type(host1$get.type())
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.source"></a>}}
+\if{latex}{\out{\hypertarget{method-get.source}{}}}
 \subsection{Method \code{get.source()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Compartment$get.source()}\if{html}{\out{</div>}}
@@ -94,6 +99,7 @@ hostN$set.type(host1$get.type())
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.branching.time"></a>}}
+\if{latex}{\out{\hypertarget{method-get.branching.time}{}}}
 \subsection{Method \code{get.branching.time()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Compartment$get.branching.time()}\if{html}{\out{</div>}}
@@ -102,6 +108,7 @@ hostN$set.type(host1$get.type())
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.sampling.time"></a>}}
+\if{latex}{\out{\hypertarget{method-get.sampling.time}{}}}
 \subsection{Method \code{get.sampling.time()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Compartment$get.sampling.time()}\if{html}{\out{</div>}}
@@ -110,6 +117,7 @@ hostN$set.type(host1$get.type())
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-set.type"></a>}}
+\if{latex}{\out{\hypertarget{method-set.type}{}}}
 \subsection{Method \code{set.type()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Compartment$set.type(new.type)}\if{html}{\out{</div>}}
@@ -118,6 +126,7 @@ hostN$set.type(host1$get.type())
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-set.source"></a>}}
+\if{latex}{\out{\hypertarget{method-set.source}{}}}
 \subsection{Method \code{set.source()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Compartment$set.source(new.source)}\if{html}{\out{</div>}}
@@ -126,6 +135,7 @@ hostN$set.type(host1$get.type())
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-set.branching.time"></a>}}
+\if{latex}{\out{\hypertarget{method-set.branching.time}{}}}
 \subsection{Method \code{set.branching.time()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Compartment$set.branching.time(new.branching.time)}\if{html}{\out{</div>}}
@@ -134,6 +144,7 @@ hostN$set.type(host1$get.type())
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-set.sampling.time"></a>}}
+\if{latex}{\out{\hypertarget{method-set.sampling.time}{}}}
 \subsection{Method \code{set.sampling.time()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Compartment$set.sampling.time()}\if{html}{\out{</div>}}
@@ -142,6 +153,7 @@ hostN$set.type(host1$get.type())
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-set.unsampled"></a>}}
+\if{latex}{\out{\hypertarget{method-set.unsampled}{}}}
 \subsection{Method \code{set.unsampled()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Compartment$set.unsampled(is.unsampled)}\if{html}{\out{</div>}}
@@ -150,6 +162,7 @@ hostN$set.type(host1$get.type())
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-is.unsampled"></a>}}
+\if{latex}{\out{\hypertarget{method-is.unsampled}{}}}
 \subsection{Method \code{is.unsampled()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Compartment$is.unsampled()}\if{html}{\out{</div>}}
@@ -158,6 +171,7 @@ hostN$set.type(host1$get.type())
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.lineages"></a>}}
+\if{latex}{\out{\hypertarget{method-get.lineages}{}}}
 \subsection{Method \code{get.lineages()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Compartment$get.lineages()}\if{html}{\out{</div>}}
@@ -166,6 +180,7 @@ hostN$set.type(host1$get.type())
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-add.lineage"></a>}}
+\if{latex}{\out{\hypertarget{method-add.lineage}{}}}
 \subsection{Method \code{add.lineage()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Compartment$add.lineage(new.lineage)}\if{html}{\out{</div>}}
@@ -174,6 +189,7 @@ hostN$set.type(host1$get.type())
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-remove.lineage"></a>}}
+\if{latex}{\out{\hypertarget{method-remove.lineage}{}}}
 \subsection{Method \code{remove.lineage()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Compartment$remove.lineage(ex.lineage)}\if{html}{\out{</div>}}
@@ -182,6 +198,7 @@ hostN$set.type(host1$get.type())
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-clone"></a>}}
+\if{latex}{\out{\hypertarget{method-clone}{}}}
 \subsection{Method \code{clone()}}{
 The objects of this class are cloneable with this method.
 \subsection{Usage}{

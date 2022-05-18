@@ -5,7 +5,7 @@
 \title{.plot.dynamics
 Make a stairstep plot of the population dynamics.}
 \usage{
-.plot.dynamics(run, ...)
+.plot.dynamics(run, cex = 1, ...)
 }
 \arguments{
 \item{run:}{R6 object of class Run}

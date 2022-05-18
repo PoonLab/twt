@@ -4,7 +4,7 @@
 \alias{.get.rate.matrices}
 \title{.get.rate.matrices}
 \usage{
-.get.rate.matrices(types)
+.get.rate.matrices(types, current.time)
 }
 \arguments{
 \item{types:}{list of CompartmentType objects as returned by Run$get.types()}

@@ -4,10 +4,10 @@
 \alias{.rexp.coal}
 \title{rexp.coal}
 \usage{
-.rexp.coal(run, comp, time)
+.rexp.coal(k, comp, time)
 }
 \arguments{
-\item{run:}{R6 object of class Run}
+\item{k:}{integer, number of extant lineages}
 
 \item{comp:}{R6 object of class Compartment}
 

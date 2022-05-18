@@ -7,7 +7,7 @@
 .reorder.events(events, node, result = c())
 }
 \description{
-A helper function that recursively geneates a list of node labels
-by post-order traversal (outputting children before parents).
+A helper function that recursively generates a list of node labels
+by post-order traversal (outputting parents after children).
 }
 \keyword{internal}

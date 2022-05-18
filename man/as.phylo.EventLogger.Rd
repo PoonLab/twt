@@ -4,13 +4,24 @@
 \alias{as.phylo.EventLogger}
 \title{as.phylo}
 \usage{
-\method{as.phylo}{EventLogger}(eventlog, transmissions = FALSE, migrations = FALSE)
+\method{as.phylo}{EventLogger}(
+  eventlog,
+  transmissions = FALSE,
+  migrations = FALSE,
+  transitions = FALSE
+)
 }
 \arguments{
 \item{eventlog:}{EventLogger object}
 
-\item{transmissions:}{logical; if TRUE, transmission events included, 
-else excluded otherwise.}
+\item{transmissions:}{logical; if TRUE, include transmission events as
+singleton nodes in tree.}
+
+\item{migrations:}{logical; if TRUE, include migration events as singleton
+nodes in tree.}
+
+\item{transitions:}{logical, if TRUE, include transition events as 
+singletone nodes in tree.}
 }
 \value{
 ape::phylo object

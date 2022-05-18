@@ -73,6 +73,7 @@ more recently than the user-specified time
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-new"></a>}}
+\if{latex}{\out{\hypertarget{method-new}{}}}
 \subsection{Method \code{new()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Run$new(model)}\if{html}{\out{</div>}}
@@ -81,6 +82,7 @@ more recently than the user-specified time
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.eventlog"></a>}}
+\if{latex}{\out{\hypertarget{method-get.eventlog}{}}}
 \subsection{Method \code{get.eventlog()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Run$get.eventlog()}\if{html}{\out{</div>}}
@@ -89,6 +91,7 @@ more recently than the user-specified time
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-set.eventlog"></a>}}
+\if{latex}{\out{\hypertarget{method-set.eventlog}{}}}
 \subsection{Method \code{set.eventlog()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Run$set.eventlog(e)}\if{html}{\out{</div>}}
@@ -97,6 +100,7 @@ more recently than the user-specified time
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.counts"></a>}}
+\if{latex}{\out{\hypertarget{method-get.counts}{}}}
 \subsection{Method \code{get.counts()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Run$get.counts()}\if{html}{\out{</div>}}
@@ -105,6 +109,7 @@ more recently than the user-specified time
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-set.counts"></a>}}
+\if{latex}{\out{\hypertarget{method-set.counts}{}}}
 \subsection{Method \code{set.counts()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Run$set.counts(df)}\if{html}{\out{</div>}}
@@ -113,6 +118,7 @@ more recently than the user-specified time
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.initial.conds"></a>}}
+\if{latex}{\out{\hypertarget{method-get.initial.conds}{}}}
 \subsection{Method \code{get.initial.conds()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Run$get.initial.conds()}\if{html}{\out{</div>}}
@@ -121,6 +127,7 @@ more recently than the user-specified time
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.fixed.samplings"></a>}}
+\if{latex}{\out{\hypertarget{method-get.fixed.samplings}{}}}
 \subsection{Method \code{get.fixed.samplings()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Run$get.fixed.samplings()}\if{html}{\out{</div>}}
@@ -129,6 +136,7 @@ more recently than the user-specified time
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.types"></a>}}
+\if{latex}{\out{\hypertarget{method-get.types}{}}}
 \subsection{Method \code{get.types()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Run$get.types()}\if{html}{\out{</div>}}
@@ -137,6 +145,7 @@ more recently than the user-specified time
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.compartments"></a>}}
+\if{latex}{\out{\hypertarget{method-get.compartments}{}}}
 \subsection{Method \code{get.compartments()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Run$get.compartments()}\if{html}{\out{</div>}}
@@ -145,6 +154,7 @@ more recently than the user-specified time
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.lineages"></a>}}
+\if{latex}{\out{\hypertarget{method-get.lineages}{}}}
 \subsection{Method \code{get.lineages()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Run$get.lineages()}\if{html}{\out{</div>}}
@@ -153,6 +163,7 @@ more recently than the user-specified time
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.unsampled.hosts"></a>}}
+\if{latex}{\out{\hypertarget{method-get.unsampled.hosts}{}}}
 \subsection{Method \code{get.unsampled.hosts()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Run$get.unsampled.hosts()}\if{html}{\out{</div>}}
@@ -161,6 +172,7 @@ more recently than the user-specified time
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.num.extant"></a>}}
+\if{latex}{\out{\hypertarget{method-get.num.extant}{}}}
 \subsection{Method \code{get.num.extant()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Run$get.num.extant(time, location = NA)}\if{html}{\out{</div>}}
@@ -169,6 +181,7 @@ more recently than the user-specified time
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.sampling.times"></a>}}
+\if{latex}{\out{\hypertarget{method-get.sampling.times}{}}}
 \subsection{Method \code{get.sampling.times()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Run$get.sampling.times()}\if{html}{\out{</div>}}
@@ -195,6 +208,7 @@ over the course of inner tree simulation.
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.extant.lineages"></a>}}
+\if{latex}{\out{\hypertarget{method-get.extant.lineages}{}}}
 \subsection{Method \code{get.extant.lineages()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Run$get.extant.lineages(time, comp = NA)}\if{html}{\out{</div>}}
@@ -203,6 +217,7 @@ over the course of inner tree simulation.
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-add.lineage"></a>}}
+\if{latex}{\out{\hypertarget{method-add.lineage}{}}}
 \subsection{Method \code{add.lineage()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Run$add.lineage(lineage)}\if{html}{\out{</div>}}
@@ -223,6 +238,7 @@ a named list of Lineage objects.
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-remove.lineage"></a>}}
+\if{latex}{\out{\hypertarget{method-remove.lineage}{}}}
 \subsection{Method \code{remove.lineage()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Run$remove.lineage(lineage)}\if{html}{\out{</div>}}
@@ -231,6 +247,7 @@ a named list of Lineage objects.
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-move.lineage"></a>}}
+\if{latex}{\out{\hypertarget{method-move.lineage}{}}}
 \subsection{Method \code{move.lineage()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Run$move.lineage(lineage, comp)}\if{html}{\out{</div>}}
@@ -239,6 +256,7 @@ a named list of Lineage objects.
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.locations"></a>}}
+\if{latex}{\out{\hypertarget{method-get.locations}{}}}
 \subsection{Method \code{get.locations()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Run$get.locations()}\if{html}{\out{</div>}}
@@ -247,6 +265,7 @@ a named list of Lineage objects.
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-get.node.ident"></a>}}
+\if{latex}{\out{\hypertarget{method-get.node.ident}{}}}
 \subsection{Method \code{get.node.ident()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Run$get.node.ident(prefix = "Node")}\if{html}{\out{</div>}}
@@ -255,6 +274,7 @@ a named list of Lineage objects.
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-generate.unsampled"></a>}}
+\if{latex}{\out{\hypertarget{method-generate.unsampled}{}}}
 \subsection{Method \code{generate.unsampled()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Run$generate.unsampled(type.name)}\if{html}{\out{</div>}}
@@ -263,6 +283,7 @@ a named list of Lineage objects.
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-clear.unsampled"></a>}}
+\if{latex}{\out{\hypertarget{method-clear.unsampled}{}}}
 \subsection{Method \code{clear.unsampled()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Run$clear.unsampled()}\if{html}{\out{</div>}}
@@ -271,6 +292,7 @@ a named list of Lineage objects.
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-clone"></a>}}
+\if{latex}{\out{\hypertarget{method-clone}{}}}
 \subsection{Method \code{clone()}}{
 The objects of this class are cloneable with this method.
 \subsection{Usage}{

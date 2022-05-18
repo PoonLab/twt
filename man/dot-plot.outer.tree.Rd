@@ -4,10 +4,12 @@
 \alias{.plot.outer.tree}
 \title{.plot.outer.tree}
 \usage{
-.plot.outer.tree(run, ...)
+.plot.outer.tree(run, segments.lwd = 5, ...)
 }
 \arguments{
 \item{e:}{EventLogger object}
+
+\item{segments.lwd:}{line width for segments}
 }
 \description{
 A function that converts events stored in an EventLogger object into

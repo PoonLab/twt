@@ -4,7 +4,7 @@
 \alias{sim.outer.tree}
 \title{sim.outer.tree}
 \usage{
-sim.outer.tree(model, max.attempts = 5)
+sim.outer.tree(model, max.attempts = 5, skip.assign = F)
 }
 \arguments{
 \item{model:}{R6 object of class 'Model'}
