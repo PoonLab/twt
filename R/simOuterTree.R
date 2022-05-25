@@ -269,7 +269,8 @@ sim.outer.tree <- function(model, max.attempts=5, skip.assign=F) {
   
   # transmission, transition and migration
   t.rates <- matrix(nrow=n, ncol=n, dimnames=dimnames)
-  s.rates <- matrix(nrow=n, ncol=n, dimnames=dimnames)
+  s.rates <- list('susceptible'=matrix(nrow=n, ncol=n, dimnames=dimnames),
+                  'infected'=matrix(nrow=n, ncol=n, dimnames=dimnames))
   m.rates <- matrix(nrow=n, ncol=n, dimnames=dimnames)
   
   for (source in types) {
@@ -291,16 +292,24 @@ sim.outer.tree <- function(model, max.attempts=5, skip.assign=F) {
       t.rates[s.name, r.name] <- ifelse(is.null(t.rate), 0, t.rate)
       
       
-      s.rate <- source$get.transition.rate(r.name)
-      if (is.null(s.rate)) {
-        s.rate <- 0
+      # handle transition rates
+      if (names(source$get.transition.rates()) == c("susceptible", "infected")) {
+        # different rates for susceptible and infected members of type
+        s.rates['susceptible'][s.name, r.name] <- source$get.transition.rate('susceptible')[r.name]
+        s.rates['infected'][s.name, r.name] <- source$get.transition.rate('infected')[r.name]
+      } 
+      else {
+        s.rate <- source$get.transition.rate(r.name)
+        if (is.null(s.rate)) {
+          s.rate <- 0
+        }
+        if (s.rate < 0) {
+          stop("Error in .get.rate.matrices: detected negative transition rate for ",
+               "CompartmentType ", source$get.name(), " to ", r.name)
+        }
+        s.rates['susceptible'][s.name, r.name] <- ifelse(is.null(s.rate), 0, s.rate)
+        s.rates['infected'][s.name, r.name] <- s.rates['susceptible'][s.name, r.name]
       }
-      if (s.rate < 0) {
-        stop("Error in .get.rate.matrices: detected negative transition rate for ",
-             "CompartmentType ", source$get.name(), " to ", r.name)
-      }
-      s.rates[s.name, r.name] <- ifelse(is.null(s.rate), 0, s.rate)
-      
       
       m.rate <- source$get.migration.rate(r.name)
       if (is.null(m.rate)) {
