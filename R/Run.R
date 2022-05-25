@@ -308,44 +308,62 @@ as.phylo.Run <- function(run) {
   
   # retrieve events from log
   events <- eventlog$get.all.events()
-  trans <- events[events$event.type=='transmission', ]
   
-  # gather lists of node names
-  nodes <- union(trans$compartment1, trans$compartment2)
-  sources <- unique(trans$compartment2)
-  tips <- trans$compartment1[!is.element(trans$compartment1, sources)]
-  internals <- setdiff(nodes, tips)
+  tips <- events$compartment1[!grepl("^US_", events$compartment1) & 
+                                events$event.type=='transmission']
+  nodes <- c()
+  edges <- matrix(NA, nrow=nrow(events), ncol=2)
   
-  # root is not the child of any node
-  root <- sources[!is.element(sources, trans$compartment1)]
-  if (length(root) > 1) {
-    stop("Detected multiple roots in Run object: ", 
-         paste(root, collapse=", "))
+  # every event adds an internal node to the tree
+  for (i in 1:nrow(events)) {
+    e <- events[i, ]
+    # determine node indices
+    if (is.element(e$compartment1, tips)) {
+      child <- which(tips == e$compartment1)
+    } 
+    else if (is.element(e$compartment1, nodes)) {
+      child <- length(tips) + which(nodes == e$compartment1)
+    } 
+    else {
+      # register new internal node
+      nodes <- c(nodes, e$compartment1)
+      child <- length(tips) + length(nodes)
+    }
+    
+    if (e$event.type == 'transmission') {  
+      if (is.element(e$compartment2, nodes)) {
+        parent <- length(tips) + which(nodes == e$compartment2)
+      } 
+      else {
+        nodes <- c(nodes, e$compartment2)
+        parent <- length(tips) + length(nodes)
+      }
+    }
+    else if (e$event.type == 'transition') {
+      # e$compartment2 is NA, must create new node name
+      node.name <- paste(e$compartment1, e$type1, e$type2, sep="_")
+      
+      # crudely replace node name in all cases
+      events$compartment1[events$compartment1 == e$compartment1] <- node.name
+      events$compartment2[events$compartment2 == e$compartment1] <- node.name
+      
+      nodes <- c(nodes, node.name)
+      parent <- length(tips) + length(nodes)
+    }
+    else {
+      stop("ERROR: Unsupported event type ", e$event.type, " in as.phylo.Run")
+    }
+    
+    edges[i, ] <- c(parent, child)
   }
-  if (length(root) == 0) stop("Error in as.phylo.Run(): failed to locate root")
-  
-  # returns vector of node names in preorder (parent before children)
-  preorder <- rev(.reorder.events(trans, root))
-  
-  # reorder node lists
-  tips <- preorder[is.element(preorder, tips)]
-  internals <- preorder[is.element(preorder, internals)]
-  # numbered 1:n for tips, (n+1):(n+m) for internal nodes, starting with root
-  nodes <- c(tips, internals)
-  
-  # generate edgelist
-  edges <- trans[na.omit(match(preorder, trans$compartment1)), ]
-  edgelist <- as.matrix(t(sapply(1:nrow(edges), function(i) {
-    c(which(nodes==edges$compartment2[i]), which(nodes==edges$compartment1[i])) 
-  })))
   
   # create phylo object
   phy <- list(
     tip.label = tips,
-    node.label = internals,
-    Nnode = length(internals),
-    edge = edgelist,
-    edge.length = rep(1, times=nrow(edgelist))
+    node.label = nodes,
+    Nnode = length(nodes),
+    edge = edges,
+    edge.length = rep(1, times=nrow(edges))
   )
   attr(phy, 'class') <- 'phylo'
   phy
