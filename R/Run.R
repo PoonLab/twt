@@ -285,7 +285,6 @@ plot.Run <- function(run, type='t', ...) {
 }
 
 
-
 #' as.phylo.Run
 #' Generic method for Run objects - convert Run object (outer tree 
 #' simulation) into an object of class `phylo`
@@ -340,8 +339,10 @@ as.phylo.Run <- function(run) {
     type1=NA,
     type2=NA,
     node.name=names(fixed.sampl),
-    parent=events$node.name[sapply(names(fixed.sampl), 
-                                   function(comp) which(events$compartment1==comp))]
+    parent=events$node.name[
+      sapply(names(fixed.sampl), function(comp) {
+        min(which(events$compartment1==comp))
+        })]
   )
   events <- rbind(tips[order(tips$time), ], events)
   
