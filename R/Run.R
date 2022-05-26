@@ -348,124 +348,28 @@ as.phylo.Run <- function(run) {
   # sort in preorder
   node.order <- .reorder.nodes(events, 'ROOT')
   events <- events[match(node.order, events$node.name),]
-  events$parent.time <- 
   
-  
-  # events identify internal nodes, generate edges in preorder
-  
-  
-  tips <- events$compartment1[!grepl("^US_", events$compartment1) & 
-                                events$event.type=='transmission']
-  internals <- c()
-  edges <- matrix(NA, nrow=length(tips)+nrow(events), ncol=3)
-  for (i in nrow(events):1) {
-    e <- events[i,]
-    if (e$event.type=='transmission') {
-      node.name <- paste(e$compartment2, e$compartment1, sep="__")
-    }
+  # calculate branch lengths
+  events$parent.time <- events$time[match(events$parent, events$node.name)]
+  events$branch.length <- events$parent.time - events$time
+  if (is.na(events$branch.length[1])) {
+    events$branch.length[1] <- 0
   }
-  
-  
-  nodes <- c()
-  edges <- matrix(NA, nrow=nrow(events), ncol=3)
-  
-  # every event adds an internal node to the tree
-  for (i in 1:nrow(events)) {
-    e <- events[i, ]
-    # determine node indices
-    if (is.element(e$compartment1, tips)) {
-      child <- which(tips == e$compartment1)
-    } 
-    else if (is.element(e$compartment1, nodes)) {
-      child <- length(tips) + which(nodes == e$compartment1)
-    } 
-    else {
-      # register new internal node
-      nodes <- c(nodes, e$compartment1)
-      child <- length(tips) + length(nodes)
-    }
-    
-    if (e$event.type == 'transmission') {  
-      if (is.element(e$compartment2, nodes)) {
-        parent <- length(tips) + which(nodes == e$compartment2)
-      } 
-      else {
-        nodes <- c(nodes, e$compartment2)
-        parent <- length(tips) + length(nodes)
-      }
-    }
-    else if (e$event.type == 'transition') {
-      # e$compartment2 is NA, must create new node name
-      node.name <- paste(e$compartment1, e$type1, e$type2, sep="_")
-      
-      # replace node name in all cases
-      events$compartment1[events$compartment1 == e$compartment1] <- node.name
-      events$compartment2[events$compartment2 == e$compartment1] <- node.name
-      
-      nodes <- c(nodes, node.name)
-      parent <- length(tips) + length(nodes)
-    }
-    else {
-      stop("ERROR: Unsupported event type ", e$event.type, " in as.phylo.Run")
-    }
-    
-    edges[i, ] <- c(parent, child, e$time)  # third value is node height
-  }
-  
-  # reorder edges by preorder traversal
-  root <- which(!is.element(1:max(edges), edges[,2]))
-  idx <- .reorder.nodes(edges, root)
-  #node.idx <- idx[idx>length(tips)] - length(tips)
-  #internals <- nodes[node.idx]
-  
-  # map new values to renumbered nodes
-  tcount <- 1
-  icount <- length(tips)+1
-  old.labels <- c(tips, nodes)
-  new.i <- c()
-  new.tips <- c()
-  new.internals <- c()
-  for (old.i in idx) {
-    if (old.i > length(tips)) {
-      new.i <- c(new.i, icount)  # internal
-      new.internals <- c(new.internals, old.labels[old.i])
-      icount <- icount + 1
-    } else {
-      new.i <- c(new.i, tcount)  # tip
-      new.tips <- c(new.tips, old.labels[old.i])
-      tcount <- tcount + 1
-    }
-  }
-  
-  # reorder and renumber edges
-  edges2 <- .reorder.edges(edges, root)
-  map.i <- new.i[order(idx)]
-  for (i in 1:nrow(edges2)) {
-    edges2[i, 1] <- map.i[edges2[i, 1]]
-    edges2[i, 2] <- map.i[edges2[i, 2]]
-  }
-  edges2 <- as.data.frame(edges2)
-  names(edges2) <- c("parent", "child", "node.height")
-  
-  # calculate branch lengths from tip sampling times and node heights
-  fixed.sampl <- eventlog$get.fixed.samplings()  # retrieve fixed sampling times of tips
-  names(fixed.sampl) <- gsub("__.+$", "", names(fixed.sampl))
-  edges2$tip.height <- as.numeric(fixed.sampl[tips[edges2$child]])
-  
-  for (i in nrow(edges2):1) {
-    if (is.na(edges2$tip.height[i])) {
-      edges2$tip.height[i] <- edges2$node.height[which(edges2$parent == edges2$child[i])]
-    }
-  }
-  edges2$branch.length <- edges2$node.height - edges2$tip.height
   
   # create phylo object
+  tip.label <- events$node.name[is.na(events$compartment1)]
+  node.label <- c('ROOT', events$node.name[!is.na(events$compartment1)])
+  nodes <- c(tip.label, node.label)
+  edges <- matrix(NA, nrow=length(nodes)-1, ncol=2)
+  edges[,1] <- match(events$parent, nodes)
+  edges[,2] <- match(events$node.name, nodes)
+  
   phy <- list(
-    tip.label = new.tips,
-    node.label = new.internals,
-    Nnode = length(new.internals),
-    edge = as.matrix(edges2[,1:2]),
-    edge.length = edges2$branch.length
+    tip.label = tip.label,
+    node.label = node.label,
+    Nnode = length(node.label),
+    edge = edges,
+    edge.length = events$branch.length
   )
   attr(phy, 'class') <- 'phylo'
   phy
