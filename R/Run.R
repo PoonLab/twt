@@ -285,9 +285,12 @@ plot.Run <- function(run, type='t', ...) {
 
 .reorder.edges <- function(edges, parent, result=c()) {
   children <- edges[edges[,1]==parent, 2]
-  for (child in children) {
-    result <- rbind(result, c(parent, child))
-    result <- .reorder.edges(edges, child, result=result)
+  node.heights <- edges[edges[,1]==parent, 3]
+  if (length(children) > 0 & all(!is.na(children))) {
+    for (ch in 1:length(children)) {
+      result <- rbind(result, c(parent, children[ch], node.heights[ch]))
+      result <- .reorder.edges(edges, children[ch], result=result)
+    }    
   }
   return(result)
 }
@@ -303,16 +306,13 @@ as.phylo.Run <- function(run) {
   eventlog <- run$get.eventlog()
   comps <- c(run$get.compartments(), run$get.unsampled.hosts())
   
-  # retrieve fixed sampling times of tips
-  fixed.sampl <- eventlog$get.fixed.samplings()
-  
   # retrieve events from log
   events <- eventlog$get.all.events()
   
   tips <- events$compartment1[!grepl("^US_", events$compartment1) & 
                                 events$event.type=='transmission']
   nodes <- c()
-  edges <- matrix(NA, nrow=nrow(events), ncol=2)
+  edges <- matrix(NA, nrow=nrow(events), ncol=3)
   
   # every event adds an internal node to the tree
   for (i in 1:nrow(events)) {
@@ -354,7 +354,7 @@ as.phylo.Run <- function(run) {
       stop("ERROR: Unsupported event type ", e$event.type, " in as.phylo.Run")
     }
     
-    edges[i, ] <- c(parent, child)
+    edges[i, ] <- c(parent, child, e$time)  # third value is node height
   }
   
   # reorder edges by preorder traversal
@@ -386,20 +386,34 @@ as.phylo.Run <- function(run) {
   edges2 <- .reorder.edges(edges, root)
   map.i <- new.i[order(idx)]
   for (i in 1:nrow(edges2)) {
-    edges2[i, ] <- sapply(edges2[i,], function(x) map.i[x])
+    edges2[i, 1] <- map.i[edges2[i, 1]]
+    edges2[i, 2] <- map.i[edges2[i, 2]]
   }
+  edges2 <- as.data.frame(edges2)
+  names(edges2) <- c("parent", "child", "node.height")
+  
+  # calculate branch lengths from tip sampling times and node heights
+  fixed.sampl <- eventlog$get.fixed.samplings()  # retrieve fixed sampling times of tips
+  names(fixed.sampl) <- gsub("__.+$", "", names(fixed.sampl))
+  edges2$tip.height <- as.numeric(fixed.sampl[tips[edges2$child]])
+  
+  for (i in nrow(edges2):1) {
+    if (is.na(edges2$tip.height[i])) {
+      edges2$tip.height[i] <- edges2$node.height[which(edges2$parent == edges2$child[i])]
+    }
+  }
+  edges2$branch.length <- edges2$node.height - edges2$tip.height
   
   # create phylo object
   phy <- list(
     tip.label = new.tips,
     node.label = new.internals,
     Nnode = length(new.internals),
-    edge = edges2,
-    edge.length = rep(1, times=nrow(edges))
+    edge = as.matrix(edges2[,1:2]),
+    edge.length = edges2$branch.length
   )
   attr(phy, 'class') <- 'phylo'
-  nwk <- write.tree(phy)
-  phy2 <- read.tree(text=nwk)
+  phy
 }
 
 
