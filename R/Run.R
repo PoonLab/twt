@@ -274,21 +274,21 @@ plot.Run <- function(run, type='t', ...) {
 }
 
 
-#' .reorder.events
-#' 
-#' A helper function that recursively generates a list of node labels
-#' by post-order traversal (outputting parents after children).
-#' 
-#' @keywords internal
-.reorder.events <- function(events, node, result=c()) {
-  children <- events$compartment1[events$compartment2==node]
-  inf.times <- sapply(children, function(child) 
-    events$time[events$compartment1==child])
-  
-  for (child in children[order(inf.times, decreasing=TRUE)]) {
-    result <- .reorder.events(events, child, result)
+.reorder.nodes <- function(edges, parent, result=c()) {
+  result <- c(result, parent)
+  children <- edges[edges[,1]==parent, 2]
+  for (child in children) {
+    result <- .reorder.nodes(edges, child, result=result)
   }
-  result <- c(result, node)
+  return(result)
+}
+
+.reorder.edges <- function(edges, parent, result=c()) {
+  children <- edges[edges[,1]==parent, 2]
+  for (child in children) {
+    result <- rbind(result, c(parent, child))
+    result <- .reorder.edges(edges, child, result=result)
+  }
   return(result)
 }
 
@@ -343,7 +343,7 @@ as.phylo.Run <- function(run) {
       # e$compartment2 is NA, must create new node name
       node.name <- paste(e$compartment1, e$type1, e$type2, sep="_")
       
-      # crudely replace node name in all cases
+      # replace node name in all cases
       events$compartment1[events$compartment1 == e$compartment1] <- node.name
       events$compartment2[events$compartment2 == e$compartment1] <- node.name
       
@@ -357,16 +357,68 @@ as.phylo.Run <- function(run) {
     edges[i, ] <- c(parent, child)
   }
   
+  # reorder edges by preorder traversal
+  root <- which(!is.element(1:max(edges), edges[,2]))
+  idx <- .reorder.nodes(edges, root)
+  #node.idx <- idx[idx>length(tips)] - length(tips)
+  #internals <- nodes[node.idx]
+  
+  # map new values to renumbered nodes
+  tcount <- 1
+  icount <- length(tips)+1
+  old.labels <- c(tips, nodes)
+  new.i <- c()
+  new.tips <- c()
+  new.internals <- c()
+  for (old.i in idx) {
+    if (old.i > length(tips)) {
+      new.i <- c(new.i, icount)  # internal
+      new.internals <- c(new.internals, old.labels[old.i])
+      icount <- icount + 1
+    } else {
+      new.i <- c(new.i, tcount)  # tip
+      new.tips <- c(new.tips, old.labels[old.i])
+      tcount <- tcount + 1
+    }
+  }
+  
+  # reorder and renumber edges
+  edges2 <- .reorder.edges(edges, root)
+  map.i <- new.i[order(idx)]
+  for (i in 1:nrow(edges2)) {
+    edges2[i, ] <- sapply(edges2[i,], function(x) map.i[x])
+  }
+  
   # create phylo object
   phy <- list(
-    tip.label = tips,
-    node.label = nodes,
-    Nnode = length(nodes),
-    edge = edges,
+    tip.label = new.tips,
+    node.label = new.internals,
+    Nnode = length(new.internals),
+    edge = edges2,
     edge.length = rep(1, times=nrow(edges))
   )
   attr(phy, 'class') <- 'phylo'
-  phy
+  nwk <- write.tree(phy)
+  phy2 <- read.tree(text=nwk)
+}
+
+
+#' .reorder.events
+#' 
+#' A helper function that recursively generates a list of node labels
+#' by post-order traversal (outputting parents after children).
+#' 
+#' @keywords internal
+.reorder.events <- function(events, node, result=c()) {
+  children <- events$compartment1[events$compartment2==node]
+  inf.times <- sapply(children, function(child) 
+    events$time[events$compartment1==child])
+  
+  for (child in children[order(inf.times, decreasing=TRUE)]) {
+    result <- .reorder.events(events, child, result)
+  }
+  result <- c(result, node)
+  return(result)
 }
 
 
