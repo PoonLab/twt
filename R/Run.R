@@ -274,26 +274,16 @@ plot.Run <- function(run, type='t', ...) {
 }
 
 
-.reorder.nodes <- function(edges, parent, result=c()) {
-  result <- c(result, parent)
-  children <- edges[edges[,1]==parent, 2]
+
+.reorder.nodes <- function(events, parent, result=c()) {
+  children <- events$node.name[events$parent==parent]
   for (child in children) {
-    result <- .reorder.nodes(edges, child, result=result)
+    result <- c(result, child)
+    result <- .reorder.nodes(events, child, result)
   }
   return(result)
 }
 
-.reorder.edges <- function(edges, parent, result=c()) {
-  children <- edges[edges[,1]==parent, 2]
-  node.heights <- edges[edges[,1]==parent, 3]
-  if (length(children) > 0 & all(!is.na(children))) {
-    for (ch in 1:length(children)) {
-      result <- rbind(result, c(parent, children[ch], node.heights[ch]))
-      result <- .reorder.edges(edges, children[ch], result=result)
-    }    
-  }
-  return(result)
-}
 
 
 #' as.phylo.Run
@@ -304,13 +294,78 @@ plot.Run <- function(run, type='t', ...) {
 #' @export
 as.phylo.Run <- function(run) {
   eventlog <- run$get.eventlog()
-  comps <- c(run$get.compartments(), run$get.unsampled.hosts())
+  events <- eventlog$get.all.events()  # retrieve events from log
   
-  # retrieve events from log
-  events <- eventlog$get.all.events()
+  # events identify internal nodes but they need distinct labels
+  events$node.name <- NA
+  events$node.name[events$event.type=='transmission'] <- paste(
+    events$compartment2[events$event.type=='transmission'],
+    events$compartment1[events$event.type=='transmission'],
+    sep="__"
+  )
+  events$node.name[events$event.type=='transition'] <- paste(
+    events$compartment1[events$event.type=='transition'],
+    events$type2[events$event.type=='transition'],
+    events$type1[events$event.type=='transition'],
+    (1:nrow(events))[events$event.type=='transition'],
+    sep="__"
+  )
+  events$compartment2[events$event.type == 'transition'] <- 
+    events$compartment1[events$event.type == 'transition']
+
+  # determine parents of internal nodes  
+  events$parent <- NA
+  for (i in 1:nrow(events)) {
+    e <- events[i,]
+    parents <- unique(c(which(events$compartment1 == e$compartment2),
+                        which(events$compartment2 == e$compartment2)))
+    parents <- parents[parents>i]  # older than current event
+    if (length(parents) > 0) {
+      events$parent[i] <- events$node.name[min(parents)]
+    } else {
+      events$parent[i] <- 'ROOT'  # current node is root node (should be last entry)
+    }      
+  }
+  
+  # append tips
+  fixed.sampl <- eventlog$get.fixed.samplings()
+  names(fixed.sampl) <- gsub("__.+$", "", names(fixed.sampl))
+  tips <- data.frame(
+    event.type='tip',
+    time=as.numeric(fixed.sampl),
+    lineage1=NA,
+    lineage2=NA,
+    compartment1=NA,
+    compartment2=NA,
+    type1=NA,
+    type2=NA,
+    node.name=names(fixed.sampl),
+    parent=events$node.name[sapply(names(fixed.sampl), 
+                                   function(comp) which(events$compartment1==comp))]
+  )
+  events <- rbind(tips[order(tips$time), ], events)
+  
+  # sort in preorder
+  node.order <- .reorder.nodes(events, 'ROOT')
+  events <- events[match(node.order, events$node.name),]
+  events$parent.time <- 
+  
+  
+  # events identify internal nodes, generate edges in preorder
+  
   
   tips <- events$compartment1[!grepl("^US_", events$compartment1) & 
                                 events$event.type=='transmission']
+  internals <- c()
+  edges <- matrix(NA, nrow=length(tips)+nrow(events), ncol=3)
+  for (i in nrow(events):1) {
+    e <- events[i,]
+    if (e$event.type=='transmission') {
+      node.name <- paste(e$compartment2, e$compartment1, sep="__")
+    }
+  }
+  
+  
   nodes <- c()
   edges <- matrix(NA, nrow=nrow(events), ncol=3)
   
