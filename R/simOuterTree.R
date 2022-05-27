@@ -668,13 +668,17 @@ sim.outer.tree <- function(model, max.attempts=5, skip.assign=F) {
         #                     e$time > comp$get.sampling.time(), 
         #                   active[types==e$r.type])
         # eligible <- active[which(types==e$r.type & (is.na(samp.times) || samp.times < e$time))]
-        eligible <- active[intersect(which(types==e$r.type), 
-                                     union(which(samp.times<e$time),
-                                           which(is.na(samp.times))))] 
+        eligible <- active[
+          intersect(which(types==e$r.type), 
+                    union(
+                      which(samp.times<e$time),  # sampled AFTER event
+                      which(is.na(samp.times))  # unsampled ancestral lineage
+                      ))] 
         
         if (length(eligible) == 0) {
-          stop("Error in .assign.events(): No eligible compartments for", 
-               "transmission event\n", str(e))
+          #stop("Error in .assign.events(): No eligible compartments for", 
+          #     "transmission event\n", str(e))
+          next  # none of the active Compartments are eligible, go to next event
         }
         recipient <- sample(eligible, 1)[[1]]
         
@@ -740,17 +744,29 @@ sim.outer.tree <- function(model, max.attempts=5, skip.assign=F) {
     
     else if (e$event.type == 'transition') {
       # either infected or uninfected Compartments may transition
-      # look ahead to determine which
+      # look ahead (back in time) to determine which
       if (row > 1) {
         next.e <- events[row-1, ]
         key <- paste0('S.', e$r.type)
         if (e[key] == next.e[key]) {
-          # transitioning Compartment was infected
+          # S count does not change, transitioning Compartment is infected
           n.recipients <- as.numeric(e[paste('I.', e$r.type, sep='')])
           
           if (runif(1, max=n.recipients) < n.active.recipients) {
+            eligible <- active[
+              intersect(which(types==e$r.type), 
+                        union(
+                          which(samp.times<e$time),  # sampled AFTER event
+                          which(is.na(samp.times))  # unsampled ancestral lineage
+                        ))] 
+            
+            if (length(eligible) == 0) {
+              # none of the sampled recipients are eligible
+              next
+            }
+            
             # transitioning Compartment is a sampled one
-            compartment <- sample(active[types==e$r.type], 1)[[1]]
+            compartment <- sample(eligible, 1)[[1]]
             
             # change the CompartmentType to ancestral ("source") state
             old.type <- compartment$get.type()$get.name()
