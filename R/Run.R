@@ -329,6 +329,7 @@ as.phylo.Run <- function(run) {
   # append tips
   fixed.sampl <- eventlog$get.fixed.samplings()
   names(fixed.sampl) <- gsub("__.+$", "", names(fixed.sampl))
+  sampled.types <- sapply(run$get.compartments(), function(x) x$get.type()$get.name())
   tips <- data.frame(
     event.type='tip',
     time=as.numeric(fixed.sampl),
@@ -336,8 +337,8 @@ as.phylo.Run <- function(run) {
     lineage2=NA,
     compartment1=NA,
     compartment2=NA,
-    type1=NA,
-    type2=NA,
+    type1=sampled.types,
+    type2=sampled.types,
     node.name=names(fixed.sampl),
     parent=events$node.name[
       sapply(names(fixed.sampl), function(comp) {
@@ -370,7 +371,10 @@ as.phylo.Run <- function(run) {
     node.label = node.label,
     Nnode = length(node.label),
     edge = edges,
-    edge.length = events$branch.length
+    edge.length = events$branch.length,
+    to.type = events$type1,
+    from.type = events$type2,
+    event.type = events$event.type
   )
   attr(phy, 'class') <- 'phylo'
   phy
