@@ -332,7 +332,9 @@ as.phylo.Run <- function(run) {
   
   # This is returning current (earliest) state, see bayroot#14
   #sampled.types <- sapply(run$get.compartments(), function(x) x$get.type()$get.name())
-  idx <- sapply(names(fixed.sampl), function(x) min(which(events$compartment1==x)))
+  idx <- sapply(names(fixed.sampl), function(x) {
+    min(which(events$compartment1==x | events$compartment2==x)) 
+    })
   sampled.types <- events$type1[idx]
   
   tips <- data.frame(
@@ -340,14 +342,17 @@ as.phylo.Run <- function(run) {
     time=as.numeric(fixed.sampl),
     lineage1=NA,
     lineage2=NA,
-    compartment1=NA,
+    compartment1=names(fixed.sampl),
     compartment2=NA,
     type1=sampled.types,
     type2=sampled.types,
     node.name=names(fixed.sampl),
     parent=events$node.name[
-      sapply(names(fixed.sampl), function(comp) {
-        min(which(events$compartment1==comp))
+      sapply(1:length(fixed.sampl), function(i) {
+        comp <- names(fixed.sampl)[i]
+        rows <- which((events$compartment1==comp | events$compartment2==comp) & 
+                        events$time > fixed.sampl[i])
+        return(min(rows))  # most recent node is parent
         })]
   )
   events <- rbind(tips[order(tips$time), ], events)
@@ -364,8 +369,10 @@ as.phylo.Run <- function(run) {
   }
   
   # create phylo object
-  tip.label <- events$node.name[is.na(events$compartment1)]
-  node.label <- c('ROOT', events$node.name[!is.na(events$compartment1)])
+  #tip.label <- events$node.name[is.na(events$compartment1)]
+  tip.label <- events$node.name[events$event.type=='tip']
+  #node.label <- c('ROOT', events$node.name[!is.na(events$compartment1)])
+  node.label <- c('ROOT', unique(events$node.name[events$event.type!='tip']))
   nodes <- c(tip.label, node.label)
   edges <- matrix(NA, nrow=length(nodes)-1, ncol=2)
   edges[,1] <- match(events$parent, nodes)
