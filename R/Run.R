@@ -329,7 +329,12 @@ as.phylo.Run <- function(run) {
   # append tips
   fixed.sampl <- eventlog$get.fixed.samplings()
   names(fixed.sampl) <- gsub("__.+$", "", names(fixed.sampl))
-  sampled.types <- sapply(run$get.compartments(), function(x) x$get.type()$get.name())
+  
+  # This is returning current (earliest) state, see bayroot#14
+  #sampled.types <- sapply(run$get.compartments(), function(x) x$get.type()$get.name())
+  idx <- sapply(names(fixed.sampl), function(x) min(which(events$compartment1==x)))
+  sampled.types <- events$type1[idx]
+  
   tips <- data.frame(
     event.type='tip',
     time=as.numeric(fixed.sampl),
