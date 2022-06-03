@@ -333,7 +333,30 @@ as.phylo.Run <- function(run) {
   # This is returning current (earliest) state, see bayroot#14
   #sampled.types <- sapply(run$get.compartments(), function(x) x$get.type()$get.name())
   idx <- sapply(names(fixed.sampl), function(x) {
-    min(which(events$compartment1==x | events$compartment2==x)) 
+    evts <- which(events$compartment1==x | events$compartment2==x)
+    if (length(evts) == 1) {
+      return(evts)  # unambiguous
+    }
+    else if (length(evts) > 1) {
+      # exclude transmission to unsampled lineage
+      for (e in evts) {
+        # remember events are ordered so that most recent is first
+        evt <- events[e,]
+        if (evt$compartment1 == x) {
+          return (e)  # tip is recipient compartment
+        }
+        else {
+          if (!grepl("^US_", evt$compartment1)) {
+            # tip is source compartment and recipient is sampled
+            return(e)
+          }
+          # otherwise recipient is unsampled, go to next event
+        }
+      }
+    }
+    else {
+      error("Failed to locate events associated with tip")
+    }
     })
   sampled.types <- events$type1[idx]
   
