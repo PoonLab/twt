@@ -353,6 +353,10 @@ as.phylo.Run <- function(run) {
           # otherwise recipient is unsampled, go to next event
         }
       }
+      
+      # if we get here, then none of the recipients are sampled
+      # and we have directly sampled the root - see PoonLab/bayroot#18
+      return(e)
     }
     else {
       error("Failed to locate events associated with tip")
