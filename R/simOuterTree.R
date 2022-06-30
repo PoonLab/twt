@@ -269,7 +269,8 @@ sim.outer.tree <- function(model, max.attempts=5, skip.assign=F) {
   
   # transmission, transition and migration
   t.rates <- matrix(nrow=n, ncol=n, dimnames=dimnames)
-  s.rates <- matrix(nrow=n, ncol=n, dimnames=dimnames)
+  s.rates <- list('susceptible'=matrix(nrow=n, ncol=n, dimnames=dimnames),
+                  'infected'=matrix(nrow=n, ncol=n, dimnames=dimnames))
   m.rates <- matrix(nrow=n, ncol=n, dimnames=dimnames)
   
   for (source in types) {
@@ -291,16 +292,24 @@ sim.outer.tree <- function(model, max.attempts=5, skip.assign=F) {
       t.rates[s.name, r.name] <- ifelse(is.null(t.rate), 0, t.rate)
       
       
-      s.rate <- source$get.transition.rate(r.name)
-      if (is.null(s.rate)) {
-        s.rate <- 0
+      # handle transition rates
+      if (all(names(source$get.transition.rates()) == c("susceptible", "infected"))) {
+        # different rates for susceptible and infected members of type
+        s.rates[['susceptible']][s.name, r.name] <- as.numeric(source$get.transition.rate('susceptible')[r.name])
+        s.rates[['infected']][s.name, r.name] <- as.numeric(source$get.transition.rate('infected')[r.name])
+      } 
+      else {
+        s.rate <- source$get.transition.rate(r.name)
+        if (is.null(s.rate)) {
+          s.rate <- 0
+        }
+        if (s.rate < 0) {
+          stop("Error in .get.rate.matrices: detected negative transition rate for ",
+               "CompartmentType ", source$get.name(), " to ", r.name)
+        }
+        s.rates[['susceptible']][s.name, r.name] <- ifelse(is.null(s.rate), 0, s.rate)
+        s.rates[['infected']][s.name, r.name] <- s.rates[['susceptible']][s.name, r.name]
       }
-      if (s.rate < 0) {
-        stop("Error in .get.rate.matrices: detected negative transition rate for ",
-             "CompartmentType ", source$get.name(), " to ", r.name)
-      }
-      s.rates[s.name, r.name] <- ifelse(is.null(s.rate), 0, s.rate)
-      
       
       m.rate <- source$get.migration.rate(r.name)
       if (is.null(m.rate)) {
@@ -315,9 +324,13 @@ sim.outer.tree <- function(model, max.attempts=5, skip.assign=F) {
   }
   
   # check diagonal of transition rate matrix
-  if ( any(diag(s.rates) > 0) ) {
-    warning("Detected positive transition rates to self, zeroing out.")
-    diag(s.rates) <- 0
+  if ( any(diag(s.rates[['susceptible']]) > 0) ) {
+    warning("Detected positive transition rates to self (susceptible), zeroing out.")
+    diag(s.rates[['susceptible']]) <- 0
+  }
+  if ( any(diag(s.rates[['infected']]) > 0) ) {
+    warning("Detected positive transition rates to self (infected), zeroing out.")
+    diag(s.rates[['infected']]) <- 0
   }
   
   list(transmission=t.rates, transition=s.rates, migration=m.rates)
@@ -374,9 +387,6 @@ sim.outer.tree <- function(model, max.attempts=5, skip.assign=F) {
   init.conds <- run$get.initial.conds()
   popn.totals <- init.conds$size  # list of CompartmentType->size
   
-  # extract transmission, migration and transition rates as convenient named matrices
-  popn.rates <- .get.rate.matrices(types, init.conds$originTime)
-  
   # get rate change times
   rate.changes <- unlist(lapply(types, function(x) names(x$get.branching.rates())))
   rate.changes <- as.numeric(unique(rate.changes))
@@ -394,6 +404,9 @@ sim.outer.tree <- function(model, max.attempts=5, skip.assign=F) {
   while (attempt < max.attempts) {
     # simulate trajectories in forward time (indexed in reverse, ha ha!)
     current.time <- init.conds$originTime
+    
+    # extract transmission, migration and transition rates as convenient named matrices
+    popn.rates <- .get.rate.matrices(types, init.conds$originTime)
     
     # initialize populations at origin (named vectors)
     susceptible <- unlist(init.conds$size)
@@ -419,9 +432,11 @@ sim.outer.tree <- function(model, max.attempts=5, skip.assign=F) {
       m.rates <- .scale.contact.rates(popn.rates[['migration']], infected, infected)
       
       # scale non-contact rates
-      s.rates <- popn.rates[['transition']] * (susceptible+infected)
+      #s.rates <- popn.rates[['transition']] * (susceptible+infected)
+      s.rates.S <- popn.rates[['transition']][['susceptible']] * susceptible
+      s.rates.I <- popn.rates[['transition']][['infected']] * infected
       
-      total.rate <- sum(t.rates, s.rates, m.rates)
+      total.rate <- sum(t.rates, s.rates.S, s.rates.I, m.rates)
       if (total.rate == 0) {
         # nothing can happen, simulation over
         break
@@ -479,40 +494,44 @@ sim.outer.tree <- function(model, max.attempts=5, skip.assign=F) {
         infected[r.name] <- infected[r.name] + 1
       }
       else {
-        total.s.rate <- sum(s.rates)
+        total.s.rate <- sum(s.rates.S, s.rates.I)
         total.m.rate <- sum(m.rates)
         
         if (runif(1, max=total.s.rate+total.m.rate) < total.s.rate) {
           event.type <- 'transition'
           
-          if (length(s.rates) == 1) {
-            source <- types[[1]]
-            recipient <- types[[1]]
-          }
-          else {
-            row <- sample(1:nrow(s.rates), 1, prob=apply(s.rates, 1, sum))
-            source <- types[[row]]
-            recipient <- sample(types, 1, prob=s.rates[row, ])[[1]]            
+          # determine which Types are involved
+          if (length(s.rates.S) == 1) {
+            stop("detected 1x1 transition rate matrix, this should not have a non-zero rate!")
           }
           
-          # susceptible or infected?
+          if (runif(1, max=total.s.rate) < sum(s.rates.S)) {
+            this.type <- 'susceptible'
+            s.rates <- s.rates.S
+          } else {
+            this.type <- 'infected'
+            s.rates <- s.rates.I
+          }
+          row <- sample(1:nrow(s.rates), 1, prob=apply(s.rates, 1, sum))
+          source <- types[[row]]
+          recipient <- sample(types, 1, prob=s.rates[row, ])[[1]]            
+          
           s.name <- source$get.name()
           r.name <- recipient$get.name()
-          sus <- susceptible[s.name]
-          inf <- infected[s.name]
-          if (runif(1, max=sus+inf) < sus) {
-            susceptible[s.name] <- sus - 1
+          
+          if (this.type == 'susceptible') {
+            susceptible[s.name] <- susceptible[s.name] - 1
             susceptible[r.name] <- susceptible[r.name] + 1
-          } 
+          }
           else {
-            infected[s.name] <- inf - 1
-            infected[r.name] <- infected[r.name] + 1
+            infected[s.name] <- infected[s.name] - 1
+            infected[r.name] <- infected[r.name] + 1            
           }
         }
         else {
           event.type <- 'migration'
           
-          if (length(s.rates) == 1) {
+          if (length(m.rates) == 1) {
             source <- types[[1]]
             recipient <- types[[1]]
           }
@@ -527,11 +546,11 @@ sim.outer.tree <- function(model, max.attempts=5, skip.assign=F) {
       }
       
       # append counts to outcome container after event
-      #counts <- rbind(counts, c(susceptible, infected))
       counts[row.num, ] <- c(susceptible, infected)
       
       # append event
-      events[row.num, ] <- c(current.time, event.type, recipient$get.name(), source$get.name())
+      events[row.num, ] <- c(current.time, event.type, recipient$get.name(), 
+                             source$get.name())
       
       # go to next row
       row.num <- row.num + 1
@@ -649,12 +668,17 @@ sim.outer.tree <- function(model, max.attempts=5, skip.assign=F) {
         #                     e$time > comp$get.sampling.time(), 
         #                   active[types==e$r.type])
         # eligible <- active[which(types==e$r.type & (is.na(samp.times) || samp.times < e$time))]
-        eligible <- active[intersect(which(types==e$r.type), 
-                                     union(which(samp.times<e$time),
-                                           which(is.na(samp.times))))] 
+        eligible <- active[
+          intersect(which(types==e$r.type), 
+                    union(
+                      which(samp.times<e$time),  # sampled AFTER event
+                      which(is.na(samp.times))  # unsampled ancestral lineage
+                      ))] 
         
         if (length(eligible) == 0) {
-          stop("Error in .assign.events(): No eligible compartments for transmission event ", e)
+          #stop("Error in .assign.events(): No eligible compartments for", 
+          #     "transmission event\n", str(e))
+          next  # none of the active Compartments are eligible, go to next event
         }
         recipient <- sample(eligible, 1)[[1]]
         
@@ -720,17 +744,29 @@ sim.outer.tree <- function(model, max.attempts=5, skip.assign=F) {
     
     else if (e$event.type == 'transition') {
       # either infected or uninfected Compartments may transition
-      # look ahead to determine which
+      # look ahead (back in time) to determine which
       if (row > 1) {
         next.e <- events[row-1, ]
         key <- paste0('S.', e$r.type)
         if (e[key] == next.e[key]) {
-          # transitioning Compartment was infected
+          # S count does not change, transitioning Compartment is infected
           n.recipients <- as.numeric(e[paste('I.', e$r.type, sep='')])
           
           if (runif(1, max=n.recipients) < n.active.recipients) {
+            eligible <- active[
+              intersect(which(types==e$r.type), 
+                        union(
+                          which(samp.times<e$time),  # sampled AFTER event
+                          which(is.na(samp.times))  # unsampled ancestral lineage
+                        ))] 
+            
+            if (length(eligible) == 0) {
+              # none of the sampled recipients are eligible
+              next
+            }
+            
             # transitioning Compartment is a sampled one
-            compartment <- sample(active[types==e$r.type], 1)[[1]]
+            compartment <- sample(eligible, 1)[[1]]
             
             # change the CompartmentType to ancestral ("source") state
             old.type <- compartment$get.type()$get.name()
