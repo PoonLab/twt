@@ -274,6 +274,152 @@ plot.Run <- function(run, type='t', ...) {
 }
 
 
+
+.reorder.nodes <- function(events, parent, result=c()) {
+  children <- events$node.name[events$parent==parent]
+  for (child in children) {
+    result <- c(result, child)
+    result <- .reorder.nodes(events, child, result)
+  }
+  return(result)
+}
+
+
+#' as.phylo.Run
+#' Generic method for Run objects - convert Run object (outer tree 
+#' simulation) into an object of class `phylo`
+#' @param run:  R6 object of class `Run` 
+#' @return S3 object of class `phylo`
+#' @export
+as.phylo.Run <- function(run) {
+  eventlog <- run$get.eventlog()
+  events <- eventlog$get.all.events()  # retrieve events from log
+  
+  # events identify internal nodes but they need distinct labels
+  events$node.name <- NA
+  events$node.name[events$event.type=='transmission'] <- paste(
+    events$compartment2[events$event.type=='transmission'],
+    events$compartment1[events$event.type=='transmission'],
+    sep="__"
+  )
+  events$node.name[events$event.type=='transition'] <- paste(
+    events$compartment1[events$event.type=='transition'],
+    events$type2[events$event.type=='transition'],
+    events$type1[events$event.type=='transition'],
+    (1:nrow(events))[events$event.type=='transition'],
+    sep="__"
+  )
+  events$compartment2[events$event.type == 'transition'] <- 
+    events$compartment1[events$event.type == 'transition']
+
+  # determine parents of internal nodes  
+  events$parent <- NA
+  for (i in 1:nrow(events)) {
+    e <- events[i,]
+    parents <- unique(c(which(events$compartment1 == e$compartment2),
+                        which(events$compartment2 == e$compartment2)))
+    parents <- parents[parents>i]  # older than current event
+    if (length(parents) > 0) {
+      events$parent[i] <- events$node.name[min(parents)]
+    } else {
+      events$parent[i] <- 'ROOT'  # current node is root node (should be last entry)
+    }      
+  }
+  
+  # append tips
+  fixed.sampl <- eventlog$get.fixed.samplings()
+  names(fixed.sampl) <- gsub("__.+$", "", names(fixed.sampl))
+  
+  # This is returning current (earliest) state, see bayroot#14
+  #sampled.types <- sapply(run$get.compartments(), function(x) x$get.type()$get.name())
+  idx <- sapply(names(fixed.sampl), function(x) {
+    evts <- which(events$compartment1==x | events$compartment2==x)
+    if (length(evts) == 1) {
+      return(evts)  # unambiguous
+    }
+    else if (length(evts) > 1) {
+      # exclude transmission to unsampled lineage
+      for (e in evts) {
+        # remember events are ordered so that most recent is first
+        evt <- events[e,]
+        if (evt$compartment1 == x) {
+          return (e)  # tip is recipient compartment
+        }
+        else {
+          if (!grepl("^US_", evt$compartment1)) {
+            # tip is source compartment and recipient is sampled
+            return(e)
+          }
+          # otherwise recipient is unsampled, go to next event
+        }
+      }
+      
+      # if we get here, then none of the recipients are sampled
+      # and we have directly sampled the root - see PoonLab/bayroot#18
+      return(e)
+    }
+    else {
+      error("Failed to locate events associated with tip")
+    }
+    })
+  sampled.types <- events$type1[idx]
+  
+  tips <- data.frame(
+    event.type='tip',
+    time=as.numeric(fixed.sampl),
+    lineage1=NA,
+    lineage2=NA,
+    compartment1=names(fixed.sampl),
+    compartment2=NA,
+    type1=sampled.types,
+    type2=sampled.types,
+    node.name=names(fixed.sampl),
+    parent=events$node.name[
+      sapply(1:length(fixed.sampl), function(i) {
+        comp <- names(fixed.sampl)[i]
+        rows <- which((events$compartment1==comp | events$compartment2==comp) & 
+                        events$time > fixed.sampl[i])
+        return(min(rows))  # most recent node is parent
+        })]
+  )
+  events <- rbind(tips[order(tips$time), ], events)
+  
+  # sort in preorder
+  node.order <- .reorder.nodes(events, 'ROOT')
+  events <- events[match(node.order, events$node.name),]
+  
+  # calculate branch lengths
+  events$parent.time <- events$time[match(events$parent, events$node.name)]
+  events$branch.length <- events$parent.time - events$time
+  if (is.na(events$branch.length[1])) {
+    events$branch.length[1] <- 0
+  }
+  
+  # create phylo object
+  #tip.label <- events$node.name[is.na(events$compartment1)]
+  tip.label <- events$node.name[events$event.type=='tip']
+  #node.label <- c('ROOT', events$node.name[!is.na(events$compartment1)])
+  node.label <- c('ROOT', unique(events$node.name[events$event.type!='tip']))
+  nodes <- c(tip.label, node.label)
+  edges <- matrix(NA, nrow=length(nodes)-1, ncol=2)
+  edges[,1] <- match(events$parent, nodes)
+  edges[,2] <- match(events$node.name, nodes)
+  
+  phy <- list(
+    tip.label = tip.label,
+    node.label = node.label,
+    Nnode = length(node.label),
+    edge = edges,
+    edge.length = events$branch.length,
+    to.type = events$type1,
+    from.type = events$type2,
+    event.type = events$event.type
+  )
+  attr(phy, 'class') <- 'phylo'
+  phy
+}
+
+
 #' .reorder.events
 #' 
 #' A helper function that recursively generates a list of node labels
@@ -290,65 +436,6 @@ plot.Run <- function(run, type='t', ...) {
   }
   result <- c(result, node)
   return(result)
-}
-
-
-#' as.phylo.Run
-#' Generic method for Run objects - convert Run object (outer tree 
-#' simulation) into an object of class `phylo`
-#' @param run:  R6 object of class `Run` 
-#' @return S3 object of class `phylo`
-#' @export
-as.phylo.Run <- function(run) {
-  eventlog <- run$get.eventlog()
-  comps <- c(run$get.compartments(), run$get.unsampled.hosts())
-  
-  # retrieve fixed sampling times of tips
-  fixed.sampl <- eventlog$get.fixed.samplings()
-  
-  # retrieve events from log
-  events <- eventlog$get.all.events()
-  trans <- events[events$event.type=='transmission', ]
-  
-  # gather lists of node names
-  nodes <- union(trans$compartment1, trans$compartment2)
-  sources <- unique(trans$compartment2)
-  tips <- trans$compartment1[!is.element(trans$compartment1, sources)]
-  internals <- setdiff(nodes, tips)
-  
-  # root is not the child of any node
-  root <- sources[!is.element(sources, trans$compartment1)]
-  if (length(root) > 1) {
-    stop("Detected multiple roots in Run object: ", 
-         paste(root, collapse=", "))
-  }
-  if (length(root) == 0) stop("Error in as.phylo.Run(): failed to locate root")
-  
-  # returns vector of node names in preorder (parent before children)
-  preorder <- rev(.reorder.events(trans, root))
-  
-  # reorder node lists
-  tips <- preorder[is.element(preorder, tips)]
-  internals <- preorder[is.element(preorder, internals)]
-  # numbered 1:n for tips, (n+1):(n+m) for internal nodes, starting with root
-  nodes <- c(tips, internals)
-  
-  # generate edgelist
-  edges <- trans[na.omit(match(preorder, trans$compartment1)), ]
-  edgelist <- as.matrix(t(sapply(1:nrow(edges), function(i) {
-    c(which(nodes==edges$compartment2[i]), which(nodes==edges$compartment1[i])) 
-  })))
-  
-  # create phylo object
-  phy <- list(
-    tip.label = tips,
-    node.label = internals,
-    Nnode = length(internals),
-    edge = edgelist,
-    edge.length = rep(1, times=nrow(edgelist))
-  )
-  attr(phy, 'class') <- 'phylo'
-  phy
 }
 
 

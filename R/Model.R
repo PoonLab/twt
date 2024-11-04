@@ -173,17 +173,26 @@ Model <- R6Class("Model",
                "declared in CoalescentType", x)
         }
         
+        # handle epochs (rate changes at specified points in time)
         rate.changes <- lapply(params$branching.rates, function(x) {
           eval(parse(text=paste('list', x))) 
           })
         if (length(rate.changes) > 1) {
+          # re-order so time points are in decreasing order
           rate.changes <- rate.changes[order(as.numeric(names(rate.changes)), decreasing=T)]
+        }
+        
+        rate.changes2 <- lapply(params$transition.rates, function(x) {
+          eval(parse(text=paste('list', x))) 
+        })
+        if (length(rate.changes2) == 1) {
+          rate.changes2 <- rate.changes2[[1]]
         }
         
         CompartmentType$new(
           name = x,
           branching.rates = rate.changes,
-          transition.rates = eval(parse(text=paste('list', params$transition.rates))),
+          transition.rates = rate.changes2,
           migration.rates = eval(parse(text=paste('list', params$migration.rates))),
           
           bottleneck.size = params$bottleneck.size,
