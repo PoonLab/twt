@@ -293,7 +293,8 @@ sim.outer.tree <- function(model, max.attempts=5, skip.assign=F) {
       
       
       # handle transition rates
-      if (all(names(source$get.transition.rates()) == c("susceptible", "infected"))) {
+      nms <- names(source$get.transition.rates())
+      if (!is.null(nms) & all(nms == c("susceptible", "infected"))) {
         # different rates for susceptible and infected members of type
         s.rates[['susceptible']][s.name, r.name] <- as.numeric(source$get.transition.rate('susceptible')[r.name])
         s.rates[['infected']][s.name, r.name] <- as.numeric(source$get.transition.rate('infected')[r.name])

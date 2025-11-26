@@ -7,9 +7,9 @@ InitialConditions:
 
 CompartmentTypes:
   'host':
-    branching.rates: (host=0.01)        # named vector of transmission rates to different CompartmentTypes
+    branching.rates: (host=0.01)       # named vector of transmission rates to different CompartmentTypes
     migration.rates: ()                # no migration (assume no superinfection)
-    transition.rates: ()
+    transition.rates: ()               # there are no other types to transition between
     effective.size: 100.0
     generation.time: 0.01
     bottleneck.size: 1                 # bottleneck size when transmission event occurs
