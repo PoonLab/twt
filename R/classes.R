@@ -1,50 +1,56 @@
-#' CompartmentType
+#' Deme
 #' 
-#' \code{CompartmentType} is an R6 class that defines a type of compartment, 
-#' such as a class of host individual (risk group) with a specific transmission 
-#' rate.
+#' \code{Deme} is an R6 class that defines a population of host individuals
+#' that share the same set of parameters, e.g., a transmission 
+#' rate to other members of the deme.  Thus we can also think of this as 
+#' "HostType".  A deme may represent a transmission risk group, or a regional 
+#' subpopulation.  Members of a deme are either susceptible or infected.
 #' 
-#' @param name: a character string that uniquely identifies the class
-#' @param unsampled: if TRUE, no Compartments of this Type can contain sampled
-#'        lineages (directly observed tips of the inner tree).
-#' @param branching.rates: a named vector of transmission rates *to* other
-#'        CompartmentTypes.
-#' @param tranistion.rates: a named vector of transition rates to other 
-#'        CompartmentTypes.
-#' @param migration.rates: a named vector of migration rates *to* other 
-#'        CompartmentTypes.
-#' @param bottleneck.size: the maximum number of lineages that can be transmitted
-#'        to a Compartment of this Type.
-#' @param bottleneck.theta: optional, theta/size parameter of negative binomial.
-#'        Converges to Poisson distribution with larger values.  Defaults to 0 
-#'        for constant bottleneck size.
-#' @param effective.size: reciprocal of the rate at which lineages coalesce within 
-#'        a Compartment of this Type.
-#' @param popn.growth.dynamics: a text expression for population growth dynamics
-#'        in forward time. If not NULL, can override `effective.size`.
-#' @param generation.time:  scales coalescent events to the time scale of 
-#'        outer events (including transmission).
-#' @param transmission.times: numeric vector of transmission event times, 
+#' @param name:  character, uniquely identifies the class
+#' @param unsampled:  logical, if TRUE then no hosts in this deme can contain 
+#'        sampled Pathogens (directly observed tips of the inner tree).
+#' @param migration.rates:  named vector, rate that a host migrates from this 
+#'        Deme to another Deme.
+#' @param transmission.rates:  named vector, rates that an infected host in 
+#'        this Deme transmits their infection to an *uninfected* member of 
+#'        another Deme.
+#' @param superinfection.rates:  named vector, rates that an infected host in 
+#'        this Deme transmits their infection to an *infected* member of 
+#'        another Deme.
+#' @param bottleneck.size:  integer, the maximum number of Pathogen lineages 
+#'        that can be transmitted to host in this Deme.
+#' @param bottleneck.theta:  float, (optional) theta/size parameter of negative 
+#'        binomial distribution of bottleneck size.  Converges to Poisson 
+#'        distribution with larger values.  Defaults to 0 for constant 
+#'        bottleneck size.
+#' @param effective.size:  float, reciprocal of the rate at which Pathogen 
+#'        lineages coalesce within a Host of this Deme.
+#' @param popn.growth.dynamics:  character, an R expression for population 
+#'        growth dynamics in forward time. If not NULL, can override 
+#'        `effective.size`.
+#' @param generation.time:  float, scales coalescent events to the time scale 
+#'        of outer events (including transmission).
+#' @param transmission.times:  numeric,  vector of transmission event times, 
 #'        populated by `outer.tree.sim` from class parameters.
 #' 
 #' @examples 
 #' 
-#' # load CompartmentTypes from a YAML object
+#' # load Demes from a YAML object
 #' path <- system.file('extdata', 'SI.yaml', package='twt')
 #' settings <- yaml.load_file(path)
 #' mod <- Model$new(settings)
 #' mod$get.types()
 #' 
-#' # manually specify a CompartmentType object (usually done by YAML)
-#' host <- CompartmentType$new(name='host', branching.rates=c(host=0.1), 
-#' bottleneck.size=1, coalescent.rate=1)
+#' # manually specify a Deme object (usually done by YAML)
+#' deme <- Deme$new(name='host', transmission.rates=c(host=0.1), 
+#'                  bottleneck.size=1, coalescent.rate=1)
 #' 
 #' @export
-CompartmentType  <- R6Class(
-  "CompartmentType",
+Deme  <- R6Class(
+  "Deme",
   public = list(
-    initialize = function(name=NA, unsampled = NA, branching.rates=NA, 
-                          transition.rates=NA, migration.rates=NA, 
+    initialize = function(name=NA, unsampled = NA, migration.rates=NA, 
+                          transmission.rates=NA, superinfection.rates=NA, 
                           bottleneck.size=NA, bottleneck.theta=NA,
                           effective.size=NA, popn.growth.dynamics=NA, 
                           generation.time=NA, transmission.times=NA) {
@@ -53,9 +59,9 @@ CompartmentType  <- R6Class(
       
       # named vector of transmission rates corresponding to different Compartment 
       # objects
-      private$branching.rates <- branching.rates
-      private$transition.rates <- transition.rates
       private$migration.rates <- migration.rates
+      private$transmission.rates <- transmission.rates
+      private$superinfection.rates <- superinfection.rates
       private$bottleneck.size <- bottleneck.size
       private$bottleneck.theta <- bottleneck.theta
       
@@ -64,8 +70,8 @@ CompartmentType  <- R6Class(
       private$popn.growth.dynamics <- popn.growth.dynamics
       private$generation.time <- generation.time
       
-      # populated after outer.tree.sim, tracked used and unused for migration 
-      # events in inner.tree.sim
+      # populated after outer.tree.sim, tracked used and unused for Pathogen
+      # lineage migration events in inner.tree.sim
       private$transmission.times <- transmission.times
     },
     
@@ -85,25 +91,6 @@ CompartmentType  <- R6Class(
       private$unsampled
     },
     
-    get.branching.rates = function() {
-      private$branching.rates
-    },
-    
-    get.branching.rate = function(current.time, name.type) {
-      
-      if (length(private$branching.rates) == 1) {
-        # constant rate over time
-        private$branching.rates[[1]][[name.type]]
-      }
-      else {
-        # rate heterogeneity
-        rate.changes <- as.numeric(names(private$branching.rates))
-        index <- max(which(rate.changes >= current.time))
-        private$branching.rates[[index]][[name.type]]
-      }
-
-    },
-    
     get.migration.rates = function() {
       private$migration.rates
     },
@@ -112,13 +99,36 @@ CompartmentType  <- R6Class(
       private$migration.rates[[name.type]]
     },
     
-    get.transition.rates = function() {
-      private$transition.rates
+    get.transmission.rates = function() {
+      private$transmission.rates
     },
     
-    get.transition.rate = function(name.type) {
-      private$transition.rates[[name.type]]
+    get.transmission.rate = function(current.time, name.type) {
+      # FIXME: current.time is in what time frame?
+      if (length(private$transmission.rates) == 1) {
+        # constant rate over time
+        private$transmission.rates[[1]][[name.type]]
+      }
+      else {
+        # rate variation over time
+        rate.changes <- as.numeric(names(private$transmission.rates))
+        index <- max(which(rate.changes >= current.time))
+        private$transmission.rates[[index]][[name.type]]
+      }
     },
+    
+    get.superinfection.rates = function() {
+      private$superinfection.rates
+    },
+    
+    get.superinfection.rate = function(name.type) {
+      # FIXME: We might want to have time-varying superinfection rates too
+      private$superinfection.rates[[name.type]]
+    },
+    
+    set.superinfection.rate = function(recipient.type, new.superinfection.rate) {
+      private$superinfection.rates[[recipient.type]] <- new.superinfection.rate
+    }
     
     get.effective.size = function() {
       private$effective.size
@@ -140,18 +150,14 @@ CompartmentType  <- R6Class(
       private$transmission.times <- vector.transm.times
     },
     
-    set.migration.rate = function(recipient.type, new.migr.rate) {
-      private$migration.rates[[recipient.type]] <- new.migr.rate
-    }
-    
   ),
   private = list(
     name = NULL,
     unsampled = NULL,
     
-    branching.rates = NULL,
-    transition.rates = NULL,
+    transmission.rates = NULL,
     migration.rates = NULL,
+    superinfection.rates = NULL,
     
     bottleneck.size = NULL,
     bottleneck.theta = NULL,
@@ -164,44 +170,48 @@ CompartmentType  <- R6Class(
 )
 
 
-print.CompartmentType <- function(obj) {
+print.Deme <- function(obj) {
   cat(paste(obj$name, ":"))
 }
 
 
-#' Compartment
+#' Host
 #' 
-#' \code{Compartment} is an R6 class for objects that represent the units of an
-#' outer tree simulation, such as a host individual or deme.
+#' \code{Host} is an R6 class for objects that represent the units of an
+#' outer tree simulation, i.e., a host individual.
 #' 
-#' @param name: a character string that uniquely identifies the Compartment
-#' @param type: a reference to a CompartmentType object
-#' @param source: a reference to another Compartment from which a Lineage was 
-#' transmitted to this Compartment
-#' @param branching.time: stores the origin time of this Compartment, which 
-#' corresponds to a branching event in the "outer" tree.
-#' @param unsampled: if TRUE, then any Lineage carried by this Compartment is not
-#' directly observed, i.e., it does not represent a tip in the "inner" tree.
+#' @param name:  character, unique identifier for Host
+#' @param deme:  character, reference Deme by name
+#' @param source:  character, reference to another Host from which a Pathogen 
+#'                 lineage was first transmitted to this Host
+#'                 TODO: we will need to track multiple sources for a 
+#'                 transmission history (graph) that tracks superinfection
+#' @param transmission.time:  numeric, stores the origin time of this Host, 
+#'                            which corresponds to a transmission event in the 
+#'                            "outer" tree.
+#' @param unsampled:  logical, if TRUE, then any Pathogen carried by this Host 
+#'                    is not directly observed, i.e., it does not represent a 
+#'                    tip in the "inner" tree.
 #' 
 #' @examples 
-#' # load Compartments from a YAML object
+#' # load Host objects from a YAML file
 #' path <- system.file('extdata', 'SI.yaml', package='twt')
 #' settings <- yaml.load_file(path)
 #' mod <- MODEL$new(settings)
 #' 
-#' # display first Compartment object
-#' host1 <- mod$get.compartments()[[1]]
+#' # display first Host object
+#' host1 <- mod$get.hosts()[[1]]
 #' host1
 #' 
-#' # manually initialize a new Compartment object
-#' hostN <- Compartment$new(name='newHost', unsampled=TRUE)
-#' hostN$set.type(host1$get.type())
+#' # manually initialize a new Host object
+#' hostN <- Host$new(name='newHost', unsampled=TRUE)
+#' hostN$set.deme(host1$get.deme())
 #' 
 #' @export 
 Compartment <- R6Class("Compartment",
   public = list(
-    initialize = function(name=NA, type=NA, source=NA, branching.time=NA, 
-                          sampling.time=NA, unsampled=FALSE, lineages=list()) {
+    initialize = function(name=NA, deme=NA, source=NA, transmission.time=NA, 
+                          sampling.time=NA, unsampled=FALSE, pathogens=list()) {
       private$name <- name
       private$type <- type
       private$source <- source
