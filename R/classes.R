@@ -320,31 +320,32 @@ Compartment <- R6Class("Compartment",
 
 
 
-#' Lineage
+#' Pathogen
 #' 
-#' \code{Lineage} is an R6 class for objects that represent pathogen lineages
-#' that are carried by Compartments and which comprise the "inner" tree of the 
+#' \code{Pathogen} is an R6 class for objects that represent pathogen lineages
+#' that are carried by Hosts and which comprise the "inner" tree of the 
 #' simulation.
 #' 
-#' @param name: a character string that uniquely identifies the Lineage
-#' @param type: a reference to an object of class LineageType (not yet implemented)
-#' @param sampling.time: the time that the Lineage was sampled; left to NA for 
-#' unsampled Lineages
-#' @param location: a reference to a Compartment object
+#' @param name: character, unique identifier for Pathogen object
+#' @param type: character, reference to object of class PathogenType (not yet 
+#'              implemented)
+#' @param sampling.time: numeric, time that the Pathogen was sampled; left to 
+#'                       NA for unsampled Pathogens
+#' @param location: a reference to a Host object
 #' 
 #' @examples
-#' # load Compartments from a YAML object
+#' # load model from a YAML file
 #' path <- system.file('extdata', 'SI.yaml', package='twt')
 #' settings <- yaml.load_file(path)
 #' mod <- MODEL$new(settings)
 #' 
-#' # display first Lineage in first Compartment
-#' comp <- mod$get.compartments()[[1]]
-#' comp$get.lineages()  # display all 3 lineages
+#' # display Pathogens in first Host object
+#' host <- mod$get.hosts()[[1]]
+#' host$get.pathogens()  # display all 3 Pathogen objects
 #' 
-#' # manually add an unsampled Lineage
-#' lin <- Lineage$new(name="L0", location=comp)
-#' comp$add.lineage(lin)
+#' # manually add an unsampled Pathogen
+#' pgn <- Pathogen$new(name="L0", location=comp)
+#' host$add.pathogen(pgn)
 #' 
 #' 
 #' @export
