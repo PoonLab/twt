@@ -128,7 +128,7 @@ Deme  <- R6Class(
     
     set.superinfection.rate = function(recipient.type, new.superinfection.rate) {
       private$superinfection.rates[[recipient.type]] <- new.superinfection.rate
-    }
+    },
     
     get.effective.size = function() {
       private$effective.size
