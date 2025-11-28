@@ -148,7 +148,7 @@ Deme  <- R6Class(
     
     set.transmission.times = function(vector.transm.times) {
       private$transmission.times <- vector.transm.times
-    },
+    }
     
   ),
   private = list(
@@ -213,7 +213,7 @@ Host <- R6Class("Host",
     initialize = function(name=NA, deme=NA, source=NA, transmission.time=NA, 
                           sampling.time=NA, unsampled=FALSE, pathogens=list()) {
       private$name <- name
-      private$type <- type
+      private$deme <- deme
       private$source <- source
       private$transmission.time <- transmission.time
       private$sampling.time <- sampling.time
@@ -239,8 +239,8 @@ Host <- R6Class("Host",
       private$name
     },
     
-    get.type = function() {
-      private$type
+    get.deme = function() {
+      private$deme
     },
     
     get.source = function() {
@@ -255,8 +255,8 @@ Host <- R6Class("Host",
       private$sampling.time
     },
     
-    set.type = function(new.type) {
-      private$type <- new.type
+    set.deme = function(new.deme) {
+      private$deme <- new.deme
     },
     
     set.source = function(new.source) {
@@ -298,7 +298,7 @@ Host <- R6Class("Host",
   ),
   private = list(
     name = NULL,
-    type = NULL,  # reference to Deme object
+    deme = NULL,  # reference to Deme object
     source = NULL,
     transmission.time = NULL,
     sampling.time = NULL,
