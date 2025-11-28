@@ -57,7 +57,7 @@ Deme  <- R6Class(
       private$name <- name
       private$unsampled <- unsampled
       
-      # named vector of transmission rates corresponding to different Compartment 
+      # named vector of transmission rates corresponding to different Host 
       # objects
       private$migration.rates <- migration.rates
       private$transmission.rates <- transmission.rates
@@ -65,13 +65,13 @@ Deme  <- R6Class(
       private$bottleneck.size <- bottleneck.size
       private$bottleneck.theta <- bottleneck.theta
       
-      # named vector of migration rates of different Compartments
+      # named vector of superinfection rates of different Hosts
       private$effective.size <- effective.size
       private$popn.growth.dynamics <- popn.growth.dynamics
       private$generation.time <- generation.time
       
       # populated after outer.tree.sim, tracked used and unused for Pathogen
-      # lineage migration events in inner.tree.sim
+      # lineage superinfection events in inner.tree.sim
       private$transmission.times <- transmission.times
     },
     
@@ -208,27 +208,27 @@ print.Deme <- function(obj) {
 #' hostN$set.deme(host1$get.deme())
 #' 
 #' @export 
-Compartment <- R6Class("Compartment",
+Host <- R6Class("Host",
   public = list(
     initialize = function(name=NA, deme=NA, source=NA, transmission.time=NA, 
                           sampling.time=NA, unsampled=FALSE, pathogens=list()) {
       private$name <- name
       private$type <- type
       private$source <- source
-      private$branching.time <- branching.time
+      private$transmission.time <- transmission.time
       private$sampling.time <- sampling.time
-      # attr req later when identifying new US Comps to be promoted in mig events
+      # attr req later when identifying new US Hosts to be promoted in superinfection events
       private$unsampled <- unsampled
-      private$lineages <- lineages
+      private$pathogens <- pathogens
     },
     
     copy = function(deep=FALSE) {
       # see https://github.com/r-lib/R6/issues/110
       cloned <- self$clone(deep)  # calls deep_clone method
       if (deep) {
-        # attach new Lineages to new Compartment
-        for (lineage in cloned$get.lineages()) {
-          lineage$set.location(cloned)
+        # attach new Pathogens to new Host
+        for (pathogen in cloned$get.pathogens()) {
+          pathogen$set.location(cloned)
         }
       }
       cloned  # return
@@ -247,8 +247,8 @@ Compartment <- R6Class("Compartment",
       private$source
     },
     
-    get.branching.time = function() {
-      private$branching.time
+    get.transmission.times = function() {
+      private$transmission.time
     },
     
     get.sampling.time = function() {
@@ -263,12 +263,12 @@ Compartment <- R6Class("Compartment",
       private$source <- new.source
     },
     
-    set.branching.time = function(new.branching.time) {
-      private$branching.time <- new.branching.time
+    set.transmission.times = function(new.transmission.time) {
+      private$transmission.time <- new.transmission.time
     },
     
     set.sampling.time = function() {
-      private$sampling.time <- min(sapply(private$lineages, function(line) {
+      private$sampling.time <- min(sapply(private$pathogens, function(line) {
         line$get.sampling.time()
       }))
     },
@@ -281,34 +281,34 @@ Compartment <- R6Class("Compartment",
       private$unsampled
     },
     
-    get.lineages = function() {
-      private$lineages
+    get.pathogens = function() {
+      private$pathogens
     },
     
-    add.lineage = function(new.lineage) {
-      private$lineages[[length(private$lineages)+1]] <- new.lineage
+    add.pathogen = function(new.pathogen) {
+      private$pathogens[[length(private$pathogens)+1]] <- new.pathogen
       self$set.sampling.time()
     },
     
-    remove.lineage = function(ex.lineage) {
-      private$lineages[[ex.lineage$get.name()]] <- NULL
+    remove.pathogen = function(ex.pathogen) {
+      private$pathogens[[ex.pathogen$get.name()]] <- NULL
       self$set.sampling.time()
     }
     
   ),
   private = list(
     name = NULL,
-    type = NULL,  # reference to CompartmentType object
+    type = NULL,  # reference to Deme object
     source = NULL,
-    branching.time = NULL,
+    transmission.time = NULL,
     sampling.time = NULL,
     unsampled = NULL,
-    lineages = NULL,
+    pathogens = NULL,
     
     deep_clone = function(name, value) {
-      if (name == 'lineages') {
-        # map deep clone to Lineage copy() method
-        lapply(value, function(lineage) lineage$copy(deep=TRUE))
+      if (name == 'pathogens') {
+        # map deep clone to Pathogen copy() method
+        lapply(value, function(pathogen) pathogen$copy(deep=TRUE))
       } 
       else {
         value
@@ -349,7 +349,7 @@ Compartment <- R6Class("Compartment",
 #' 
 #' 
 #' @export
-Lineage <- R6Class("Lineage",
+Pathogen <- R6Class("Pathogen",
   public = list(
     initialize = function(name=NA, type=NA, sampling.time=NA, location=NA) {
       private$name <- name
@@ -380,7 +380,7 @@ Lineage <- R6Class("Lineage",
       private$name
     },
    
-    get.type = function() {  # in the future, will be a pointer to a LineageType object
+    get.type = function() {  # in the future, will be a pointer to a PathogenType object
       private$type
     },
    
@@ -406,7 +406,7 @@ Lineage <- R6Class("Lineage",
   ),
   private = list(
     name = NULL,
-    type = NULL,            # potential reference to LineageType object
+    type = NULL,            # potential reference to PathogenType object
     sampling.time = NULL,
     location = NULL
   )
