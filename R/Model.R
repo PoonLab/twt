@@ -1,7 +1,7 @@
 #' Model
 #'
 #' \code{Model} is an R6 class that defines an object that generates all of the 
-#' objects of the various classes (e.g., Compartment, CompartmentType) that 
+#' objects of the various classes (e.g., Compartment, Host, Pathogen) that 
 #' define a simulation model.  A \code{Model} object is immutable - it should
 #' not change over the course of simulation.  Instead, we derive a \code{Run}
 #' object class that inherits from a \code{Model}.
@@ -10,37 +10,22 @@
 #' user specifications of the simulation model.
 #' 
 #' @field initial.conds  Initial Conditions
-#' @field types  vector of CompartmentType objects
 #' @field compartments  vector of Compartment objects
+#' @field hosts  vector of Host objects
 #' @field lineages  vector of Lineage objects
 #' @field fixed.samplings  list of Lineage names and sampling times for plotting
 #' 
-#' @examples 
-#' require(twt)
-#' # get path to example YAML file
-#' path <- system.file('extdata', 'SI.yaml', package='twt')
-#' 
-#' # load file and parse to construct Model object
-#' settings <- yaml.load_file(path)
-#' mod <- Model$new(settings)
-#' 
-#' # display summary information (calls S3 print method)
-#' mod
-#' 
 #' @export
 Model <- R6Class("Model",
-  #lock_objects = FALSE,
+  #lock_objects = FALSE,  # FIXME: is this deprecated?
   
   public = list(
     initialize = function(settings=NA, name=NA) {
-      self$name <- name
-      
+      private$name <- name
       private$initial.conds <- private$load.initial.conds(settings)
-      private$types <- private$load.types(settings)
       private$compartments <- private$load.compartments(settings)
-      private$compartments <- private$set.sources()
+      private$hosts <- private$set.sources(private$load.hosts(settings))
       private$lineages <- private$load.lineages(settings)
-      
       private$fixed.samplings <- private$init.fixed.samplings()
     },
     
@@ -50,72 +35,76 @@ Model <- R6Class("Model",
     # ACCESSOR FUNCTIONS
     get.initial.conds = function() { private$initial.conds },
     
-    get.types = function() { private$types },
     get.compartments = function() { private$compartments },
+    get.hosts = function() { private$hosts },
     get.lineages = function() { private$lineages },
     
+    #' returns names of a given list of R6 objects
+    #' @param listR6obj: list of R6 objects of class Compartment, Host or 
+    #' Lineage
     get.names = function(listR6obj) {
-      # returns names of a given list of R6 objects
-      # @param listR6obj = list of R6 objects of class CompartmentType, Compartment, or Lineage
-      unname(sapply(listR6obj, function(x){x$get.name()}))
+      unname(sapply(listR6obj, function(x){ x$get.name() }))
     },
     
     get.fixed.samplings = function() {
       # retrieves fixed sampling times of tips
       private$fixed.samplings
     }
-    
   ),
-  
   
   private = list(
     initial.conds = NULL,
-    
     types = NULL,
     compartments = NULL,
     lineages = NULL,
-    
     fixed.samplings = NULL,
-        
+      
+    #' Loads initial conditions
+    #' @return list object  
     load.initial.conds = function(settings) {
-      # Loads initial conditions
-      # @return list object
+      if (is.null(settings$InitialConditions)) {
+        stop("Error loading Model, InitialConditions key missing from settings")
+      }
       result <- list()
       
       # origin time is measured in reverse (prior to most recent sampled lineage)
       params <- settings$InitialConditions #[[x]]
       if (!is.numeric(params$originTime)) {
-        stop("InitialConditions:originTime must be numeric; is this key missing?")
+        stop("InitialConditions: originTime must be numeric; is this key missing?")
       }
       if (params$originTime <= 0) {
-        stop("InitialConditions:originTime must be >0")
+        stop("InitialConditions: originTime must be positive")
       }
       result['originTime'] <- params$originTime
       
       
-      # load initial numbers of Compartments per Type
-      if (is.null(settings$CompartmentType)) {
-        stop("InitialConditions:CompartmentType key missing")
+      # size: initial numbers of individuals per Compartment
+      if (is.null(settings$Compartments)) {
+        stop("InitialConditions: Compartments key missing")
       }
-      comp.types <- names(settings$CompartmentTypes)
+      compnames <- names(settings$Compartments)
       result$size <- list()
       for (i in 1:length(params$size)) {
-        typename <- names(params$size)[i]
-        if (!is.element(typename, comp.types)) {
-          stop(paste("InitialConditions:size key", typename, 
-                     "must match CompartmentType"))
+        cname <- names(params$size)[i]  # key
+        if (!is.element(cname, compnames)) {
+          stop(paste("InitialConditions: size key", cname, 
+                     "must match a Compartment name"))
         }
-        size <- params$size[[typename]]
+        
+        size <- params$size[[cname]]  # value
         if (!is.numeric(size)) {
-          stop(paste("InitialConditions:size:", typename, " not numeric"))
+          stop(paste("InitialConditions: size: ", typename, " must be numeric"))
         }
-        result$size[typename] <- floor(size)
+        if (!is.integer(size)) {
+          warning(paste("Non-integer value for size", size, "will be rounded down"))
+        }
+        result$size[cname] <- floor(size)
       }
-       
       
-      # specify CompartmentType of index case
+      # specify Compartment of index case (forward simulation always starts 
+      # from a single individual)
       if (is.null(params$indexType)) {
-        stop("Settings must specify 'indexType' CompartmentType under InitialConditions")
+        stop("Settings must specify 'indexType' Compartment under InitialConditions")
       }
       if (!is.element(params$indexType, comp.types)) {
         stop("'indexType' in InitialConditions does not match any CompartmentType in settings")
@@ -126,31 +115,27 @@ Model <- R6Class("Model",
     },
     
     
-    load.types = function(settings) {
-      # function creates CompartmentType objects
-      # within each CompartmentType, there are distinct compartments with
-      # individual transmission & migration rates
-      # @return: a named vector of CompartmentType R6 objects
-      
-      if (is.null(settings$CompartmentTypes)) {
-        stop("Missing 'CompartmentTypes' field in settings")
+    load.compartments = function(settings) {
+      if (is.null(settings$Compartments)) {
+        stop("Missing 'Compartments' field in settings")
       }
-      if (length(settings$CompartmentTypes) == 0) {
-        stop("Empty 'CompartmentTypes' field in settings.")
+      if (length(settings$Compartments) == 0) {
+        stop("Empty 'Compartments' field in settings.")
       }
       
-      required <- c('branching.rates', 'transition.rates', 'migration.rates', 
-                    'bottleneck.size', 'generation.time')
-      
-      unlist(sapply(names(settings$CompartmentTypes), function(x) {
-        params <- settings$CompartmentTypes[[x]]
+      required <- c('rates', 'bottleneck.size', 'coalescence.rate', 
+                    'generation.time')
+      ### FIXME: REFACTORING IN PROGRESS!
+      unlist(sapply(names(settings$Compartments), function(x) {
+        params <- settings$Compartments[[x]]
         
         missing <- which( !is.element(required, names(params)) )
         if (length(missing) > 0) {
-          stop(paste("CompartmentTypes:", x, " missing required field(s): ", required[missing]))
+          stop(paste("Compartments: ", x, " missing required field(s): ", 
+                     required[missing]))
         }
         
-        # CompartmentType must specify EITHER one overall rate or a rate for the origin time
+        # Compartment must specify EITHER one overall rate or a rate for the origin time
         if (!is.null(names(params$branching.rates))) {
           if (!is.element(settings$InitialConditions$originTime, names(params$branching.rates))) {
             stop("Must declare branching rate for origin time ",
