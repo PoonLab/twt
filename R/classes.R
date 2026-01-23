@@ -15,8 +15,6 @@
 #'        Compartment.
 #' @param coalescence.rate:  str, an expression for the coalescent rate for 
 #'        lineages within a member of this Compartment.
-#' @param generation.time:  float, scales coalescent events to the time 
-#'        scale of host population dynamics, in units of simulation time.
 #' @export
 Compartment <- R6Class(
   "Compartment",
@@ -27,23 +25,20 @@ Compartment <- R6Class(
       private$rates <- rates
       private$bottleneck.size <- bottleneck.size
       private$coalescent.rate <- coalescent.rate
-      private$generation.time <- generation.time
     },
     
     # accessor functions
     get.name = function() { private$name },
     get.rates = function() { private$rates },
     get.bottleneck.size = function() { private$bottleneck.size },
-    get.coalescent.rate = function() { private$coalescent.rate },
-    get.generation.time = function() { private$generation.time }
+    get.coalescent.rate = function() { private$coalescent.rate }
   ),
   
   private = list(
     name = NULL,
     rates = NULL,
     bottleneck.size=NULL,
-    coalescent.rate=NULL,
-    generation.time=NULL
+    coalescent.rate=NULL
   )
 )
 

@@ -22,10 +22,10 @@ Model <- R6Class("Model",
   public = list(
     initialize = function(settings=NA, name=NA) {
       private$name <- name
-      private$initial.conds <- private$load.initial.conds(settings)
+      private$parameters <- private$parameters(settings)
       private$compartments <- private$load.compartments(settings)
       private$hosts <- private$set.sources(private$load.hosts(settings))
-      private$lineages <- private$load.lineages(settings)
+      private$pathogens <- private$load.pathogens(settings)
       private$fixed.samplings <- private$init.fixed.samplings()
     },
     
@@ -33,11 +33,10 @@ Model <- R6Class("Model",
     name = NULL,
     
     # ACCESSOR FUNCTIONS
-    get.initial.conds = function() { private$initial.conds },
-    
+    get.parameters = function() { private$parameters },
     get.compartments = function() { private$compartments },
     get.hosts = function() { private$hosts },
-    get.lineages = function() { private$lineages },
+    get.pathogens = function() { private$pathogens },
     
     #' returns names of a given list of R6 objects
     #' @param listR6obj: list of R6 objects of class Compartment, Host or 
@@ -53,69 +52,57 @@ Model <- R6Class("Model",
   ),
   
   private = list(
-    initial.conds = NULL,
-    types = NULL,
+    parameters = NULL,
     compartments = NULL,
-    lineages = NULL,
+    hosts = NULL,
+    pathogens = NULL,
     fixed.samplings = NULL,
       
-    #' Loads initial conditions
+    #' Validate Parameters from settings (YAML)
     #' @return list object  
-    load.initial.conds = function(settings) {
-      if (is.null(settings$InitialConditions)) {
-        stop("Error loading Model, InitialConditions key missing from settings")
+    load.parameters = function(settings) {
+      if (is.null(settings$Parameters)) {
+        stop("Error loading Model, Parameters key missing from settings")
       }
-      result <- list()
       
       # origin time is measured in reverse (prior to most recent sampled lineage)
-      params <- settings$InitialConditions #[[x]]
+      params <- settings$Parameters
+      if (is.null(params$originTime)) {
+        stop("Parameters: required key `originTime` is missing")
+      }
       if (!is.numeric(params$originTime)) {
-        stop("InitialConditions: originTime must be numeric; is this key missing?")
+        stop("InitialConditions: originTime must be numeric")
       }
       if (params$originTime <= 0) {
         stop("InitialConditions: originTime must be positive")
       }
-      result['originTime'] <- params$originTime
-      
-      
-      # size: initial numbers of individuals per Compartment
-      if (is.null(settings$Compartments)) {
-        stop("InitialConditions: Compartments key missing")
-      }
-      compnames <- names(settings$Compartments)
-      result$size <- list()
-      for (i in 1:length(params$size)) {
-        cname <- names(params$size)[i]  # key
-        if (!is.element(cname, compnames)) {
-          stop(paste("InitialConditions: size key", cname, 
-                     "must match a Compartment name"))
-        }
-        
-        size <- params$size[[cname]]  # value
-        if (!is.numeric(size)) {
-          stop(paste("InitialConditions: size: ", typename, " must be numeric"))
-        }
-        if (!is.integer(size)) {
-          warning(paste("Non-integer value for size", size, "will be rounded down"))
-        }
-        result$size[cname] <- floor(size)
-      }
-      
-      # specify Compartment of index case (forward simulation always starts 
-      # from a single individual)
-      if (is.null(params$indexType)) {
-        stop("Settings must specify 'indexType' Compartment under InitialConditions")
-      }
-      if (!is.element(params$indexType, comp.types)) {
-        stop("'indexType' in InitialConditions does not match any CompartmentType in settings")
-      }
-      result['indexType'] <- params$index
-      
-      result
+      params
     },
     
+    check.expression = function(s) {
+      # is string `s` a valid R expression?
+      tryCatch({
+        x <- parse(text=s)
+      }, error = function(e) {
+        stop(paste("Invalid R expression `", x, "`"))
+      })
+      # are all parameters and variables declared?
+      tryCatch({
+        v <- eval(x, envir=env)
+      }, error = function(e) {
+        stop(paste(
+          "Expression `", x, "` contains one or more undeclared variables",
+        ))
+      })
+      if (!is.numeric(v)) {
+        stop(paste(
+          "Expression `", x, "` does not evaluate to a numeric value."
+        ))
+      }
+    }
     
-    load.compartments = function(settings) {
+    # Parse Compartments from settings (YAML)
+    load.compartments = function(settings, parameters) {
       if (is.null(settings$Compartments)) {
         stop("Missing 'Compartments' field in settings")
       }
@@ -123,56 +110,53 @@ Model <- R6Class("Model",
         stop("Empty 'Compartments' field in settings.")
       }
       
-      required <- c('rates', 'bottleneck.size', 'coalescence.rate', 
-                    'generation.time')
-      ### FIXME: REFACTORING IN PROGRESS!
-      unlist(sapply(names(settings$Compartments), function(x) {
-        params <- settings$Compartments[[x]]
+      # declare parameters and compartments in a new environment
+      env <- new.env()
+      for (key in names(parameters)) {
+        eval(parse(text=paste(key, "<-", parameters[[key]])), envir=env)
+      }
+      cnames <- names(settings$Compartments)
+      for (cn in cnames) {
+        eval(parse(text=paste(cn, "<-", 1)), envir=env)
+      }
+      
+      required <- c('rates', 'size')
+      for (cn in cnames) {
+        params <- settings$Compartments[[cn]]
         
+        # check that required parameters are present
         missing <- which( !is.element(required, names(params)) )
         if (length(missing) > 0) {
-          stop(paste("Compartments: ", x, " missing required field(s): ", 
+          stop(paste("Compartment `", cn, "` missing required field(s): ", 
                      required[missing]))
         }
         
-        # Compartment must specify EITHER one overall rate or a rate for the origin time
-        if (!is.null(names(params$branching.rates))) {
-          if (!is.element(settings$InitialConditions$originTime, names(params$branching.rates))) {
-            stop("Must declare branching rate for origin time ",
-                 settings$InitialConditions$originTime,
-                 " in CompartmentType ", x)
-          }
-          
-          if (!all(!is.na(as.numeric(names(params$branching.rates))))) {
-            wrong_labs <- names(params$branching.rates)[is.na(as.numeric(names(params$branching.rates)))]
-            stop("Time-hetetrogeneous branching rates must be declared with numeric time labels '",
-                 wrong_labs,
-                 "' in CompartmentType ", x, " failed coercion to numeric")
+        # check rate specifications
+        for (dest in names(params$rates)) {
+          rate <- params$rates[[dest]]  # from `cn` to `dest`
+          if (is.numeric(rate)) {
+            pass  # constant rate
+          } else if (is.character(rate)) {
+            check.expression(rate)
+          } else {
+            stop("Unexpected type in load.compartments")
           }
         }
         
-        # CompartmentType must specify EITHER effective.size or piecewise linear model
-        if (!is.element('effective.size', names(params)) &&
-            !is.element('popn.growth.dynamics', names(params))) {
-          stop("Either `effective.size` or `popn.growth.dynamics` must be",
-               "declared in CoalescentType", x)
-        }
+        # check bottleneck setting
         
-        # handle epochs (rate changes at specified points in time)
-        rate.changes <- lapply(params$branching.rates, function(x) {
-          eval(parse(text=paste('list', x))) 
-          })
-        if (length(rate.changes) > 1) {
-          # re-order so time points are in decreasing order
-          rate.changes <- rate.changes[order(as.numeric(names(rate.changes)), decreasing=T)]
-        }
         
-        rate.changes2 <- lapply(params$transition.rates, function(x) {
-          eval(parse(text=paste('list', x))) 
-        })
-        if (length(rate.changes2) == 1) {
-          rate.changes2 <- rate.changes2[[1]]
-        }
+        Compartment$New(
+          name = cn,
+          rates = params$rates,
+          size = params$size,
+          bottleneck.size = NA
+        )
+      }
+      
+      
+      unlist(sapply(names(settings$Compartments), function(x) {
+        params <- settings$Compartments[[x]]
         
         CompartmentType$new(
           name = x,
@@ -195,11 +179,7 @@ Model <- R6Class("Model",
     },
     
     
-   
-    load.compartments = function(settings) {
-      ## function creates Compartment objects
-      ## `type` attr points directly back to a CompartmentType object, and 
-      ## `name` attr is a unique identifier
+    load.compartments = function(settings, parameters) {
       if (is.null(settings$Compartments)) {
         stop("Missing 'Compartments' field in settings.")
       }
