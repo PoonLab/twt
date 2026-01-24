@@ -22,10 +22,9 @@ Model <- R6Class("Model",
   public = list(
     initialize = function(settings=NA, name=NA) {
       private$name <- name
-      private$parameters <- private$parameters(settings)
-      private$compartments <- private$load.compartments(settings)
-      private$hosts <- private$set.sources(private$load.hosts(settings))
-      private$pathogens <- private$load.pathogens(settings)
+      private$parameters(settings)
+      private$load.compartments(settings)
+      private$load.pathogens(settings)
       private$fixed.samplings <- private$init.fixed.samplings()
     },
     
@@ -58,8 +57,6 @@ Model <- R6Class("Model",
     pathogens = NULL,
     fixed.samplings = NULL,
       
-    #' Validate Parameters from settings (YAML)
-    #' @return list object  
     load.parameters = function(settings) {
       if (is.null(settings$Parameters)) {
         stop("Error loading Model, Parameters key missing from settings")
@@ -76,10 +73,10 @@ Model <- R6Class("Model",
       if (params$originTime <= 0) {
         stop("InitialConditions: originTime must be positive")
       }
-      params
+      private$parameters <- params
     },
     
-    check.expression = function(s) {
+    check.expression = function(s, env) {
       # is string `s` a valid R expression?
       tryCatch({
         x <- parse(text=s)
@@ -99,10 +96,10 @@ Model <- R6Class("Model",
           "Expression `", x, "` does not evaluate to a numeric value."
         ))
       }
-    }
+    },
     
     # Parse Compartments from settings (YAML)
-    load.compartments = function(settings, parameters) {
+    load.compartments = function(settings) {
       if (is.null(settings$Compartments)) {
         stop("Missing 'Compartments' field in settings")
       }
@@ -110,10 +107,15 @@ Model <- R6Class("Model",
         stop("Empty 'Compartments' field in settings.")
       }
       
+      # if parameters have not been validated, do it now
+      if (is.null(private$parameters)) {
+        load.parameters(settings)
+      }
+      
       # declare parameters and compartments in a new environment
       env <- new.env()
-      for (key in names(parameters)) {
-        eval(parse(text=paste(key, "<-", parameters[[key]])), envir=env)
+      for (key in names(private$parameters)) {
+        eval(parse(text=paste(key, "<-", private$parameters[[key]])), envir=env)
       }
       cnames <- names(settings$Compartments)
       for (cn in cnames) {
@@ -121,7 +123,7 @@ Model <- R6Class("Model",
       }
       
       required <- c('rates', 'size')
-      for (cn in cnames) {
+      private$compartments <- sapply(cnames, function(cn) {
         params <- settings$Compartments[[cn]]
         
         # check that required parameters are present
@@ -137,136 +139,52 @@ Model <- R6Class("Model",
           if (is.numeric(rate)) {
             pass  # constant rate
           } else if (is.character(rate)) {
-            check.expression(rate)
+            check.expression(rate, env)
           } else {
             stop("Unexpected type in load.compartments")
           }
         }
         
         # check bottleneck setting
-        
-        
-        Compartment$New(
-          name = cn,
-          rates = params$rates,
-          size = params$size,
-          bottleneck.size = NA
-        )
-      }
-      
-      
-      unlist(sapply(names(settings$Compartments), function(x) {
-        params <- settings$Compartments[[x]]
-        
-        CompartmentType$new(
-          name = x,
-          branching.rates = rate.changes,
-          transition.rates = rate.changes2,
-          migration.rates = eval(parse(text=paste('list', params$migration.rates))),
-          
-          bottleneck.size = params$bottleneck.size,
-          bottleneck.theta = ifelse(is.null(params$bottleneck.theta), 0, 
-                                params$bottleneck.theta),
-          effective.size = params$effective.size,
-          
-          popn.growth.dynamics = private$init.popn.growth.dynamics(
-            params$popn.growth.dynamics
-            ),
-          
-          generation.time = params$generation.time
-        )
-      }))
-    },
-    
-    
-    load.compartments = function(settings, parameters) {
-      if (is.null(settings$Compartments)) {
-        stop("Missing 'Compartments' field in settings.")
-      }
-      
-      res <- unlist(sapply(names(settings$Compartments), function(comp) {
-        if (grepl("_", comp)) {
-          stop("Error: Underscore characters are reserved, please modify Compartment name", comp)
-        }
-        
-        params <- settings$Compartments[[comp]]
-        if (is.null(params$type)) {
-          stop(paste("Compartment", comp, "missing required field 'type'."))
-        }
-        
-        if (params$type %in% names(settings$CompartmentType)) {
-          searchTypes <- which(names(settings$CompartmentType) == params$type)
-          # reference to CompartmentType object
-          typeObj <- private$types[[ searchTypes ]]
-        }
-        else {
-          stop(params$type, ' of Compartment ', comp, 
-               ' is not a specified Compartment Type object')
-        }
-        
-        if (is.null(params$replicates)) {
-          nIndiv <- 1
-        } else {
-          nIndiv <- params$replicates
-        }
-        
-        # parse unsampled field
-        if (is.null(params$unsampled)) {
-          unsampled <- FALSE  # default to sampled
-        }
-        else {
-          unsampled <- as.logical(params$unsampled)
-          if (is.na(unsampled)) {
-            warning("Coercing ", params$unsampled, " to NA")
-            unsampled <- FALSE
+        bottleneck.size <- NA
+        if (!is.null(params$bottleneck.size)) {
+          bottleneck.size <- params$bottleneck.size
+          if (!is.numeric(bottleneck.size)) {
+            check.expression(bottleneck.size, env)
           }
         }
         
-        sapply(1:nIndiv, function(obj) {
-          Compartment$new(
-            name = paste0(comp,'_', obj),  # unique identifier
-            type = typeObj,
-            source = params$source,
-            branching.time = params$branching.time,
-            unsampled = unsampled
-          )
-        })
-        
-      }))
-      
-      # return as named vector
-      names(res) <- sapply(res, function(comp) comp$get.name())
-      res
-    },
-    
-    
-    set.sources = function() {
-      ## Sets `source` attribute to other Compartment objects after generated 
-      ## w/ private$load.compartments().  Note assignment of Compartments
-      ## generated through `replicates` setting is not supported.
-      ## This is only used when user is manually specifying the outer tree.
-      
-      compNames <- sapply(private$compartments, function(n){n$get.name()})
-      
-      sapply(private$compartments, function(x) {
-        matches <- which(compNames == paste0(x$get.source(), '_1'))
-        if (length(matches) > 0) {
-          sourceObj <- private$compartments[[ matches ]]    
-          x$set.source(sourceObj)
-        } 
-        else {
-          # source will be set by outer tree simulation
+        # check coalescent rate
+        coalescent.rate <- NA
+        if (!is.null(params$coalescent.rate)) {
+          coalescent.rate <- params$coalescent.rate
+          if (!is.numeric(coalescent.rate)) {
+            check.expression(coalescent.rate, env)
+          }
         }
-        x
+        
+        Compartment$new(
+          name = cn,
+          rates = params$rates,
+          size = params$size,
+          bottleneck.size = bottleneck.size,
+          coalescent.rate = coalescent.rate
+        )  # return value
       })
     },
     
 
-    load.lineages = function(settings) {
-      ## Parse `Lineages` field of settings
+    load.pathogens = function(settings) {
+      if (is.null(settings$Pathogens)) {
+        stop("'Pathogens' is a required field in settings.")
+      }
       
-      if (is.null(settings$Lineages)) {
-        stop("'Lineages' is a required field in settings.")
+      # check pre-requisites
+      if (is.null(private$parameters)) {
+        load.parameters(settings)
+      }
+      if (is.null(private$compartments)) {
+        load.compartments(settings)
       }
       
       # return object will be concatenated vector of Lineage objects

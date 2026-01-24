@@ -75,7 +75,7 @@ Host <- R6Class(
       private$compartment <- compartment
       private$source <- source
       private$transmission.time <- transmission.time
-      private$sampling.time <- sampling.time,
+      private$sampling.time <- sampling.time
       private$pathogens <- pathogens
     },
     
@@ -123,7 +123,7 @@ Host <- R6Class(
     },
     
     is.sampled = function() {
-      !all(is.na(private$sampling.time)))
+      !all(is.na(private$sampling.time))
     }
 ),
 
