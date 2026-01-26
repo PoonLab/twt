@@ -4,9 +4,9 @@
 #' settings from a YAML (Parameters, Compartments, Sampling).
 #' 
 #' Four types of events affect Compartments:
-#'   births         0->S      dS/dt = a
-#'   deaths         S->0      dS/dt = -a
-#'   transitions    I->S      dI/dt = -aI, dS/dt = aI
+#'   births         0->S      dS/dt = a [or] aS
+#'   deaths         S->0      dS/dt = -a [or] aS
+#'   migrations     I->S      dI/dt = -aI, dS/dt = aI
 #'   transmissions  S+I->I+I  dS/dt = -bSI, dI/dt = bSI
 #' In the case of superinfection, transmission occurs within a Compartment
 #'   I + I -> I + I
@@ -14,9 +14,11 @@
 #' event.
 #' 
 #' It is important that individual model terms are separated!  For example,
-#' there may be birth and death rates associated with a Compartment.  We want 
-#' to model these stochastic events separately instead of the net rate of 
-#' change.
+#' there may be birth and death rates associated with a Compartment:
+#'   dS/dt = lambda S - delta S [YES]
+#'         = (lambda-delta)S    [NO!]
+#' In other words, we want to model these stochastic events separately 
+#' instead of the net rate of change.
 #' 
 #' @param settings: a named list returned by `yaml.load_file()` that contains 
 #' user specifications of the simulation model.
@@ -54,6 +56,7 @@ Model <- R6Class("Model",
     compartments = NULL,
     sampling = NULL,
     
+    init.sizes = NULL,
     birth.rates = NULL,
     death.rates = NULL,
     migration.rates = NULL,
@@ -142,7 +145,10 @@ Model <- R6Class("Model",
             if (is.numeric(rate)) {
               pass  # constant rate
             } else if (is.character(rate)) {
+              # validate
               private$check.expression(rate, env)
+              
+              
             } else {
               stop("Unexpected type in load.compartments")
             }
