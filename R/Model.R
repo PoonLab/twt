@@ -53,14 +53,18 @@ Model <- R6Class("Model",
   
   private = list(
     parameters = NULL,
-    compartments = NULL,
+    compartments = NULL,  # character, compartment names
     sampling = NULL,
     
-    init.sizes = NULL,
-    birth.rates = NULL,
-    death.rates = NULL,
-    migration.rates = NULL,
+    init.sizes = NULL,  # numeric, initial sizes
+
+    birth.rates = NULL,  # list, birth rates per compartment
+    death.rates = NULL,  # list, death rates per compartment
+    migration.rates = NULL,  # 
     transmission.rates = NULL,
+    
+    bottleneck.sizes = NULL,
+    coalescent.rates = NULL,
     
     load.parameters = function(settings) {
       if (is.null(settings$Parameters)) {
@@ -92,6 +96,7 @@ Model <- R6Class("Model",
       tryCatch({
         v <- eval(x, envir=env)
       }, error = function(e) {
+        cat(eval(parse(text="ls()"), envir = env))
         stop(paste(
           "Expression `", s, "` contains one or more undeclared variables"
         ))
@@ -122,65 +127,95 @@ Model <- R6Class("Model",
       for (key in names(private$parameters)) {
         eval(parse(text=paste(key, "<-", private$parameters[[key]])), envir=env)
       }
-      cnames <- names(settings$Compartments)
+      private$compartments <- cnames <- names(settings$Compartments)
+      k <- length(cnames)  # number of compartments
       for (cn in cnames) {
         eval(parse(text=paste(cn, "<-", 1)), envir=env)
       }
       # cat(eval(parse(text="ls()"), envir=env))  ## DEBUGGING
       
-      private$compartments <- sapply(cnames, function(cn) {
-        params <- settings$Compartments[[cn]]
+      # initialize rate containers
+      private$init.sizes <- setNames(rep(0, k), cnames)
+      private$bottleneck.sizes <- setNames(rep("0", k), cnames)
+      private$coalescent.rates <- setNames(rep("0", k), cnames)
+      
+      private$birth.rates <- setNames(rep("0", k), cnames)
+      private$death.rates <- setNames(rep("0", k), cnames)
+      private$migration.rates <- matrix("0", nrow=k, ncol=k, 
+                                        dimnames=list(cnames, cnames))
+      private$transmission.rates <- matrix("0", nrow=k, ncol=k, 
+                                           dimnames=list(cnames, cnames))
+      
+      for (src in cnames) {
+        params <- settings$Compartments[[src]]
+        
+        # initial population size
         if (is.null(params$size)) {
           stop("Compartment `", cn, "` must specify initial `size`")
         }
+        private$init.sizes[[src]] <- params$size
         
-        if (!is.null(params$rates)) {
-          # check rate specifications
-          for (dest in names(params$rates)) {
-            if (!is.element(dest, cnames)) {
-              stop("Destination `", dest, "` is not a defined Compartment")
-            }
-            
-            rate <- params$rates[[dest]]  # from `cn` to `dest`
-            if (is.numeric(rate)) {
-              pass  # constant rate
-            } else if (is.character(rate)) {
-              # validate
-              private$check.expression(rate, env)
-              
-              
-            } else {
-              stop("Unexpected type in load.compartments")
-            }
-          }          
+        # parse rate expressions
+        if (!is.null(params$birth)) {
+          if (is.list(params$birth)) {
+            stop(src, "`birth` should be a number or R expression, not an",
+                 "associative array.")
+          }
+          private$check.expression(params$birth, env)
+          private$birth.rates[[src]] <- params$birth
+        }
+        
+        if (!is.null(params$death)) {
+          if (is.list(params$death)) {
+            stop(src, "`death` should be a number or R expression, not an",
+                 "associative array.")
+          }
+          private$check.expression(params$death, env)
+          private$death.rates[[src]] <- params$death
+        }
+        
+        if (!is.null(params$migration)) {
+          if (!is.list(params$migration)) {
+            stop(src, "`migration` should be an associative array.")
+          }
+          for (dest in names(params$migration)) {
+            rate <- params$migration[[dest]]
+            private$check.expression(rate, env)
+            private$migration.rates[[src, dest]] <- rate
+          }
+        }
+        
+        if (!is.null(params$transmission)) {
+          if (!is.list(params$transmission)) {
+            stop(src, "`transmission` should be an associative array.")
+          }
+          for (dest in names(params$transmission)) {
+            rate <- params$transmission[[dest]]
+            private$check.expression(rate, env)
+            private$transmission.rates[[src, dest]] <- rate
+          }
         }
         
         # check bottleneck setting
-        bottleneck.size <- NA
         if (!is.null(params$bottleneck.size)) {
-          bottleneck.size <- params$bottleneck.size
-          if (!is.numeric(bottleneck.size)) {
-            private$check.expression(bottleneck.size, env)
+          if (is.list(params$bottleneck.size)) {
+            stop(src, "`bottleneck.size` should be a number or R expression,",
+                 "not an associative array.")
           }
+          private$check.expression(params$bottleneck.size, env)
+          private$bottleneck.sizes[[src]] <- params$bottleneck.size
         }
         
         # check coalescent rate
-        coalescent.rate <- NA
         if (!is.null(params$coalescent.rate)) {
-          coalescent.rate <- params$coalescent.rate
-          if (!is.numeric(coalescent.rate)) {
-            private$check.expression(coalescent.rate, env)
+          if (is.list(params$coalescent.rate)) {
+            stop(src, "`coalescent.rate` should be a number or R expression,",
+                 "not an associative array.")
           }
+          private$check.expression(params$coalescent.rate, env)
+          private$coalescent.rates[[src]] <- params$coalescent.rate
         }
-        
-        Compartment$new(
-          name = cn,
-          rates = params$rates,
-          size = params$size,
-          bottleneck.size = bottleneck.size,
-          coalescent.rate = coalescent.rate
-        )  # return value
-      })
+      }  # end loop
     },
     
     # Validate Sampling settings
@@ -207,7 +242,7 @@ Model <- R6Class("Model",
           load.compartments(settings)
         }
         for (cn in names(private$sampling$targets)) {
-          if (!is.element(cn, names(private$compartments))) {
+          if (!is.element(cn, private$compartments)) {
             stop(paste("In Sampling:targets compartment", cn, 
                        "has not been declared in Compartments"))
           }
@@ -237,7 +272,7 @@ print.Model <- function(obj) {
   }
   cat("Compartments: ")
   compartments <- obj$get.compartments()
-  for (cn in names(compartments)) {
+  for (cn in compartments) {
     cat(cn, " ")
   }
   cat("\n")

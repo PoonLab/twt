@@ -1,5 +1,7 @@
 Parameters:
   originTime:  10.0  # simulation time units before most recent sample date
+  lambda: 0.1
+  mu: 0.05
   beta:  0.0001  # transmission rate
   gamma:  0.001  # clearance rate
   psi:  0.001  # sampling rate
@@ -7,6 +9,8 @@ Parameters:
 
 Compartments:
   S:
+    birth: lambda*S
+    death: mu*S
     transmission:
       I: beta
     size: 999  # initial
