@@ -1,19 +1,29 @@
 #' Model
 #'
-#' \code{Model} is an R6 class that defines an object that generates all of the 
-#' objects of the various classes (e.g., Compartment, Host, Pathogen) that 
-#' define a simulation model.  A \code{Model} object is immutable - it should
-#' not change over the course of simulation.  Instead, we derive a \code{Run}
-#' object class that inherits from a \code{Model}.
+#' \code{Model} is an R6 class that defines an object that parses the model 
+#' settings from a YAML (Parameters, Compartments, Sampling).
+#' 
+#' Four types of events affect Compartments:
+#'   births         0->S      dS/dt = a
+#'   deaths         S->0      dS/dt = -a
+#'   transitions    I->S      dI/dt = -aI, dS/dt = aI
+#'   transmissions  S+I->I+I  dS/dt = -bSI, dI/dt = bSI
+#' In the case of superinfection, transmission occurs within a Compartment
+#'   I + I -> I + I
+#' This does not affect Compartment size and dynamics, but it is a branching
+#' event.
+#' 
+#' It is important that individual model terms are separated!  For example,
+#' there may be birth and death rates associated with a Compartment.  We want 
+#' to model these stochastic events separately instead of the net rate of 
+#' change.
 #' 
 #' @param settings: a named list returned by `yaml.load_file()` that contains 
 #' user specifications of the simulation model.
 #' 
-#' @field initial.conds  Initial Conditions
+#' @field parameters  model parameters
 #' @field compartments  vector of Compartment objects
-#' @field hosts  vector of Host objects
-#' @field lineages  vector of Lineage objects
-#' @field fixed.samplings  list of Lineage names and sampling times for plotting
+#' @field sampling  sampling conditions
 #' 
 #' @export
 Model <- R6Class("Model",
@@ -29,6 +39,7 @@ Model <- R6Class("Model",
     # ACCESSOR FUNCTIONS
     get.parameters = function() { private$parameters },
     get.compartments = function() { private$compartments },
+    get.sampling = function() { private$sampling },
     
     #' returns names of a given list of R6 objects
     #' @param listR6obj: list of R6 objects of class Compartment, Host or 
@@ -42,7 +53,12 @@ Model <- R6Class("Model",
     parameters = NULL,
     compartments = NULL,
     sampling = NULL,
-      
+    
+    birth.rates = NULL,
+    death.rates = NULL,
+    migration.rates = NULL,
+    transmission.rates = NULL,
+    
     load.parameters = function(settings) {
       if (is.null(settings$Parameters)) {
         stop("Error loading Model, Parameters key missing from settings")
@@ -107,7 +123,7 @@ Model <- R6Class("Model",
       for (cn in cnames) {
         eval(parse(text=paste(cn, "<-", 1)), envir=env)
       }
-      cat(eval(parse(text="ls()"), envir=env))
+      # cat(eval(parse(text="ls()"), envir=env))  ## DEBUGGING
       
       private$compartments <- sapply(cnames, function(cn) {
         params <- settings$Compartments[[cn]]
@@ -118,6 +134,10 @@ Model <- R6Class("Model",
         if (!is.null(params$rates)) {
           # check rate specifications
           for (dest in names(params$rates)) {
+            if (!is.element(dest, cnames)) {
+              stop("Destination `", dest, "` is not a defined Compartment")
+            }
+            
             rate <- params$rates[[dest]]  # from `cn` to `dest`
             if (is.numeric(rate)) {
               pass  # constant rate

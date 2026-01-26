@@ -1,8 +1,8 @@
 #' Run
 #' 
 #' \code{Run} is an R6 class that is derived from \code{Model}.  It inherits
-#' all simulation model features including CompartmentTypes, Compartments, 
-#' and Lineages.  Unlike \code{Model}, a \code{Run} object is used to track 
+#' all simulation model features (Parameters, Compartments and Sampling).  
+#' Unlike \code{Model}, a \code{Run} object is used to track 
 #' an outcome of the simulation model and is therefore mutable where \code{Model}
 #' is immutable.  For example, \code{Run} tracks which lineages are extant and 
 #' the numbers of pairs of Lineages that can coalesce over time.  In addition, 

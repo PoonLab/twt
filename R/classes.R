@@ -22,6 +22,7 @@ Compartment <- R6Class(
     initialize = function(name=NA, size=NA, rates=NA, bottleneck.size=NA,
                           coalescent.rate=NA, generation.time=NA) {
       private$name <- name
+      private$size <- size
       private$rates <- rates
       private$bottleneck.size <- bottleneck.size
       private$coalescent.rate <- coalescent.rate
@@ -29,6 +30,7 @@ Compartment <- R6Class(
     
     # accessor functions
     get.name = function() { private$name },
+    get.size = function() { private$size },
     get.rates = function() { private$rates },
     get.bottleneck.size = function() { private$bottleneck.size },
     get.coalescent.rate = function() { private$coalescent.rate }
@@ -36,6 +38,7 @@ Compartment <- R6Class(
   
   private = list(
     name = NULL,
+    size = NULL,
     rates = NULL,
     bottleneck.size=NULL,
     coalescent.rate=NULL
