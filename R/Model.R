@@ -42,13 +42,14 @@ Model <- R6Class("Model",
     get.parameters = function() { private$parameters },
     get.compartments = function() { private$compartments },
     get.sampling = function() { private$sampling },
-    
-    #' returns names of a given list of R6 objects
-    #' @param listR6obj: list of R6 objects of class Compartment, Host or 
-    #' Lineage
-    get.names = function(listR6obj) {
-      unname(sapply(listR6obj, function(x){ x$get.name() }))
-    }
+    get.init.sizes = function() { private$init.sizes },
+    get.birth.rates = function() { private$birth.rates },
+    get.death.rates = function() { private$death.rates },
+    get.migration.rates = function() { private$migration.rates },
+    get.transmission.rates = function() { private$transmission.rates },
+    get.bottleneck.sizes = function() { private$bottleneck.sizes },
+    get.coalescent.rates = function() { private$coalescent.rates },
+    get.graph = function() { private$graph }
   ),
   
   private = list(
@@ -65,6 +66,8 @@ Model <- R6Class("Model",
     
     bottleneck.sizes = NULL,
     coalescent.rates = NULL,
+    
+    graph = NULL,
     
     load.parameters = function(settings) {
       if (is.null(settings$Parameters)) {
@@ -216,6 +219,16 @@ Model <- R6Class("Model",
           private$coalescent.rates[[src]] <- params$coalescent.rate
         }
       }  # end loop
+      
+      # generate graph of compartments
+      adj <- (private$transmission.rates != "0" |
+                private$migration.rates != "0")
+      private$graph <- igraph::graph_from_adjacency_matrix(
+        adj, mode="directed", diag=F)
+      is.orphan <- (degree(private$graph)==0)
+      if (any(is.orphan)) {
+        stop("Isolated compartments detected:", private$compartments[is.orphan])
+      }
     },
     
     # Validate Sampling settings
@@ -290,5 +303,5 @@ summary.Model <- function(obj) {
 #' plot.Model
 #' Plot a graph summarizing compartments and rates
 plot.Model <- function(obj) {
-  # TODO: work in progress!
+  igraph::plot.igraph(obj$get.graph())
 }
