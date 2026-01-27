@@ -1,4 +1,7 @@
-#' Simulate population trajectories for all compartments forward in time
+#' Simulate population trajectories for all compartments forward in time.
+#' TODO: log events and counts
+#' TODO: add stopping criterion for sampling
+#' TODO: give user option to write log to file?
 #' @param mod:  R6 object of class Model
 simulate.dynamics <- function(mod) {
   # unpack the Model object
