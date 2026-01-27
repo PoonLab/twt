@@ -210,12 +210,7 @@ simulate.dynamics <- function(mod, logfile=NULL, max.attempts=3,
 #' 
 #' @example 
 #' counts <- get.counts("eventlog.csv", mod)
-#' par(mar=c(5,5,1,1))
-#' plot(counts$time, counts$S, ylim=c(0, 10000),
-#'      type='s', bty='n', xlab="Time", ylab="Count")
-#' lines(counts$time, counts$I, type='s', col='red')
-#' lines(counts$time, counts$R, type='s', col='blue')
-#' lines(counts$time, counts$I_samp, type='s', col='purple')
+#' plot(counts)  # S3 method
 #' 
 #' @export
 get.counts <- function(eventlog, mod, chunk.size=100) {
@@ -276,5 +271,39 @@ get.counts <- function(eventlog, mod, chunk.size=100) {
   } else {
     stop("Unrecognized type for `eventlog`")
   }
+  
+  class(counts) <- c('twt.counts', 'data.frame')
   return(counts)
+}
+
+
+#' plot.twt.counts
+#' 
+#' S3 method for visualizing the simulated population dynamics from 
+#' simulate.dynamics().
+#' @param counts:  S3 object of class twt.counts
+#' @param pal:  character, palette for drawing lines; defaults to Dark2
+#' @param xlab:  character, label for x-axis (default: 'Time')
+#' @param ylab:  character, label for y-axis (default: 'Frequency')
+#' @param lwd:  numeric, line width for plotting
+#' @param ...:  additional arguments passed to base plot() function
+#' 
+#' @export
+plot.twt.counts <- function(counts, pal=NA, xlab="Time", ylab="Frequency", 
+                            lwd=2, ...) {
+  k <- ncol(counts)-1
+  cnames <- names(counts)[2:(k+1)]
+  
+  if (all(is.na(pal))) {
+    pal <- hcl.colors(n=k, palette="Dark2")
+  }
+  
+  par(mar=c(5,5,1,1))
+  plot(counts$time, counts[,2], ylim=range(counts[,2:(k+1)]), col=pal[1],
+       type='s', xlab=xlab, ylab=ylab, lwd=lwd, ...)
+  if (k > 1) {
+    for (i in 3:(k+1)) {
+      lines(counts$time, counts[,i], type='s', col=pal[i-1], lwd=lwd)
+    }
+  }
 }

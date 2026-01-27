@@ -31,6 +31,8 @@ Compartments:
     size: 0
 
 Sampling:
-  mode: compartment  # indicates that one or more Compartments represent a sampled state (could also call this 'serial')
+  mode: compartment  # indicates that one or more Compartments represent a 
+                     # sampled state (could also call this 'serial')
   targets:
-    I_samp: 100  # if compartment reaches this target size then stop forward-time simulation
+    I_samp: 100  # if compartment reaches this target size then stop forward-
+                 # time simulation early
