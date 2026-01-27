@@ -27,6 +27,15 @@
 #' @field compartments  vector of Compartment objects
 #' @field sampling  sampling conditions
 #' 
+#' @example 
+#' require(R6)
+#' require(yaml)
+#' require(igraph)
+#' settings <- yaml.load_file("examples/SIRS_serial.yaml")
+#' mod <- Model$new(settings)
+#' summary(mod)
+#' plot(mod)
+#' 
 #' @export
 Model <- R6Class("Model",
   #lock_objects = FALSE,  # FIXME: is this deprecated?
@@ -225,7 +234,7 @@ Model <- R6Class("Model",
                 private$migration.rates != "0")
       private$graph <- igraph::graph_from_adjacency_matrix(
         adj, mode="directed", diag=F)
-      is.orphan <- (degree(private$graph)==0)
+      is.orphan <- (igraph::degree(private$graph)==0)
       if (any(is.orphan)) {
         stop("Isolated compartments detected:", private$compartments[is.orphan])
       }

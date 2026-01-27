@@ -1,10 +1,11 @@
 Parameters:
   originTime:  10.0  # simulation time units before most recent sample date
-  lambda: 0.1
-  mu: 0.05
-  beta:  0.0001  # transmission rate
-  gamma:  0.001  # clearance rate
-  psi:  0.001  # sampling rate
+  lambda: 1e-3  # birth rate (susceptibles only)
+  mu: 5e-4  # baseline death rate
+  mu2: 0.01  # infected death rate
+  beta:  1e-4  # transmission rate
+  gamma:  0.1  # clearance rate
+  psi:  0.05  # sampling rate
   omega:  0.01  # loss of immunity
 
 Compartments:
@@ -12,12 +13,13 @@ Compartments:
     birth: lambda*S
     death: mu*S
     transmission:
-      I: beta
-    size: 999  # initial
+      I: beta*S*I
+    size: 9999  # initial
   I:
     migration:
-      R: gamma
-      I_samp: psi
+      S: mu2*I  # death is instantly replaced
+      R: gamma*I
+      I_samp: psi*I
     size: 1  # index case!
     bottleneck.size: 1  # define only for compartments that carry Pathogens
     coalescent.rate: 0.01
@@ -25,7 +27,7 @@ Compartments:
     size: 0
   R:
     migration:
-      S: omega  # revert to susceptible
+      S: omega*R+mu*R  # revert to susceptible
     size: 0
 
 Sampling:
