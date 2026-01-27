@@ -302,6 +302,7 @@ summary.Model <- function(obj) {
 
 #' plot.Model
 #' Plot a graph summarizing compartments and rates
+#' TODO: label edges with rate expressions
 plot.Model <- function(obj) {
   igraph::plot.igraph(obj$get.graph())
 }
