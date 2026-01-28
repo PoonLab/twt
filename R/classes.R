@@ -1,51 +1,3 @@
-#' Compartment
-#' \code{Compartment} is an R6 class that defines a population of host 
-#' individuals that share the same epidemiological state, e.g., susceptible,
-#' infected and recovered.  A compartmental model defines rates of transit 
-#' between compartments.  A compartment may also represent individuals with 
-#' one or more shared characteristics such as a high transmission risk group, 
-#' or a geographic location.
-#' 
-#' @param name:  character, uniquely identifies the class
-#' @param rates:  list, transition rates expressed as expressions.  Dependence 
-#'                on other Compartments is identified by name.  May be a 
-#'                numeric value when rate is constant.
-#' @param bottleneck.size:  str, an expression for the bottleneck size 
-#'        distribution affecting lineages within a member of this 
-#'        Compartment.
-#' @param coalescence.rate:  str, an expression for the coalescent rate for 
-#'        lineages within a member of this Compartment.
-#' @export
-Compartment <- R6Class(
-  "Compartment",
-  public = list(
-    initialize = function(name=NA, size=NA, rates=NA, bottleneck.size=NA,
-                          coalescent.rate=NA, generation.time=NA) {
-      private$name <- name
-      private$size <- size
-      private$rates <- rates
-      private$bottleneck.size <- bottleneck.size
-      private$coalescent.rate <- coalescent.rate
-    },
-    
-    # accessor functions
-    get.name = function() { private$name },
-    get.size = function() { private$size },
-    get.rates = function() { private$rates },
-    get.bottleneck.size = function() { private$bottleneck.size },
-    get.coalescent.rate = function() { private$coalescent.rate }
-  ),
-  
-  private = list(
-    name = NULL,
-    size = NULL,
-    rates = NULL,
-    bottleneck.size=NULL,
-    coalescent.rate=NULL
-  )
-)
-
-
 #' Host
 #' 
 #' \code{Host} is an R6 class representing a host individual carrying 
@@ -198,13 +150,23 @@ HostSet <- R6Class(
       return(host)
     },
     
-    sample.host = function(type=NA) {
+    sample.host = function(type=NA, remove=FALSE) {
       if (is.na(type)) {
         # any host will do
-        sample(unlist(private$hosts), 1)
+        idx <- sample(1:length(private$count.type()), 1)
+        if (remove) {
+          private$remove.host(idx)
+        } else {
+          private$hosts[[idx]]
+        }
       } else {
         if (private$count.type(type) > 0) {
-          sample(unlist(private$hosts[private$get.types()==type]), 1)
+          if (remove) {
+            idx <- sample(which(private$get.types()==type), 1)
+            private$remove.host(idx)
+          } else {
+            sample(unlist(private$hosts[private$get.types()==type]), 1)
+          }
         } else {
           stop("HostSet$sample.host cannot return Host of type ", type)
         }
