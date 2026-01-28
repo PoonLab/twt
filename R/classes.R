@@ -96,7 +96,10 @@ Host <- R6Class(
     
     # accessor functions
     get.name = function() { private$name },
+    set.name = function(name) { private$name = name},
+    
     get.compartment = function() { private$compartment },
+    set.compartment = function(comp) { private$compartment=comp },
     
     get.source = function() { private$source },
     set.source = function(new.source) {
@@ -148,6 +151,72 @@ private = list(
     }
   }
 )
+)
+
+
+#' HostSet
+#' 
+#' A mutable set of Host objects, used to make some methods more convenient
+#' when simulating the outer tree.
+HostSet <- R6Class(
+  "HostSet",
+  public = list(
+    initialize = function(name=NA, hosts=list(), index=0) {
+      private$name <- name
+      private$hosts <- hosts
+      private$index <- 0  # unique IDs for members
+    },
+    
+    get.types = function() {
+      # generate a vector of compartment memberships for current Hosts
+      sapply(private$hosts, function(h) { h$get.compartment() })
+    },
+    
+    count.type = function(type=NA) {
+      if (is.na(type)) {
+        return (length(private$get.types()))
+      } else {
+        return(sum(private$get.types() == type))  
+      }
+    },
+    
+    add.host = function(host) {
+      # assign a unique name
+      host$set.name(paste0(host$get.compartment(), private$index))
+      private$index <- private$index + 1
+      private$hosts[[length(private$hosts)+1]] <- host
+    },
+    
+    remove.host = function(idx) {
+      if (idx < 1) { 
+        stop("HostSet$remove.host cannot use negative index")
+      } else if (idx > private$count.type()) {
+        stop("HostSet$remove.host index ", idx, " exceeds number of hosts")
+      }
+      host <- private$hosts[idx]
+      private$hosts <- private$hosts[-idx]
+      return(host)
+    },
+    
+    sample.host = function(type=NA) {
+      if (is.na(type)) {
+        # any host will do
+        sample(unlist(private$hosts), 1)
+      } else {
+        if (private$count.type(type) > 0) {
+          sample(unlist(private$hosts[private$get.types()==type]), 1)
+        } else {
+          stop("HostSet$sample.host cannot return Host of type ", type)
+        }
+      }
+    }
+  ),
+  
+  private = list(
+    name = NULL,
+    hosts = NULL,
+    index = NULL
+  )
 )
 
 
