@@ -25,12 +25,13 @@ Host <- R6Class(
   public = list(
     initialize = function(name=NA, compartment=NA, source=NA, 
                           transmission.time=NA, sampling.time=NA, 
-                          pathogens=list()) {
+                          unsampled=FALSE, pathogens=list()) {
       private$name <- name
       private$compartment <- compartment
       private$source <- source
       private$transmission.time <- transmission.time
       private$sampling.time <- sampling.time
+      private$unsampled <- unsampled
       private$pathogens <- pathogens
     },
     
@@ -83,26 +84,17 @@ Host <- R6Class(
     is.sampled = function() {
       !all(is.na(private$sampling.time))
     }
-),
-
-private = list(
-  name = NULL,
-  compartment = NULL,
-  source = NULL,
-  transmission.time = NULL,
-  sampling.time = NULL,
-  pathogens = NULL,
+  ),
   
-  deep_clone = function(name, value) {
-    if (name == 'pathogens') {
-      # map deep clone to Pathogen copy() method
-      lapply(value, function(pathogen) pathogen$copy(deep=TRUE))
-    } 
-    else {
-      value
-    }
-  }
-)
+  private = list(
+    name = NULL,
+    compartment = NULL,
+    source = NULL,
+    transmission.time = NULL,
+    sampling.time = NULL,
+    unsampled = NULL,
+    pathogens = NULL
+  )
 )
 
 
@@ -134,7 +126,15 @@ HostSet <- R6Class(
     
     add.host = function(host) {
       # assign a unique name
-      host$set.name(paste0(host$get.compartment(), private$index))
+      if (host$unsampled) {
+        host$set.name(paste(
+          "US", host$get.compartment(), private$index, 
+          sep="_"))
+      } else {
+        host$set.name(paste(
+          host$get.compartment(), private$index, 
+          sep="_"))  
+      }
       private$index <- private$index + 1
       private$hosts[[length(private$hosts)+1]] <- host
     },

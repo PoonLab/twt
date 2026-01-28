@@ -111,20 +111,32 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
     } else if (e$event == "transmission") {
       
       # what are the compartment sizes at transmission?
-      n.source <- e.prev[[e$src]]
-      stopifnot(n.source > 0)
       n.recip <- e.prev[[e$dest]]
       stopifnot(n.recip > 0)
       
-      # is recipient an active Host? otherwise ignore
+      # number of Hosts carrying Pathogens in destination compartment
       n.active.recip <- active$count_type(e$dest)
+      if (e$dest == e$src) {
+        # recipient Host cannot be its own source
+        n.active.recip <- n.active.recip - 1
+      }
       stopifnot(n.active.recip <= n.recip)
       
+      # is recipient an active Host? otherwise ignore
       if (sample(1:n.recip, 1) <= n.active.recip) {
         # TODO: check if Pathogen sampling date in recipient Host precedes
         # TODO: this transmission event
         
-        recip <- active$sample.host(e$dest, remove=TRUE)
+        # if the recipient's Compartment is infected, this is a superinfection
+        is.superinfect <- mod$get.infected[[e$dest]]
+        
+        # if this is not a superinfection, then deactivate recipient Host
+        recip <- active$sample.host(e$dest, remove=!is.superinfect)
+        recip$set.transmission.time(e$time)
+        
+        # next identify source Host
+        n.source <- e.prev[[e$src]]
+        stopifnot(n.source > 0)
         
         # is source an active Host?
         n.active.source <- active$count.type(e$src)
@@ -135,8 +147,11 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
           source <- active$sample.host(e$src)
         } else {
           # source is an unsampled host
-          source <- Host$new(compartment=e$src)
+          source <- Host$new(compartment=e$src, unsampled=TRUE)
+          active$add.host(source)
         }
+        
+        # record transmission event in outer log
       }
     }
   }

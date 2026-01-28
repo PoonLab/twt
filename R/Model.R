@@ -47,11 +47,14 @@ Model <- R6Class("Model",
       private$load.sampling(settings)
     },
     
-    # ACCESSOR FUNCTIONS
+    # ACCESSOR FUNCTIONS (immutable object, no set methods)
     get.parameters = function() { private$parameters },
     get.compartments = function() { private$compartments },
     get.sampling = function() { private$sampling },
+    
+    # these return named vectors
     get.init.sizes = function() { private$init.sizes },
+    get.infected = function() { private$is.infected},
     get.birth.rates = function() { private$birth.rates },
     get.death.rates = function() { private$death.rates },
     get.migration.rates = function() { private$migration.rates },
@@ -67,6 +70,7 @@ Model <- R6Class("Model",
     sampling = NULL,
     
     init.sizes = NULL,  # numeric, initial sizes
+    is.infected = NULL,  # boolean, does compartment carry pathogens?
 
     birth.rates = NULL,  # list, birth rates per compartment
     death.rates = NULL,  # list, death rates per compartment
@@ -146,8 +150,9 @@ Model <- R6Class("Model",
       }
       # cat(eval(parse(text="ls()"), envir=env))  ## DEBUGGING
       
-      # initialize rate containers
+      # initialize containers
       private$init.sizes <- setNames(rep(0, k), cnames)
+      private$is.infected <- setNames(rep(NA, k), cnames)
       private$bottleneck.sizes <- setNames(rep("0", k), cnames)
       private$coalescent.rates <- setNames(rep("0", k), cnames)
       
@@ -163,9 +168,15 @@ Model <- R6Class("Model",
         
         # initial population size
         if (is.null(params$size)) {
-          stop("Compartment `", cn, "` must specify initial `size`")
+          stop("Compartment `", src, "` must specify initial `size`")
         }
         private$init.sizes[[src]] <- params$size
+        
+        # does compartment carry pathogens?
+        if (is.null(params$infected)) {
+          stop("Compartment `", src, "` must specify `infected` (true/false)")
+        }
+        private$is.infected[[src]] <- params$infected
         
         # parse rate expressions
         if (!is.null(params$birth)) {

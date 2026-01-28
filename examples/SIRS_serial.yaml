@@ -10,12 +10,14 @@ Parameters:
 
 Compartments:
   S:
+    infected: false
     birth: lambda*S
     death: mu*S
     transmission:
       I: beta*S*I
     size: 9999  # initial
   I:
+    infected: true
     migration:
       S: mu2*I  # death is instantly replaced
       R: gamma*I
@@ -24,8 +26,10 @@ Compartments:
     bottleneck.size: 1  # define only for compartments that carry Pathogens
     coalescent.rate: 0.01
   I_samp:
+    infected: true
     size: 0
   R:
+    infected: false
     migration:
       S: omega*R+mu*R  # revert to susceptible
     size: 0
