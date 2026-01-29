@@ -55,10 +55,15 @@ Model <- R6Class("Model",
     get.infected = function() { private$is.infected},
     get.birth.rates = function() { private$birth.rates },
     get.death.rates = function() { private$death.rates },
+    
+    # these return matrices
     get.migration.rates = function() { private$migration.rates },
     get.transmission.rates = function() { private$transmission.rates },
+    
+    # named vectors
     get.bottleneck.sizes = function() { private$bottleneck.sizes },
     get.coalescent.rates = function() { private$coalescent.rates },
+    
     get.graph = function() { private$graph }
   ),
   

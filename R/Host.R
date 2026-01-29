@@ -120,7 +120,7 @@ HostSet <- R6Class(
     },
     
     count.type = function(type=NA) {
-      host.types <- private$get.types()
+      host.types <- self$get.types()
       if (is.na(type)) {
         length(host.types)
       } else {
@@ -154,17 +154,17 @@ HostSet <- R6Class(
         # any host will do
         idx <- sample(1:length(private$count.type()), 1)
         if (remove) {
-          private$remove.host(idx)
+          self$remove.host(idx)
         } else {
           private$hosts[[idx]]
         }
       } else {
-        if (private$count.type(type) > 0) {
+        if (self$count.type(type) > 0) {
           if (remove) {
-            idx <- sample(which(private$get.types()==type), 1)
-            private$remove.host(idx)
+            idx <- sample(which(self$get.types()==type), 1)
+            self$remove.host(idx)
           } else {
-            sample(unlist(private$hosts[private$get.types()==type]), 1)
+            sample(unlist(private$hosts[self$get.types()==type]), 1)
           }
         } else {
           stop("HostSet$sample.host cannot return Host of type ", type)

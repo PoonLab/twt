@@ -69,7 +69,11 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
     }
     
     e <- eventlog[row, ]  # retrieve the current event
-    e.prev <- ifelse(row>1, eventlog[row-1,], NULL)  # previous event
+    if (row > 1) {
+      e.prev <- eventlog[row-1, ]  # previous event
+    } else {
+      e.prev <- NULL  # at start of event log
+    }
     
     if (e$event == "migration") {
       # transition of a Host from one compartment to another
@@ -91,7 +95,7 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
         # this was NOT a sampling event
         
         # check if an active lineage underwent a migration
-        active.in.comp <- active$count_type(e$dest)
+        active.in.comp <- active$count.type(e$dest)
         if (active.in.comp > 0) {
           tot <- e[[e$dest]]  # size of compartment AFTER migration
           prob <- active.in.comp / tot
@@ -117,7 +121,7 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
       stopifnot(n.recip > 0)
       
       # number of Hosts carrying Pathogens in destination compartment
-      n.active.recip <- active$count_type(e$dest)
+      n.active.recip <- active$count.type(e$dest)
       if (e$dest == e$src) {
         # recipient Host cannot be its own source
         n.active.recip <- n.active.recip - 1
@@ -130,7 +134,7 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
         # TODO: this transmission event
         
         # if the recipient's Compartment is infected, this is a superinfection
-        is.superinfect <- mod$get.infected[[e$dest]]
+        is.superinfect <- mod$get.infected()[[e$dest]]
         
         # if this is not a superinfection, then retire the recipient Host
         recip <- active$sample.host(e$dest, remove=!is.superinfect)

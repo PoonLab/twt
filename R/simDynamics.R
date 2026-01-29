@@ -16,8 +16,7 @@
 #'                     stores events
 #' @return data.frame if user does not specify logfile
 #' @examples
-#' require(yaml)
-#' require(R6)
+#' require(twt)
 #' settings <- yaml.load_file("examples/SIRS_serial.yaml")
 #' mod <- Model$new(settings)
 #' sim.dynamics(mod, logfile="eventlog.csv")
@@ -30,20 +29,20 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
   cnames <- mod$get.compartments()
   k <- length(cnames)
   sampling <- mod$get.sampling()
+
+  # instantiate model parameters
+  e <- new.env()
+  for (key in names(params)) {
+    eval(parse(text=paste(key, "<-", params[[key]])), envir=e)
+  }
   
   attempt <- 1
   while (attempt <= max.attempts) {
     
-    # instantiate model parameters
-    e <- new.env()
-    for (key in names(params)) {
-      eval(parse(text=paste(key, "<-", params[[key]])), envir=e)
-    }
-    
     # instantiate model variables (compartments)
-    counts <- mod$get.init.sizes()
+    init.sizes <- mod$get.init.sizes()
     for (cn in cnames) {
-      eval(parse(text=paste(cn, "<-", counts[[cn]])), envir=e)
+      eval(parse(text=paste(cn, "<-", init.sizes[[cn]])), envir=e)
     }
     
     # instantiate rate matrices
@@ -57,6 +56,8 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
                              function(x) { eval(parse(text=x), envir=e) })
     transmission.rates <- apply(mod$get.transmission.rates(), MARGIN=c(1,2),
                                 function(x) { eval(parse(text=x), envir=e) })
+    
+    event.types <- c('birth', 'death', 'migration', 'transmission')    
     
     # are there other stopping criteria?
     targets <- NULL
@@ -74,7 +75,6 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
         stringsAsFactors=FALSE
       )
       row.num <- 1
-      event.types <- c('birth', 'death', 'migration', 'transmission')    
     } else {
       # open file to write event log
       conn <- file(logfile, open='w')
