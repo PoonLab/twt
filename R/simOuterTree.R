@@ -8,6 +8,11 @@
 #' @param mod:  R6 object of class Model
 #' @param eventlog:  character or data frame of event log from forward-time 
 #'                   simulation of population trajectories
+#' @return data frame, containing subset of events that comprise
+#'         the transmission tree
+#' @examples
+#' sim <- simulate.dynamics(mod)
+#' outer <- sim.outer.tree(mod, sim)
 #' @export
 sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
   # container for recording outer events
@@ -22,13 +27,12 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
   
   cnames <- mod$get.compartments()
   k <- length(cnames)
-  stopifnot(all(names(counts)[2:ncol(counts)] == cnames))
   
-  if (is.character(eventlog) & file.exists(eventlog)) {
-    # load logfile into memory
-    eventlog <- read.csv(eventlog)
+  if (is.character(eventlog)) {
+    eventlog <- read.csv(eventlog)  # load logfile into memory
   }
   counts <- get.counts(eventlog, mod)
+  stopifnot(all(names(counts)[2:ncol(counts)] == cnames))
   stopifnot(all(counts$time == c(0, eventlog$time)))
 
   # append counts to event log
@@ -42,9 +46,10 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
   }
   
   # confirm sufficient numbers in sampled compartments
-  for (cn in names(sampling$targets)) {
+  targets <- sampling$targets
+  for (cn in names(targets)) {
     size <- sum(eventlog$event=="migration" & eventlog$dest==cn)
-    target <- sampling$targets[[cn]]
+    target <- targets[[cn]]
     if (target < size) {
       stop("Insufficient number in sampling compartment ", 
            cn, " (", size , "<", target, ")")
@@ -59,15 +64,12 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
   for (row in seq(nrow(eventlog), 1, -1)) {
     # check stopping criterion
     if (sum(sampled)==nsamples &  # sampled all hosts
-        sum(active) == 1) {  # reached root of transmission tree
+        active$count.type() == 1) {  # reached root of transmission tree
       break  
     }
     
-    # retrieve the current event
-    e <- eventlog[row, ]
-    
-    # lookahead to previous event
-    e.prev <- ifelse(row>1, eventlog[row-1,], NULL)
+    e <- eventlog[row, ]  # retrieve the current event
+    e.prev <- ifelse(row>1, eventlog[row-1,], NULL)  # previous event
     
     if (e$event == "migration") {
       # transition of a Host from one compartment to another
@@ -110,8 +112,8 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
       
     } else if (e$event == "transmission") {
       
-      # what are the compartment sizes at transmission?
-      n.recip <- e.prev[[e$dest]]
+      # what were the compartment sizes at transmission?
+      n.recip <- ifelse(is.null(e.prev), e[[e$dest]]-1, e.prev[[e$dest]]) 
       stopifnot(n.recip > 0)
       
       # number of Hosts carrying Pathogens in destination compartment
@@ -130,7 +132,7 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
         # if the recipient's Compartment is infected, this is a superinfection
         is.superinfect <- mod$get.infected[[e$dest]]
         
-        # if this is not a superinfection, then deactivate recipient Host
+        # if this is not a superinfection, then retire the recipient Host
         recip <- active$sample.host(e$dest, remove=!is.superinfect)
         recip$set.transmission.time(e$time)
         
@@ -148,11 +150,23 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
         } else {
           # source is an unsampled host
           source <- Host$new(compartment=e$src, unsampled=TRUE)
-          active$add.host(source)
+          active$add.host(source)  # HostSet will assign a label
         }
+        recip$set.source(source)  # record source
         
         # record transmission event in outer log
+        outer.log[nrow(outer.log)+1, ] <- 
+          c(time=e$time, event=e$event, 
+            host.anc=source$get.name(), host.dec=recip$get.name(), 
+            comp.anc=e$src, comp.dec=e$dest)
       }
+      
     }
+    # birth events do not affect infected compartments, so they cannot 
+    # participate in the transmission tree
+    
+    # because we are tracing infected host lineages back in time, we can 
+    # ignore death events
   }
+  return(outer.log)
 }

@@ -27,7 +27,7 @@
 #' @field compartments  vector of Compartment objects
 #' @field sampling  sampling conditions
 #' 
-#' @example 
+#' @examples
 #' require(R6)
 #' require(yaml)
 #' require(igraph)
@@ -38,8 +38,6 @@
 #' 
 #' @export
 Model <- R6Class("Model",
-  #lock_objects = FALSE,  # FIXME: is this deprecated?
-  
   public = list(
     initialize = function(settings=NA) {
       private$load.parameters(settings)
@@ -323,6 +321,7 @@ summary.Model <- function(obj) {
 #' plot.Model
 #' Plot a graph summarizing compartments and rates
 #' TODO: label edges with rate expressions
+#' @export
 plot.Model <- function(obj) {
   igraph::plot.igraph(obj$get.graph())
 }

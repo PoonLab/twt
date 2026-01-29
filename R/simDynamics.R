@@ -1,3 +1,5 @@
+#' sim.dynamics
+#'
 #' Simulate population trajectories for all compartments forward in time.
 #' Results are recorded as a data frame or exported to a CSV file with the 
 #' following information:
@@ -12,15 +14,16 @@
 #' @param max.attempts:  int, number of attempts to simulate trajectories
 #' @param chunk.size:  int, number of rows to allocate to data.frame that 
 #'                     stores events
-#' @example 
+#' @return data.frame if user does not specify logfile
+#' @examples
 #' require(yaml)
 #' require(R6)
 #' settings <- yaml.load_file("examples/SIRS_serial.yaml")
 #' mod <- Model$new(settings)
-#' simulate.dynamics(mod, logfile="eventlog.csv")
+#' sim.dynamics(mod, logfile="eventlog.csv")
 #'
 #' @export
-simulate.dynamics <- function(mod, logfile=NULL, max.attempts=3, 
+sim.dynamics <- function(mod, logfile=NULL, max.attempts=3, 
                               chunk.size=1e4) {
   # unpack the Model object
   params <- mod$get.parameters()
@@ -186,7 +189,7 @@ simulate.dynamics <- function(mod, logfile=NULL, max.attempts=3,
     message("Failed sample size requirements (attempt ", attempt, "/", 
                 max.attempts, ")")
     attempt <- attempt + 1
-    close(conn)
+    if (!is.null(logfile)) { close(conn) }
   }
   
   if (attempt > max.attempts) {
@@ -208,7 +211,7 @@ simulate.dynamics <- function(mod, logfile=NULL, max.attempts=3,
 #' Convert an event log into population size trajectories for every 
 #' compartment in the model.  We omit these to keep the event log compact.
 #' 
-#' @example 
+#' @examples
 #' counts <- get.counts("eventlog.csv", mod)
 #' plot(counts)  # S3 method
 #' 

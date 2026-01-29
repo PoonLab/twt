@@ -23,8 +23,8 @@
 Host <- R6Class(
   "Host",
   public = list(
-    initialize = function(name=NA, compartment=NA, source=NA, 
-                          transmission.time=NA, sampling.time=NA, 
+    initialize = function(name=NA, compartment=NA, source=character(), 
+                          transmission.time=numeric(), sampling.time=NA, 
                           unsampled=FALSE, pathogens=list()) {
       private$name <- name
       private$compartment <- compartment
@@ -35,33 +35,31 @@ Host <- R6Class(
       private$pathogens <- pathogens
     },
     
-    copy = function(deep=FALSE) {
-      # see https://github.com/r-lib/R6/issues/110
-      cloned <- self$clone(deep)  # calls deep_clone method
-      if (deep) {
-        # attach new Pathogens to new Host
-        for (pathogen in cloned$get.pathogens()) {
-          pathogen$set.location(cloned)
-        }
-      }
-      cloned  # return
-    },
-    
     # accessor functions
     get.name = function() { private$name },
-    set.name = function(name) { private$name = name},
+    set.name = function(name) { private$name = name },
     
     get.compartment = function() { private$compartment },
     set.compartment = function(comp) { private$compartment=comp },
     
     get.source = function() { private$source },
     set.source = function(new.source) {
-      private$source <- new.source
+      if (length(private$source) > 0) {
+        # superinfection
+        private$source <- c(private$source, new.source)
+      } else {
+        private$source <- new.source
+      }
     },
     
     get.transmission.time = function() { private$transmission.time },
-    set.transmission.time = function(new.transmission.time) {
-      private$transmission.time <- new.transmission.time
+    set.transmission.time = function(new.time) {
+      if (length(private$transmission.time) > 0) {
+        # superinfection
+        private$transmission.time <- c(private$transmission.time, new.time)
+      } else {
+        private$transmission.time <- new.time  
+      }
     },
     
     get.sampling.time = function() { private$sampling.time },
@@ -82,7 +80,8 @@ Host <- R6Class(
     },
     
     is.sampled = function() {
-      !all(is.na(private$sampling.time))
+      #!all(is.na(private$sampling.time))
+      !private$unsampled
     }
   ),
   
@@ -102,6 +101,10 @@ Host <- R6Class(
 #' 
 #' A mutable set of Host objects, used to make some methods more convenient
 #' when simulating the outer tree.
+#' @param name:  character, optional identifier
+#' @param hosts:  list, used to build a HostSet from existing Host objects
+#' @param index:  integer, internal counter
+#' @export
 HostSet <- R6Class(
   "HostSet",
   public = list(
@@ -117,24 +120,20 @@ HostSet <- R6Class(
     },
     
     count.type = function(type=NA) {
+      host.types <- private$get.types()
       if (is.na(type)) {
-        return (length(private$get.types()))
+        length(host.types)
       } else {
-        return(sum(private$get.types() == type))  
+        sum(host.types == type)
       }
     },
     
     add.host = function(host) {
       # assign a unique name
-      if (host$unsampled) {
-        host$set.name(paste(
-          "US", host$get.compartment(), private$index, 
-          sep="_"))
-      } else {
-        host$set.name(paste(
-          host$get.compartment(), private$index, 
-          sep="_"))  
-      }
+      host$set.name(paste(
+        ifelse(host$is.sampled(), "", "US"), 
+        host$get.compartment(), private$index, 
+        sep="_"))
       private$index <- private$index + 1
       private$hosts[[length(private$hosts)+1]] <- host
     },
