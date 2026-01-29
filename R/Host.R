@@ -108,10 +108,14 @@ Host <- R6Class(
 HostSet <- R6Class(
   "HostSet",
   public = list(
-    initialize = function(name=NA, hosts=list(), index=0) {
+    initialize = function(name=NA, hosts=list(), index=1) {
       private$name <- name
       private$hosts <- hosts
-      private$index <- 0  # unique IDs for members
+      private$index <- index  # unique IDs for members
+    },
+    
+    get.names = function() {
+      sapply(private$hosts, function(h) { h$get.name() })
     },
     
     get.types = function() {
@@ -130,10 +134,12 @@ HostSet <- R6Class(
     
     add.host = function(host) {
       # assign a unique name
-      host$set.name(paste(
-        ifelse(host$is.sampled(), "", "US"), 
-        host$get.compartment(), private$index, 
-        sep="_"))
+      if (host$is.sampled()) {
+        name <- paste(host$get.compartment(), private$index, sep="_")
+      } else {
+        name <- paste("US", host$get.compartment(), private$index, sep="_")
+      }
+      host$set.name(name)
       private$index <- private$index + 1
       private$hosts[[length(private$hosts)+1]] <- host
     },
@@ -141,10 +147,10 @@ HostSet <- R6Class(
     remove.host = function(idx) {
       if (idx < 1) { 
         stop("HostSet$remove.host cannot use negative index")
-      } else if (idx > private$count.type()) {
+      } else if (idx > self$count.type()) {
         stop("HostSet$remove.host index ", idx, " exceeds number of hosts")
       }
-      host <- private$hosts[idx]
+      host <- private$hosts[[idx]]
       private$hosts <- private$hosts[-idx]
       return(host)
     },
@@ -152,7 +158,7 @@ HostSet <- R6Class(
     sample.host = function(type=NA, remove=FALSE) {
       if (is.na(type)) {
         # any host will do
-        idx <- sample(1:length(private$count.type()), 1)
+        idx <- sample(1:self$count.type(), 1)
         if (remove) {
           self$remove.host(idx)
         } else {
