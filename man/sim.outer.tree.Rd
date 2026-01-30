@@ -4,55 +4,25 @@
 \alias{sim.outer.tree}
 \title{sim.outer.tree}
 \usage{
-sim.outer.tree(model, max.attempts = 5, skip.assign = F)
+sim.outer.tree(mod, eventlog, chunk.size = 100)
 }
 \arguments{
-\item{model:}{R6 object of class 'Model'}
+\item{mod:}{R6 object of class Model}
 
-\item{max.attempts:}{maximum number of attempts to simulate outer events.
-Defaults to 5.}
+\item{eventlog:}{character or data frame of event log from forward-time 
+simulation of population trajectories}
 }
 \value{
-object of class 'EventLogger'
+data frame, containing subset of events that comprise
+        the transmission tree
 }
 \description{
-After the objects are generated from user inputs ('loadInputs.R'), 
-we need to initialize the list of fixed events.  We anticipate 
-three use cases:
-1. User provides a string or object representing the transmission tree
-   that should be converted into an EventLogger object to use for
-   inner tree simulation (`attach.tree`).
-2. User manually inputs a host transmission tree into YAML format under 
-   Compartments header (`load.outer.tree`).
-3. No host tree provided, transmission events need to be simulated under
-   user-specified model (`sim.outer.tree`).
-   
-\code{sim.outer.tree} simulates transmission, migration and transition events 
-and fixes them to the timeline of lineage sampled events.
-}
-\details{
-A *transmission* is the passage of one or more Lineages from a source 
-Compartment to an uninfected recipient Compartment that did not carry any 
-Lineages.  
-
-A *migration* is the passage of one or more Lineages from a source Compartment
-to a recipient Compartment that has already been infected (it already carries
-one or more Lineages).
-
-A *transition* occurs when a Compartment switches to another Type.  This 
-is useful for handling host death events, for example.
+Given the events generated under the model by forward-time simulation in 
+simulate.dynamics(), we determine the subset of events that are involved 
+in the transmission tree relating the sampled hosts.  This will generally
+be a much smaller subset of events
 }
 \examples{
-
-#' # load susceptible-infected (SI) compartmental model
-path <- system.file('extdata', 'structSI.yaml', package='twt')
-settings <- yaml.load_file(path)
-model <- Model$new(settings)
-
-run <- sim.outer.tree(model)
-run$get.eventlog()
-
-}
-\seealso{
-load.outer.tree
+sim <- simulate.dynamics(mod)
+outer <- sim.outer.tree(mod, sim)
 }

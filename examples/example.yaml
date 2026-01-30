@@ -1,0 +1,37 @@
+Parameters:
+  originTime:  10.0  # simulation time units before most recent sample date
+  beta1:  0.0001  
+  beta2:  0.0003  # higher transmission rate
+  hom:  3.0  # homophily 
+  gamma:  0.001  # clearance rate
+  omega:  0.01  # loss of immunity
+Compartments:
+  'S1':
+    rates:
+      I1: (beta1*hom*I1 + beta2*I2)*S1
+    size: 999
+  'I1':
+    rates:
+      R1: gamma*I1
+    size: 1
+    bottleneck.size: 1  # define only for compartments that carry Pathogens
+    coalescent.rate: 0.01
+  'R1':
+    rates:
+      S1: omega*R1
+    size: 0
+  'S2':
+    rates:
+      I2: (beta1*I1 + beta2*hom*I2)*S2
+    size: 999
+  'I2':
+    rates:
+      R2: gamma*I2
+    size: 1
+    bottleneck.size: 1+rpois(1,0.5)  # an expression for random outcomes
+    coalescent.rate: 0.02
+  'R2':
+    rates:
+      S2: omega*R2
+    size: 0
+

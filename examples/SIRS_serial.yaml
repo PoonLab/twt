@@ -1,0 +1,42 @@
+Parameters:
+  simTime:  10.0  # simulation time units before most recent sample date
+  lambda: 1e-3  # birth rate (susceptibles only)
+  mu: 5e-4  # baseline death rate
+  mu2: 0.01  # infected death rate
+  beta:  1e-4  # transmission rate
+  gamma:  0.1  # clearance rate
+  psi:  0.05  # sampling rate
+  omega:  0.01  # loss of immunity
+
+Compartments:
+  S:
+    infected: false
+    birth: lambda*S
+    death: mu*S
+    transmission:
+      I: beta*S*I
+    size: 9999  # initial
+  I:
+    infected: true
+    migration:
+      S: mu2*I  # death is instantly replaced
+      R: gamma*I
+      I_samp: psi*I
+    size: 1  # index case!
+    bottleneck.size: 1  # define only for compartments that carry Pathogens
+    coalescent.rate: 0.01
+  I_samp:
+    infected: true
+    size: 0
+  R:
+    infected: false
+    migration:
+      S: omega*R+mu*R  # revert to susceptible
+    size: 0
+
+Sampling:
+  mode: compartment  # indicates that one or more Compartments represent a 
+                     # sampled state (could also call this 'serial')
+  targets:
+    I_samp: 100  # if compartment reaches this target size then stop forward-
+                 # time simulation early
