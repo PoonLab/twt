@@ -1,5 +1,5 @@
 Parameters:
-  originTime:  10.0  # simulation time units before most recent sample date
+  simTime:  10.0  # simulation time units before most recent sample date
   lambda: 1e-3  # birth rate (susceptibles only)
   mu: 5e-4  # baseline death rate
   mu2: 0.01  # infected death rate

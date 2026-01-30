@@ -1,0 +1,29 @@
+Parameters:
+  simTime: 10
+  beta: 0.02
+  gamma: 0.01
+  psi: 0.005
+
+Compartments:
+  S:
+    size: 1000
+    infected: false
+    transmission:
+      I: beta*S*I
+  I:
+    size: 1
+    infected: true
+    migration:
+      R: gamma*I
+      I_samp: psi*I
+  I_samp:
+    size: 0
+    infected: true
+  R:
+    size: 0
+    infected: false
+
+Sampling:
+  mode: compartment
+  targets:
+    I_samp: 10

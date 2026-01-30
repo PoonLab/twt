@@ -64,3 +64,32 @@ test_that("Sample hosts from set", {
   expected <- 0.667
   expect_equal(result, expected, tolerance=0.065)
 })
+
+
+test_that("Superinfection of host", {
+  host <- Host$new(name="recipient", compartment="I")
+  source <- Host$new(name="source", compartment="I")
+  host$set.source(source)
+  host$set.transmission.time(1.0)
+  
+  result <- host$get.source()
+  expected <- source
+  expect_equal(result, expected)
+  
+  result <- host$get.transmission.time()
+  expected <- 1.0
+  expect_equal(result, expected)
+  
+  source2 <- Host$new(name="source2", compartment="I")
+  host$set.source(source2)
+  host$set.transmission.time(2.0)
+  
+  result <- host$get.source()
+  expected <- c(source, source2)
+  expect_equal(result, expected)
+  
+  result <- host$get.transmission.time()
+  expected <- c(1.0, 2.0)
+  expect_equal(result, expected)
+})
+

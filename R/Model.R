@@ -37,7 +37,8 @@
 #' plot(mod)
 #' 
 #' @export
-Model <- R6Class("Model",
+Model <- R6Class(
+  "Model",
   public = list(
     initialize = function(settings=NA) {
       private$load.parameters(settings)
@@ -92,14 +93,14 @@ Model <- R6Class("Model",
       
       # origin time is measured in reverse (prior to most recent sampled lineage)
       params <- settings$Parameters
-      if (is.null(params$originTime)) {
-        stop("Parameters: required key `originTime` is missing")
+      if (is.null(params$simTime)) {
+        stop("Parameters: required key `simTime` is missing")
       }
-      if (!is.numeric(params$originTime)) {
-        stop("InitialConditions: originTime must be numeric")
+      if (!is.numeric(params$simTime)) {
+        stop("InitialConditions: simTime must be numeric")
       }
-      if (params$originTime <= 0) {
-        stop("InitialConditions: originTime must be positive")
+      if (params$simTime <= 0) {
+        stop("InitialConditions: simTime must be positive")
       }
       private$parameters <- params
     },
@@ -204,6 +205,11 @@ Model <- R6Class("Model",
           if (!is.list(params$migration)) {
             stop(src, "`migration` should be an associative array.")
           }
+          dests <- names(params$migration)
+          if (any(!is.element(dests, cnames))) {
+            stop(src, "`migration` contains undeclared Compartment(s): ",
+                 dests[which(!is.element(dests, cnames))])
+          }
           for (dest in names(params$migration)) {
             rate <- params$migration[[dest]]
             private$check.expression(rate, env)
@@ -215,7 +221,12 @@ Model <- R6Class("Model",
           if (!is.list(params$transmission)) {
             stop(src, "`transmission` should be an associative array.")
           }
-          for (dest in names(params$transmission)) {
+          dests <- names(params$transmission)
+          if (any(!is.element(dests, cnames))) {
+            stop(src, "`transmission` contains undeclared Compartment(s): ",
+                 dests[which(!is.element(dests, cnames))])
+          }
+          for (dest in dests) {
             rate <- params$transmission[[dest]]
             private$check.expression(rate, env)
             private$transmission.rates[[src, dest]] <- rate

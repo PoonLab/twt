@@ -82,7 +82,7 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
     }
     
     # main simulation loop
-    cur.time <- params$originTime
+    cur.time <- params$simTime
     while (cur.time >= 0) {
       # update total rate
       rates <- c(sum(birth.rates), sum(death.rates), sum(migration.rates), 
@@ -131,7 +131,7 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
       
       # log event
       if (is.null(logfile)) {
-        events[row.num, ] <- c(params$originTime - cur.time, event, src, dest)
+        events[row.num, ] <- c(params$simTime - cur.time, event, src, dest)
         row.num <- row.num+1
         if (row.num > nrow(events)) {
           # allocate more space
@@ -145,7 +145,7 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
         }        
       } else {
         writeLines(
-          text=paste(params$originTime-cur.time, event, src, dest, sep=","),
+          text=paste(params$simTime-cur.time, event, src, dest, sep=","),
           con=conn)
         flush(conn)
       }
@@ -194,7 +194,7 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
   
   if (attempt > max.attempts) {
     warning("All attempts failed with insufficient sample size. You may ",
-            "need to increase simulation time (originTime), or the sampling ",
+            "need to increase simulation time (simTime), or the sampling ",
             "or transmission rates in the model.")
     return(NULL)
   }

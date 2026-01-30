@@ -160,17 +160,19 @@ HostSet <- R6Class(
         # any host will do
         idx <- sample(1:self$count.type(), 1)
         if (remove) {
-          self$remove.host(idx)
+          self$remove.host(idx)  # without replacement
         } else {
-          private$hosts[[idx]]
+          private$hosts[[idx]]  # with replacement
         }
       } else {
+        # sample host of specific type
         if (self$count.type(type) > 0) {
+          idx <- sample(which(self$get.types()==type), 1)
           if (remove) {
-            idx <- sample(which(self$get.types()==type), 1)
-            self$remove.host(idx)
+            self$remove.host(idx)  # without replacement
           } else {
-            sample(unlist(private$hosts[self$get.types()==type]), 1)
+            # with replacement
+            private$hosts[[idx]]
           }
         } else {
           stop("HostSet$sample.host cannot return Host of type ", type)
