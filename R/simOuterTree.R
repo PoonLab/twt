@@ -11,7 +11,9 @@
 #' @return data frame, containing subset of events that comprise
 #'         the transmission tree
 #' @examples
-#' sim <- simulate.dynamics(mod)
+#' require(twt)
+#' mod <- Model$new(yaml.load_file("examples/SIRS_serial.yaml"))
+#' sim <- sim.dynamics(mod)
 #' outer <- sim.outer.tree(mod, sim)
 #' @export
 sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
@@ -50,7 +52,7 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
   # iterate through events in reverse (start with most recent)
   for (row in seq(nrow(eventlog), 1, -1)) {
     # check stopping criterion
-    if (sum(sampled)==nsamples &  # sampled all hosts
+    if (outer$nsamples() == sum(targets) &  # sampled all hosts
         active$count.type() == 1) {  # reached root of transmission tree
       break  
     }
@@ -89,7 +91,7 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
   if (e$dest %in% names(targets)) {
     # this was a sampling event
     
-    if (outer$nsamples < sum(targets)) {
+    if (outer$nsamples() < sum(targets)) {
       # have not sampled all hosts yet
       host <- Host$new(
         name=paste0(e$dest),
