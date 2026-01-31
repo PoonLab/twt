@@ -1,3 +1,42 @@
+#' update.rates
+#' 
+#' @param mod:  R6 object of class Model
+#' @param envir:  R environment
+#' @param reset:  bool, if TRUE then set compartments back to initial sizes
+#'                defined in Model object
+#' @return  list with rate vectors and matrices, keyed by event type
+.update.rates <- function(mod, envir, reset=FALSE) {
+  
+  if (reset) {
+    # initialize compartments and set initial sizes
+    init.sizes <- mod$get.init.sizes()
+    for (cn in mod$get.compartments()) {
+      eval(parse(text=paste(cn, "<-", init.sizes[[cn]])), envir=envir)
+    }    
+  }
+  
+  rates <- list()
+  
+  rates[['birth']] <- sapply(mod$get.birth.rates(), function(x) {
+    eval(parse(text=x), envir=envir)
+  })
+  
+  rates[['death']] <- sapply(mod$get.death.rates(), function(x) {
+    eval(parse(text=x), envir=envir)
+  })
+  
+  rates[['migration']] <- apply(
+    mod$get.migration.rates(), MARGIN=c(1,2), 
+    function(x) { eval(parse(text=x), envir=envir) })
+  
+  rates[['transmission']] <- apply(
+    mod$get.transmission.rates(), MARGIN=c(1,2),
+    function(x) { eval(parse(text=x), envir=envir) })
+  
+  return(rates)
+}
+
+
 #' sim.dynamics
 #'
 #' Simulate population trajectories for all compartments forward in time.
@@ -39,25 +78,8 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
   attempt <- 1
   while (attempt <= max.attempts) {
     
-    # instantiate model variables (compartments)
-    init.sizes <- mod$get.init.sizes()
-    for (cn in cnames) {
-      eval(parse(text=paste(cn, "<-", init.sizes[[cn]])), envir=e)
-    }
-    
-    # instantiate rate matrices
-    birth.rates <- sapply(mod$get.birth.rates(), function(x) {
-      eval(parse(text=x), envir=e)
-    })
-    death.rates <- sapply(mod$get.death.rates(), function(x) {
-      eval(parse(text=x), envir=e)
-    })
-    migration.rates <- apply(mod$get.migration.rates(), MARGIN=c(1,2), 
-                             function(x) { eval(parse(text=x), envir=e) })
-    transmission.rates <- apply(mod$get.transmission.rates(), MARGIN=c(1,2),
-                                function(x) { eval(parse(text=x), envir=e) })
-    
-    event.types <- c('birth', 'death', 'migration', 'transmission')    
+    # initialize Compartments and set rate matrices
+    rates <- .update.rates(mod, e, reset=TRUE)
     
     # are there other stopping criteria?
     targets <- NULL
@@ -68,10 +90,8 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
     if (is.null(logfile)) {
       # pre-allocate containers for logging events
       events <- data.frame(
-        time=numeric(chunk.size),
-        event=character(chunk.size),
-        src=character(chunk.size),
-        dest=character(chunk.size),
+        time=numeric(chunk.size), event=character(chunk.size),
+        src=character(chunk.size), dest=character(chunk.size),
         stringsAsFactors=FALSE
       )
       row.num <- 1
@@ -81,13 +101,12 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
       writeLines(text="time,event,src,dest", con=conn)
     }
     
-    # main simulation loop
+    ### MAIN SIMULATION LOOP ###
     cur.time <- params$simTime
     while (cur.time >= 0) {
-      # update total rate
-      rates <- c(sum(birth.rates), sum(death.rates), sum(migration.rates), 
-                 sum(transmission.rates))
-      total.rate <- sum(rates)
+      
+      rate.sums <- sapply(rates, sum)
+      total.rate <- sum(rate.sums)
       if (total.rate == 0) {
         break  # nothing can occur, end simulation
       }
@@ -100,30 +119,28 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
       }
       
       # which event?
-      event <- sample(event.types, 1, prob=rates/total.rate)
+      event <- sample(names(rates), 1, prob=rate.sums/total.rate)
       if (event == 'birth') {  
-        src <- sample(cnames, 1, prob=birth.rates)
+        src <- sample(cnames, 1, prob=rates[['birth']])
         dest <- NA
-        eval(parse(text=paste(src, "<-", src, "+1")), envir=e)
+        .plus.one(src, e)
         
       } else if (event == 'death') {  
-        src <- sample(cnames, 1, prob=death.rates)
+        src <- sample(cnames, 1, prob=rates[['death']])
         dest <- NA
-        eval(parse(text=paste(src, "<-", src, "-1")), envir=e)
+        .minus.one(src, e)
         
       } else if (event == 'migration') { 
-        src <- sample(cnames, 1, prob=apply(migration.rates, 1, sum))
-        dest <- sample(cnames, 1, prob=migration.rates[src,])
-        
-        eval(parse(text=paste(src, "<-", src, "-1")), envir=e)
-        eval(parse(text=paste(dest, "<-", dest, "+1")), envir=e)
+        src <- sample(cnames, 1, prob=apply(rates[['migration']], 1, sum))
+        dest <- sample(cnames, 1, prob=rates[['migration']][src,])
+        .minus.one(src, e)
+        .plus.one(dest, e)
         
       } else if (event == 'transmission') {
-        src <- sample(cnames, 1, prob=apply(transmission.rates, 1, sum))
-        dest <- sample(cnames, 1, prob=transmission.rates[src,])
-        
-        eval(parse(text=paste(src, "<-", src, "-1")), envir=e)
-        eval(parse(text=paste(dest, "<-", dest, "+1")), envir=e)
+        src <- sample(cnames, 1, prob=apply(rates[['transmission']], 1, sum))
+        dest <- sample(cnames, 1, prob=rates[['transmission']][src,])
+        .minus.one(src, e)
+        .plus.one(dest, e)
         
       } else {
         stop("This shouldn't be possible! Aughhhh!")
@@ -136,10 +153,8 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
         if (row.num > nrow(events)) {
           # allocate more space
           events <- rbind(events, data.frame(
-            time=numeric(chunk.size), 
-            event=character(chunk.size), 
-            src=character(chunk.size), 
-            dest=character(chunk.size), 
+            time=numeric(chunk.size), event=character(chunk.size), 
+            src=character(chunk.size), dest=character(chunk.size), 
             stringsAsFactors = FALSE
           ))
         }        
@@ -160,18 +175,8 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
         }
       }
       
-      # update rates (this seems inefficient, but a change in compartment size 
-      # could affect any of these rates)
-      birth.rates <- sapply(mod$get.birth.rates(), function(x) {
-        eval(parse(text=x), envir=e)
-      })
-      death.rates <- sapply(mod$get.death.rates(), function(x) {
-        eval(parse(text=x), envir=e)
-      })
-      migration.rates <- apply(mod$get.migration.rates(), MARGIN=c(1,2), 
-                               function(x) { eval(parse(text=x), envir=e) })
-      transmission.rates <- apply(mod$get.transmission.rates(), MARGIN=c(1,2),
-                                  function(x) { eval(parse(text=x), envir=e) })
+      # a change in compartment size could affect any of these rates
+      rates <- .update.rates(mod, e)
     }
     
     # check sample sizes
@@ -181,9 +186,7 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
       sampled <- sapply(names(targets), function(cn) {
         eval(parse(text=cn), envir=e)
       })
-      if (all(sampled >= targets)) {
-        break
-      }
+      if (all(sampled >= targets)) { break }
     }
     
     message("Failed sample size requirements (attempt ", attempt, "/", 
@@ -196,13 +199,24 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
     warning("All attempts failed with insufficient sample size. You may ",
             "need to increase simulation time (simTime), or the sampling ",
             "or transmission rates in the model.")
-    return(NULL)
   }
   
   # discard unused rows and return
   if (is.null(logfile)) {
     return(events[events$event != '', ])
+  } else {
+    close(conn)
+    return(NULL)
   }
+}
+
+
+#' Convenience functions
+.plus.one <- function(comp, envir) {
+  eval(parse(text=paste(comp, "<-", comp, "+1")), envir=envir)
+}
+.minus.one <- function(comp, envir) {
+  eval(parse(text=paste(comp, "<-", comp, "-1")), envir=envir)
 }
 
 
@@ -248,6 +262,7 @@ get.counts <- function(eventlog, mod, chunk.size=100) {
       } else if (event=="death") {
         counts[row.num, src] <- counts[row.num, src] - 1
       } else {
+        # note src = dest if superinfection
         counts[row.num, src] <- counts[row.num, src] - 1
         counts[row.num, dest] <- counts[row.num, dest] + 1
       }
