@@ -23,6 +23,8 @@ in the transmission tree relating the sampled hosts.  This will generally
 be a much smaller subset of events
 }
 \examples{
-sim <- simulate.dynamics(mod)
+require(twt)
+mod <- Model$new(yaml.load_file("examples/SIRS_serial.yaml"))
+sim <- sim.dynamics(mod)
 outer <- sim.outer.tree(mod, sim)
 }

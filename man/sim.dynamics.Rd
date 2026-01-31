@@ -30,8 +30,7 @@ following information:
   dest:  str, for migration or transmission, the Compartment added to
 }
 \examples{
-require(yaml)
-require(R6)
+require(twt)
 settings <- yaml.load_file("examples/SIRS_serial.yaml")
 mod <- Model$new(settings)
 sim.dynamics(mod, logfile="eventlog.csv")
