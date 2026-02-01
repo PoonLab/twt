@@ -139,9 +139,12 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
       } else if (event == 'transmission') {
         src <- sample(cnames, 1, prob=apply(rates[['transmission']], 1, sum))
         dest <- sample(cnames, 1, prob=rates[['transmission']][src,])
-        .minus.one(src, e)
-        .plus.one(dest, e)
         
+        if (!mod$is.infected(src)) {
+          .minus.one(src, e)  # recipient leaves source (uninfected) compartment
+          .plus.one(dest, e)  # enters destination (infected) compartment
+        }
+        # otherwise it is superinfection and compartment sizes do not change!
       } else {
         stop("This shouldn't be possible! Aughhhh!")
       }

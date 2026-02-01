@@ -15,13 +15,13 @@ OuterTree <- R6Class(
         comp.anc=character(), comp.des=character()
       )
       
-      private$targets <- mod$sampling$targets
+      private$targets <- mod$get.sampling()$targets
       
       private$sampled <- setNames(
         rep(0, length(private$targets)), 
         names(private$targets))
       
-      private$infected <- mod$get.infected()
+      private$infected <- mod$is.infected()  # copy whole named vector
     },
     
     # accessor functions

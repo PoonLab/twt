@@ -20,9 +20,12 @@ test_that("Load SIR model", {
   expected <- c("S"=1000, "I"=1, "I_samp"=0, "R"=0)
   expect_equal(result, expected)
   
-  result <- mod$get.infected()
+  result <- mod$is.infected()
   expected <- c(S=FALSE, I=TRUE, I_samp=TRUE, R=FALSE)
   expect_equal(result, expected)
+  
+  expect_true(mod$is.infected('I_samp'))
+  expect_false(mod$is.infected('S'))
   
   # unspecified rates
   result <- mod$get.birth.rates()

@@ -53,7 +53,17 @@ Model <- R6Class(
     
     # these return named vectors
     get.init.sizes = function() { private$init.sizes },
-    get.infected = function() { private$is.infected},
+    is.infected = function(cn=NA) { 
+      if (is.na(cn)) { 
+        private$is.infected 
+      } else {
+        if( is.element(cn, names(private$is.infected)) ) {
+          private$is.infected[[cn]]
+        } else {
+          NA
+        }
+      }
+    },
     get.birth.rates = function() { private$birth.rates },
     get.death.rates = function() { private$death.rates },
     
