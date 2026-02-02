@@ -53,22 +53,24 @@ Model <- R6Class(
     
     # these return named vectors
     get.init.sizes = function() { private$init.sizes },
-    is.infected = function(cn=NA) { 
+    get.infected = function(cn=NA) { 
       if (is.na(cn)) { 
-        private$is.infected 
+        private$is.infected  # return entire list
       } else {
         if( is.element(cn, names(private$is.infected)) ) {
-          private$is.infected[[cn]]
+          private$is.infected[[cn]]  # retrieve one entry from list
         } else {
-          NA
+          NA  # failed to find key
         }
       }
     },
     get.birth.rates = function() { private$birth.rates },
     get.death.rates = function() { private$death.rates },
     
-    # these return matrices
+    # migration rates are stored in a K x K matrix
     get.migration.rates = function() { private$migration.rates },
+    
+    # transmission rates are in a K x K x K matrix (from comp, to comp, source)
     get.transmission.rates = function() { private$transmission.rates },
     
     # named vectors
@@ -172,10 +174,14 @@ Model <- R6Class(
       
       private$birth.rates <- setNames(rep("0", k), cnames)
       private$death.rates <- setNames(rep("0", k), cnames)
-      private$migration.rates <- matrix("0", nrow=k, ncol=k, 
-                                        dimnames=list(cnames, cnames))
-      private$transmission.rates <- matrix("0", nrow=k, ncol=k, 
-                                           dimnames=list(cnames, cnames))
+      
+      # 2D matrix (from compartment, to compartment)
+      private$migration.rates <- matrix(
+        "0", nrow=k, ncol=k, dimnames=list(cnames, cnames))
+      
+      # 3D matrix
+      private$transmission.rates <- array( # from, to, infected by
+        "0", dim=c(k, k, k), dimnames=list(cnames, cnames, cnames))
       
       for (src in cnames) {
         params <- settings$Compartments[[src]]
@@ -237,9 +243,17 @@ Model <- R6Class(
                  dests[which(!is.element(dests, cnames))])
           }
           for (dest in dests) {
-            rate <- params$transmission[[dest]]
-            private$check.expression(rate, env)
-            private$transmission.rates[[src, dest]] <- rate
+            rates <- params$transmission[[dest]]
+            if (!is.list(rates)) {
+              stop("`transmission` from `", src, "` to `", dest, "` must be ",
+                   "an associative array.")
+            }
+            
+            for (source in names(rates)) {
+              rate <- rates[[source]]
+              private$check.expression(rate, env)
+              private$transmission.rates[[src, dest, source]] <- rate
+            }
           }
         }
         
@@ -265,8 +279,9 @@ Model <- R6Class(
       }  # end loop
       
       # generate graph of compartments
-      adj <- (private$transmission.rates != "0" |
-                private$migration.rates != "0")
+      squash <- apply(private$transmission.rates, c(1,2), 
+                      function(x) any(x!="0"))
+      adj <- (squash | private$migration.rates != "0")
       private$graph <- igraph::graph_from_adjacency_matrix(
         adj, mode="directed", diag=F)
       is.orphan <- (igraph::degree(private$graph)==0)

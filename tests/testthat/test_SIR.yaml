@@ -9,7 +9,7 @@ Compartments:
     size: 1000
     infected: false
     transmission:
-      I: beta*S*I
+      I: {I: beta*S*I}
   I:
     size: 1
     infected: true

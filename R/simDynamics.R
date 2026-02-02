@@ -30,7 +30,7 @@
     function(x) { eval(parse(text=x), envir=envir) })
   
   rates[['transmission']] <- apply(
-    mod$get.transmission.rates(), MARGIN=c(1,2),
+    mod$get.transmission.rates(), MARGIN=c(1,2,3),
     function(x) { eval(parse(text=x), envir=envir) })
   
   return(rates)
@@ -44,8 +44,9 @@
 #' following information:
 #'   time:  numeric, time of event in simulation time
 #'   event:  str, type of event (birth, death, migration or transmission)
-#'   src:  str, Compartment originating the event
-#'   dest:  str, for migration or transmission, the Compartment added to
+#'   from.comp:  str, Compartment originating the event
+#'   to.comp:  str, for migration or transmission, the Compartment added to
+#'   source:  str, for transmission only - the infecting host
 #' 
 #' @param mod:  R6 object of class Model
 #' @param logfile:  str, path to write event log; if not specified, then 
@@ -91,14 +92,15 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
       # pre-allocate containers for logging events
       events <- data.frame(
         time=numeric(chunk.size), event=character(chunk.size),
-        src=character(chunk.size), dest=character(chunk.size),
+        from.comp=character(chunk.size), to.comp=character(chunk.size),
+        source=character(chunk.size),
         stringsAsFactors=FALSE
       )
       row.num <- 1
     } else {
       # open file to write event log
       conn <- file(logfile, open='w')
-      writeLines(text="time,event,src,dest", con=conn)
+      writeLines(text="time,event,from.comp,to.comp,source", con=conn)
     }
     
     ### MAIN SIMULATION LOOP ###
@@ -120,29 +122,40 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
       
       # which event?
       event <- sample(names(rates), 1, prob=rate.sums/total.rate)
+      dest <- NA  # default values
+      source <- NA
       if (event == 'birth') {  
-        src <- sample(cnames, 1, prob=rates[['birth']])
-        dest <- NA
-        .plus.one(src, e)
+        from.comp <- sample(cnames, 1, prob=rates[['birth']])
+        .plus.one(from.comp, e)
         
       } else if (event == 'death') {  
-        src <- sample(cnames, 1, prob=rates[['death']])
-        dest <- NA
-        .minus.one(src, e)
+        from.comp <- sample(cnames, 1, prob=rates[['death']])
+        .minus.one(from.comp, e)
         
       } else if (event == 'migration') { 
-        src <- sample(cnames, 1, prob=apply(rates[['migration']], 1, sum))
-        dest <- sample(cnames, 1, prob=rates[['migration']][src,])
-        .minus.one(src, e)
-        .plus.one(dest, e)
+        from.comp <- sample(cnames, 1, prob=apply(rates[['migration']], 1, sum))
+        to.comp <- sample(cnames, 1, prob=rates[['migration']][from.comp, ])
+        .minus.one(from.comp, e)
+        .plus.one(to.comp, e)
         
       } else if (event == 'transmission') {
-        src <- sample(cnames, 1, prob=apply(rates[['transmission']], 1, sum))
-        dest <- sample(cnames, 1, prob=rates[['transmission']][src,])
+        # from compartment
+        from.comp <- sample(cnames, 1, prob=apply(
+          rates[['transmission']], 1, sum))
         
-        if (!mod$is.infected(src)) {
-          .minus.one(src, e)  # recipient leaves source (uninfected) compartment
-          .plus.one(dest, e)  # enters destination (infected) compartment
+        # to compartment
+        probs.given.from <- apply(
+          rates[['transmission']][from.comp, , ], 1, sum)
+        to.comp <- sample(cnames, 1, prob=probs.given.from)
+        
+        # infected by (source)
+        source <- sample(cnames, 1, 
+                         prob=rates[['transmission']][from.comp, to.comp, ])
+        
+        if (!mod$is.infected(from.comp)) {
+          # recipient leaves source (uninfected) compartment
+          .minus.one(from.comp, e)
+          .plus.one(to.comp, e)  # enters destination (infected) compartment
         }
         # otherwise it is superinfection and compartment sizes do not change!
       } else {
@@ -151,20 +164,23 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
       
       # log event
       if (is.null(logfile)) {
-        events[row.num, ] <- c(params$simTime - cur.time, event, src, dest)
+        events[row.num, ] <- c(
+          params$simTime - cur.time, event, from.comp, to.comp, source)
+        
         row.num <- row.num+1
         if (row.num > nrow(events)) {
           # allocate more space
           events <- rbind(events, data.frame(
             time=numeric(chunk.size), event=character(chunk.size), 
-            src=character(chunk.size), dest=character(chunk.size), 
+            from.comp=character(chunk.size), to.comp=character(chunk.size), 
+            source=character(chunk.size),
             stringsAsFactors = FALSE
           ))
         }        
       } else {
-        writeLines(
-          text=paste(params$simTime-cur.time, event, src, dest, sep=","),
-          con=conn)
+        writeLines(text=paste(
+          params$simTime-cur.time, event, from.comp, to.comp, source, 
+          sep=","), con=conn)
         flush(conn)
       }
       
@@ -255,19 +271,24 @@ get.counts <- function(eventlog, mod, chunk.size=100) {
         next  # probably header line
       }
       event <- items[2]
-      src <- items[3]
-      dest <- items[4]
+      from.comp <- items[3]
+      to.comp <- items[4]
       
       counts[row.num, ] <- counts[row.num-1, ]
       counts[row.num, 1] <- time
       if (event=="birth") {
-        counts[row.num, src] <- counts[row.num, src] + 1
+        counts[row.num, from.comp] <- counts[row.num, from.comp] + 1
+        
       } else if (event=="death") {
-        counts[row.num, src] <- counts[row.num, src] - 1
-      } else {
-        # note src = dest if superinfection
-        counts[row.num, src] <- counts[row.num, src] - 1
-        counts[row.num, dest] <- counts[row.num, dest] + 1
+        counts[row.num, from.comp] <- counts[row.num, from.comp] - 1
+        
+      } else if (
+        event=='migration' | 
+        (event=='transmission' & !mod$get.infected(from.comp))
+        ) {
+        # not a superinfection
+        counts[row.num, from.comp] <- counts[row.num, from.comp] - 1
+        counts[row.num, to.comp] <- counts[row.num, to.comp] + 1          
       }
       row.num <- row.num + 1
     }
@@ -275,18 +296,21 @@ get.counts <- function(eventlog, mod, chunk.size=100) {
   } else if (is.data.frame(eventlog)) {
     for (i in 1:nrow(eventlog)) {
       event <- eventlog$event[i]
-      src <- eventlog$src[i]
-      dest <- eventlog$dest[i]
+      from.comp <- eventlog$from.comp[i]
+      to.comp <- eventlog$to.comp[i]
       
       counts[i+1, ] <- counts[i, ]
       counts[i+1, 1] <- eventlog$time[i]
       if (event=="birth") {
-        counts[i+1, src] <- counts[i+1, src] + 1
+        counts[i+1, from.comp] <- counts[i+1, from.comp] + 1
       } else if (event=="death") {
-        counts[i+1, src] <- counts[i+1, src] - 1
-      } else {
-        counts[i+1, src] <- counts[i+1, src] - 1
-        counts[i+1, dest] <- counts[i+1, dest] + 1
+        counts[i+1, from.comp] <- counts[i+1, from.comp] - 1
+      } else if (
+        event=="migration" | 
+        (event=="transmission" & !mod$get.infected(from.comp))
+        ) {
+        counts[i+1, from.comp] <- counts[i+1, from.comp] - 1
+        counts[i+1, to.comp] <- counts[i+1, to.comp] + 1
       }
     }
   } else {

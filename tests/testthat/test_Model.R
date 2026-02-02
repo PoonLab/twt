@@ -20,12 +20,12 @@ test_that("Load SIR model", {
   expected <- c("S"=1000, "I"=1, "I_samp"=0, "R"=0)
   expect_equal(result, expected)
   
-  result <- mod$is.infected()
+  result <- mod$get.infected()
   expected <- c(S=FALSE, I=TRUE, I_samp=TRUE, R=FALSE)
   expect_equal(result, expected)
   
-  expect_true(mod$is.infected('I_samp'))
-  expect_false(mod$is.infected('S'))
+  expect_true(mod$get.infected('I_samp'))
+  expect_false(mod$get.infected('S'))
   
   # unspecified rates
   result <- mod$get.birth.rates()
@@ -43,23 +43,18 @@ test_that("Load SIR model", {
   
   # rate matrices
   result <- mod$get.migration.rates()
+  cnames <- c("S", "I", "I_samp", "R")
   expected <- matrix(
     c("0", "0", "0", "0",  # from S
       "0", "0", "psi*I", "gamma*I",  # from I
       "0", "0", "0", "0",  # from I_samp
       "0", "0", "0", "0"   # from R
-    ), nrow=4, ncol=4, byrow=TRUE, 
-    dimnames=list(c("S", "I", "I_samp", "R"), c("S", "I", "I_samp", "R")))
+    ), nrow=4, ncol=4, byrow=TRUE, dimnames=list(cnames, cnames))
   expect_equal(result, expected)
   
   result <- mod$get.transmission.rates()
-  expected <- matrix(
-    c("0", "beta*S*I", "0", "0",  # from S
-      "0", "0", "0", "0",  # from I
-      "0", "0", "0", "0",  # from I_samp
-      "0", "0", "0", "0"   # from R
-    ), nrow=4, ncol=4, byrow=TRUE, 
-    dimnames=list(c("S", "I", "I_samp", "R"), c("S", "I", "I_samp", "R")))
+  expected <- array("0", dim=c(4,4,4), dimnames=list(cnames, cnames, cnames))
+  expected["S", "I", "I"] <- "beta*S*I"
   expect_equal(result, expected)
   
   result <- mod$get.graph()

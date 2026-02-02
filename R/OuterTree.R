@@ -21,7 +21,7 @@ OuterTree <- R6Class(
         rep(0, length(private$targets)), 
         names(private$targets))
       
-      private$infected <- mod$is.infected()  # copy whole named vector
+      private$is.infected <- mod$get.infected()  # copy whole named vector
     },
     
     # accessor functions
@@ -29,7 +29,13 @@ OuterTree <- R6Class(
     get.log = function() { private$outer.log },
     get.nrow = function() { nrow(private$outer.log) },
     get.sampled = function() { private$sampled },
-    get.infected = function() { private$infected },
+    get.infected = function(cn=NA) { 
+      if (is.na(cn)) { private$is.infected } else {
+        if( is.element(cn, names(private$is.infected)) ) {
+          private$is.infected[[cn]]
+        } else { NA }
+      }
+    },
     nsamples = function() { sum(private$sampled) },
     
     add.event = function(e) {
@@ -53,6 +59,6 @@ OuterTree <- R6Class(
     outer.log = NULL,
     targets = NULL,
     sampled = NULL,
-    infected = NULL
+    is.infected = NULL
   )
 )

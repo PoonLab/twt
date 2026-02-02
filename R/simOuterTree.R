@@ -85,6 +85,7 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
 #' @param e:  row from event log
 #' @param active:  R6 object of class HostSet
 #' @param outer:  R6 object of class OuterTree
+#' @keywords internal
 .do.migration <- function(e, active, outer) {
   targets <- outer$get.targets()
   
@@ -141,6 +142,7 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
 #' @param e.prev:  preceding row from event log
 #' @param active:  R6 object of class HostSet
 #' @param outer:  R6 object of class OuterTree
+#' @keywords internal
 .do.transmission <- function(e, e.prev, active, outer) {
   
   # how many recipients are in the destination compartment after transmission?
@@ -159,11 +161,11 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
     # TODO: check if Pathogen sampling date in recipient Host precedes
     # TODO: this transmission event
     
-    # if the recipient's Compartment is infected, this is a superinfection
-    is.superinfect <- outer$get.infected()[[e$src]]
+    # is the recipient's previous Compartment an infected state?
+    is.superinfect <- outer$is.infected(e$src)
     
-    # if this is not a superinfection, then retire the recipient Host
-    recip <- active$sample.host(e$src, remove=!is.superinfect)
+    # if this is not a superinfection, then deactivate the recipient Host
+    recip <- active$sample.host(e$dest, remove=!is.superinfect)
     recip$set.transmission.time(e$time)  # can be appended
     
     # next identify source Host - note the recipient enters the same 
@@ -172,7 +174,7 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
     stopifnot(n.source > 0)
     
     # is source an active Host?
-    n.active.source <- active$count.type(e$src)
+    n.active.source <- active$count.type(e$dest)
     stopifnot(n.active.source <= n.source)
     
     if (sample(1:n.source, 1) <= n.active.source) {
