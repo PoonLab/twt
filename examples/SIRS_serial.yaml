@@ -14,7 +14,7 @@ Compartments:
     birth: lambda*S
     death: mu*S
     transmission:
-      I: beta*S*I
+      I: {I: beta*S*I}  # S becomes I due to infection by member of I
     size: 9999  # initial
   I:
     infected: true
