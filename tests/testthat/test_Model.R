@@ -77,6 +77,8 @@ test_that("Reject misspecified model", {
   expect_error(f(set1), regexp="must be positive")
   set1$Parameters$simTime <- 0
   expect_error(f(set1), regexp="must be positive")
+  set1$Parameters$simTime <- "1"
+  expect_error(f(set1), regexp="must be numeric")
   set1$Parameters$simTime <- NULL
   expect_error(f(set1), regexp="missing")
   
@@ -86,6 +88,13 @@ test_that("Reject misspecified model", {
   expect_error(f(set1), regexp="Missing")
   set1$Compartments <- settings$Compartments  # restore
   set1$Compartments$R <- NULL
+  expect_error(f(set1), regexp="undeclared")
+  
+  # settings must contain valid R expressions for rates
+  set1 <- settings
+  set1$Compartments[['I']][['migration']][['R']] <- "$%!@)"
+  expect_error(f(set1), regexp="Invalid")
+  set1$Compartments[['I']][['migration']][['R']] <- "banana*2"
   expect_error(f(set1), regexp="undeclared")
   
   # settings must contain Sampling field
@@ -100,4 +109,5 @@ test_that("Reject misspecified model", {
   set1$Sampling$mode <- "compartment"
   set1$Sampling$targets$I_samp <- 0
   expect_error(f(set1), regexp="must be a positive integer")
+  
 })

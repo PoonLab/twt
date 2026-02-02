@@ -122,15 +122,15 @@ Model <- R6Class(
       tryCatch({
         x <- parse(text=s)
       }, error = function(e) {
-        stop(paste("Invalid R expression `", x, "`"))
+        stop(paste("Invalid R expression `", s, "`"))
       })
       # are all parameters and variables declared?
       tryCatch({
         v <- eval(x, envir=env)
       }, error = function(e) {
-        cat(eval(parse(text="ls()"), envir = env))
         stop(paste(
-          "Expression `", s, "` contains one or more undeclared variables"
+          "Expression `", s, "` contains one or more undeclared variables\n",
+          eval(parse(text="ls()"), envir = env)
         ))
       })
       if (!is.numeric(v)) {

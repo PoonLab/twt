@@ -1,42 +1,3 @@
-#' update.rates
-#' 
-#' @param mod:  R6 object of class Model
-#' @param envir:  R environment
-#' @param reset:  bool, if TRUE then set compartments back to initial sizes
-#'                defined in Model object
-#' @return  list with rate vectors and matrices, keyed by event type
-.update.rates <- function(mod, envir, reset=FALSE) {
-  
-  if (reset) {
-    # initialize compartments and set initial sizes
-    init.sizes <- mod$get.init.sizes()
-    for (cn in mod$get.compartments()) {
-      eval(parse(text=paste(cn, "<-", init.sizes[[cn]])), envir=envir)
-    }    
-  }
-  
-  rates <- list()
-  
-  rates[['birth']] <- sapply(mod$get.birth.rates(), function(x) {
-    eval(parse(text=x), envir=envir)
-  })
-  
-  rates[['death']] <- sapply(mod$get.death.rates(), function(x) {
-    eval(parse(text=x), envir=envir)
-  })
-  
-  rates[['migration']] <- apply(
-    mod$get.migration.rates(), MARGIN=c(1,2), 
-    function(x) { eval(parse(text=x), envir=envir) })
-  
-  rates[['transmission']] <- apply(
-    mod$get.transmission.rates(), MARGIN=c(1,2,3),
-    function(x) { eval(parse(text=x), envir=envir) })
-  
-  return(rates)
-}
-
-
 #' sim.dynamics
 #'
 #' Simulate population trajectories for all compartments forward in time.
@@ -69,12 +30,9 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
   cnames <- mod$get.compartments()
   k <- length(cnames)
   sampling <- mod$get.sampling()
-
-  # instantiate model parameters
-  e <- new.env()
-  for (key in names(params)) {
-    eval(parse(text=paste(key, "<-", params[[key]])), envir=e)
-  }
+  
+  # initialize model parameters in new environment
+  e <- .init.model(mod)
   
   attempt <- 1
   while (attempt <= max.attempts) {
@@ -122,7 +80,7 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
       
       # which event?
       event <- sample(names(rates), 1, prob=rate.sums/total.rate)
-      dest <- NA  # default values
+      to.comp <- NA  # default values
       source <- NA
       if (event == 'birth') {  
         from.comp <- sample(cnames, 1, prob=rates[['birth']])
@@ -152,7 +110,7 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
         source <- sample(cnames, 1, 
                          prob=rates[['transmission']][from.comp, to.comp, ])
         
-        if (!mod$is.infected(from.comp)) {
+        if (!mod$get.infected(from.comp)) {
           # recipient leaves source (uninfected) compartment
           .minus.one(from.comp, e)
           .plus.one(to.comp, e)  # enters destination (infected) compartment
@@ -230,10 +188,67 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
 }
 
 
+#' .init.model
+#' Create a new environment and instantiate the model parameters
+#' @param mod:  R6 object of class Model
+#' @return  R environment
+#' @keywords internal
+.init.model <- function(mod) {
+  params <- mod$get.parameters()
+  e <- new.env()
+  for (key in names(params)) {
+    eval(parse(text=paste(key, "<-", params[[key]])), envir=e)
+  }
+  return(e)
+}
+
+
+#' .update.rates
+#' 
+#' @param mod:  R6 object of class Model
+#' @param envir:  R environment
+#' @param reset:  bool, if TRUE then set compartments back to initial sizes
+#'                defined in Model object
+#' @return  list with rate vectors and matrices, keyed by event type
+#' @keywords internal
+.update.rates <- function(mod, envir, reset=FALSE) {
+  
+  if (reset) {
+    # initialize compartments and set initial sizes
+    init.sizes <- mod$get.init.sizes()
+    for (cn in mod$get.compartments()) {
+      eval(parse(text=paste(cn, "<-", init.sizes[[cn]])), envir=envir)
+    }    
+  }
+  
+  rates <- list()
+  
+  rates[['birth']] <- sapply(mod$get.birth.rates(), function(x) {
+    eval(parse(text=x), envir=envir)
+  })
+  
+  rates[['death']] <- sapply(mod$get.death.rates(), function(x) {
+    eval(parse(text=x), envir=envir)
+  })
+  
+  rates[['migration']] <- apply(
+    mod$get.migration.rates(), MARGIN=c(1,2), 
+    function(x) { eval(parse(text=x), envir=envir) })
+  
+  rates[['transmission']] <- apply(
+    mod$get.transmission.rates(), MARGIN=c(1,2,3),
+    function(x) { eval(parse(text=x), envir=envir) })
+  
+  return(rates)
+}
+
+
 #' Convenience functions
+#' @keywords internal
 .plus.one <- function(comp, envir) {
   eval(parse(text=paste(comp, "<-", comp, "+1")), envir=envir)
 }
+#' @keywords internal
 .minus.one <- function(comp, envir) {
   eval(parse(text=paste(comp, "<-", comp, "-1")), envir=envir)
 }
@@ -243,7 +258,10 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
 #' 
 #' Convert an event log into population size trajectories for every 
 #' compartment in the model.  We omit these to keep the event log compact.
-#' 
+#' @param eventlog:  data.frame or character, result from sim.dynamics()
+#' @param mod:  R6 object of class Model
+#' @param chunk.size:  integer, used to allocate new rows for output data frame
+#' @return data.frame of compartment sizes over time
 #' @examples
 #' counts <- get.counts("eventlog.csv", mod)
 #' plot(counts)  # S3 method
