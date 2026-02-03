@@ -319,7 +319,7 @@ Model <- R6Class(
                        "has not been declared in Compartments"))
           }
           count <- private$sampling$targets[[cn]]
-          if (!is.integer(count) | count <= 0) {
+          if (!is.numeric(count) | count <= 0) {
             stop(paste("Sampling:targets:", cn, "must be a positive integer"))
           }
         }

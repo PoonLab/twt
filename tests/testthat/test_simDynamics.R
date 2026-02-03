@@ -25,7 +25,7 @@ test_that("Instantiate and update model rates", {
   expect_true(is.environment(e))
   
   result <- eval(parse(text="beta"), envir=e)
-  expected <- 0.02
+  expected <- 0.002
   expect_equal(result, expected)
   
   # sets initial sizes and rates
@@ -73,7 +73,7 @@ test_that("Instantiate and update model rates", {
   expected <- array(data=c(
     # to S       to I
     0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  # by S
-    0, 0, 0, 0,  0.02*999*2, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  # by I
+    0, 0, 0, 0,  0.002*999*2, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  # by I
     0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  # by I_samp
     0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0  # by R
   ), dim=c(4, 4, 4), dimnames=list(cnames, cnames, cnames))
@@ -109,10 +109,55 @@ test_that("Expected SI dynamics", {
   
   # modify settings to SI model
   set.SI <- settings
-  #set.SI$Sampling$targets$I_samp <- 100  # run full sim time
+  set.SI$Parameters$simTime <- 10.0
   set.SI$Compartments$I$migration$R <- NULL
   set.SI$Compartments$R <- NULL
+  set.SI$Sampling$targets[['I_samp']] <- 3
   
-  SI.mod <- Model$new(settings)
+  SI.mod <- Model$new(set.SI)
   event.log <- sim.dynamics(SI.mod)
+  
+  expect_true(is.data.frame(event.log))
+  result <- names(event.log)
+  expected <- c("time", "event", "from.comp", "to.comp", "source")
+  expect_equal(result, expected)
+  
+  # simulation should have full sample
+  result <- sum(event.log$event=='migration' & event.log$to.comp=='I_samp')
+  expected <- 3
+  expect_equal(result, expected)
+  
+  # accumulation of infected hosts should be roughly exponential
+  counts <- get.counts(event.log, SI.mod)
+  y <- log(counts$I + counts$I_samp)
+  x <- counts$time
+  fit <- lm(y~x)
+  result <- summary(fit)$adj.r.squared
+  expect_gte(result, 0.95)  # this is not very sensitive
+  
+  # exact solution of deterministic SI model from 
+  # https://davidearn.github.io/math4mb/2018/lectures/4mbl05_2018.pdf
+  solve.SI <- function(t, i0, n, beta) {
+    (i0*exp(n*beta*t)) / (1+(i0/n)*(exp(n*beta*t)-1))
+  }
+  time.pts <- seq(0.2, 3, 0.2)
+  expected <- solve.SI(t=time.pts, i0=1, n=1001, 
+                       beta=set.SI$Parameters$beta)
+  
+  set.SI$Parameters$simTime <- 3.5
+  set.SI$Sampling$targets$I_samp <- 100
+  
+  SI.mod <- Model$new(set.SI)
+  
+  # average counts at fixed time points
+  x <- sapply(1:100, function(i) {
+    suppressMessages(suppressWarnings(
+      event.log <- sim.dynamics(SI.mod, max.attempts=1)
+    ))
+    counts <- get.counts(event.log[event.log$time <= 3,], SI.mod)
+    sapply(time.pts, function(tp) {
+      (counts$I + counts$I_samp)[sum(counts$time<=tp)]
+    })
+  })
+  result <- apply(x, 1, mean)
 })

@@ -5,7 +5,7 @@ test_that("Load SIR model", {
   mod <- Model$new(settings)
   
   result <- mod$get.parameters()
-  expected <- list(simTime=10, beta=0.02, gamma=0.01, psi=0.005)
+  expected <- list(simTime=10, beta=0.002, gamma=0.01, psi=0.005)
   expect_equal(result, expected)
   
   result <- mod$get.compartments()

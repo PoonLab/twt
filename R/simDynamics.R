@@ -318,7 +318,7 @@ get.counts <- function(eventlog, mod, chunk.size=100) {
       to.comp <- eventlog$to.comp[i]
       
       counts[i+1, ] <- counts[i, ]
-      counts[i+1, 1] <- eventlog$time[i]
+      counts[i+1, 1] <- as.numeric(eventlog$time[i])
       if (event=="birth") {
         counts[i+1, from.comp] <- counts[i+1, from.comp] + 1
       } else if (event=="death") {
@@ -334,6 +334,11 @@ get.counts <- function(eventlog, mod, chunk.size=100) {
   } else {
     stop("Unrecognized type for `eventlog`")
   }
+  
+  # remove unused rows
+  idx <- (counts$time==0)
+  idx[1] <- FALSE
+  counts <- counts[!idx, ]
   
   class(counts) <- c('twt.counts', 'data.frame')
   return(counts)

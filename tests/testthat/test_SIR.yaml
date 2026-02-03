@@ -1,6 +1,6 @@
 Parameters:
   simTime: 10
-  beta: 0.02
+  beta: 0.002
   gamma: 0.01
   psi: 0.005
 
