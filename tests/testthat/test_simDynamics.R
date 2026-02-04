@@ -134,6 +134,21 @@ test_that("Expected SI dynamics", {
   fit <- lm(y~x)
   result <- summary(fit)$adj.r.squared
   expect_gte(result, 0.95)  # this is not very sensitive
+})
+
+
+test_that("More thorough test of SI dynamics", {
+  skip("This test requires a minute to run, skipping for routine testing")
+  settings <- yaml.load_file("test_SIR.yaml")
+  
+  # modify settings to SI model
+  set.SI <- settings
+  set.SI$Parameters$simTime <- 3.5
+  set.SI$Compartments$I$migration$R <- NULL
+  set.SI$Compartments$R <- NULL
+  set.SI$Sampling$targets$I_samp <- 100  # not feasible, run full time
+  
+  SI.mod <- Model$new(set.SI)
   
   # exact solution of deterministic SI model from 
   # https://davidearn.github.io/math4mb/2018/lectures/4mbl05_2018.pdf
@@ -143,11 +158,7 @@ test_that("Expected SI dynamics", {
   time.pts <- seq(0.2, 3, 0.2)
   expected <- solve.SI(t=time.pts, i0=1, n=1001, 
                        beta=set.SI$Parameters$beta)
-  
-  set.SI$Parameters$simTime <- 3.5
-  set.SI$Sampling$targets$I_samp <- 100
-  
-  SI.mod <- Model$new(set.SI)
+  # TODO: it would be nice to compute the stochastic mean
   
   # average counts at fixed time points
   x <- sapply(1:100, function(i) {
@@ -160,4 +171,10 @@ test_that("Expected SI dynamics", {
     })
   })
   result <- apply(x, 1, mean)
+  
+  # check RMSE - note stochastic mean tends to lag
+  expect_lt(sqrt(mean((expected-result)^2)), 20)
+  
+  # check median absolute error
+  expect_lt(median(abs(result-expected)), 5)
 })

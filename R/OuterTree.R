@@ -43,7 +43,7 @@ OuterTree <- R6Class(
         stop("Event passed to OuterTree:add.event must be vector with ",
              "names: time, event, host.anc, host.des, comp.anc, comp.des")
       }
-      private$outer.log[self$get.nrow()+1] <- e
+      private$outer.log[nrow(private$outer.log)+1, ] <- e
     },
     
     add.sample = function(cn) {

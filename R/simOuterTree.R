@@ -88,37 +88,46 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
 #' @keywords internal
 .do.migration <- function(e, active, outer) {
   targets <- outer$get.targets()
+  from.comp <- e[['from.comp']]
+  to.comp <- e[['to.comp']]
   
-  if (e$dest %in% names(targets)) {
+  if (to.comp %in% names(targets)) {
     # this was a sampling event
     
     if (outer$nsamples() < sum(targets)) {
       # have not sampled all hosts yet
       host <- Host$new(
-        name=paste0(e$dest),
-        compartment=e$src, 
-        sampling.time=e$time
+        name=paste0(to.comp),
+        compartment=from.comp, 
+        sampling.time=e[['time']]
       )
       active$add.host(host)
-      outer$add.sample(e$dest)
+      outer$add.sample(to.comp)
     }
     
   } else {  
     # this was NOT a sampling event
     
-    active.in.comp <- active$count.type(e$dest)
+    active.in.comp <- active$count.type(to.comp)
     if (active.in.comp > 0) {
       # check if migration affected active lineage
       
-      tot <- e[[e$dest]]  # size of compartment AFTER migration
+      tot <- e[[to.comp]]  # size of compartment AFTER migration
+      if (!is.numeric(tot)) {
+        print(e)
+        print(tot)
+        print(type(tot))
+        stop("tot is not numeric")
+      }
       prob <- active.in.comp / tot
       if (runif(1) < prob) {
         # choose an eligible Host at random to migrate
-        host <- active$sample.host(e$dest)
-        host$set.compartment(e$src)
+        host <- active$sample.host(to.comp)
+        host$set.compartment(from.comp)
         
-        event <- c(time=e$time, event=e$event, host.dec=host$get.name(), 
-                   comp.anc=e$src, comp.dec=e$dest)
+        event <- list(time=e[['time']], event=e[['event']], 
+                   host.anc=NA, host.des=host$get.name(), 
+                   comp.anc=from.comp, comp.des=to.comp)
         outer$add.event(event)
       }
       # otherwise ignore this migration
@@ -131,12 +140,12 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
 #' Handle transmission event
 #' 
 #' There is a lot of potential for confusion here.
-#'   source: the Host that transmits its infection to another
+#'   source: the Host that transmits its infection to the recipient Host
 #'   recip:  the recipient Host to which the infection is transmitted
-#'   src:  the Compartment that the recipient Host was a member of *before*
-#'         becoming infected, e.g., 'S' susceptibles
-#'   dest:  the Compartment that the recipient Host becomes a member of 
-#'          *after* becoming infected, e.g., 'I' infected
+#'   from.comp:  the Compartment that the recipient Host was a member of 
+#'               *before* becoming infected, e.g., 'S' susceptibles
+#'   to.comp:  the Compartment that the recipient Host becomes a member of 
+#'             *after* becoming infected, e.g., 'I' infected
 #' 
 #' @param e:  row from event log
 #' @param e.prev:  preceding row from event log
@@ -149,8 +158,8 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
   n.recip <- e[[e$dest]]
   stopifnot(n.recip > 0)
   
-  # number of Hosts carrying sampled Pathogens in destination compartment
-  n.active.recip <- active$count.type(e$dest)
+  # how many of these hosts are active, i.e., carrying Pathogens?
+  n.active.recip <- active$count.type(e$to.comp)
   if (n.active.recip > n.recip) {
     stop("There are more active recipients (", n.active.recip, ") than ",
          "total recipients (", n.recip, ") at event ", e)
@@ -159,40 +168,38 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
   # is recipient an active Host? otherwise ignore
   if (sample(1:n.recip, 1) <= n.active.recip) {
     # TODO: check if Pathogen sampling date in recipient Host precedes
-    # TODO: this transmission event
+    #       this transmission event
     
     # is the recipient's previous Compartment an infected state?
-    is.superinfect <- outer$is.infected(e$src)
-    
-    # if this is not a superinfection, then deactivate the recipient Host
-    recip <- active$sample.host(e$dest, remove=!is.superinfect)
+    is.superinfect <- outer$get.infected(e$from.comp)
+    recip <- active$sample.host(
+      e$to.comp,  # pick an active member of the destination compartment
+      remove=!is.superinfect  # if superinfection, host remains active
+      )
     recip$set.transmission.time(e$time)  # can be appended
     
-    # next identify source Host - note the recipient enters the same 
-    # compartment as the source: the *destination* compartment!
-    n.source <- e.prev[[e$dest]]
+    # next identify source Host
+    n.source <- e.prev[[e$source]]
     stopifnot(n.source > 0)
-    
-    # is source an active Host?
-    n.active.source <- active$count.type(e$dest)
+    n.active.source <- active$count.type(e$source)
     stopifnot(n.active.source <= n.source)
     
     if (sample(1:n.source, 1) <= n.active.source) {
       # source is an active host
-      source <- active$sample.host(e$dest)
+      source <- active$sample.host(e$source)
       
     } else {
-      # source is an unsampled host
-      source <- Host$new(compartment=e$src, unsampled=TRUE)
+      # source is an inactive (not directly sampled) host
+      source <- Host$new(compartment=e$source, unsampled=TRUE)
       active$add.host(source)  # HostSet will assign a label
     }
     
-    recip$set.source(source)  # record source
+    recip$set.source(source)  # record source (can be appended)
     
     # record transmission event in outer log
-    event <- c(time=e$time, event=e$event, 
-               host.anc=source$get.name(), host.dec=recip$get.name(), 
-               comp.anc=e$src, comp.dec=e$dest)
+    event <- list(time=e$time, event=e$event, 
+               host.anc=source$get.name(), host.des=recip$get.name(), 
+               comp.anc=e$from.comp, comp.des=e$to.comp)
     outer$add.event(event)
   }
   

@@ -17,4 +17,6 @@ test_that("Initialize OuterTree object", {
   
   event <- c(time=1.0, event='transmission', host.anc='S',
              host.des='I', comp.anc='S', comp.des='I')
+  outer$add.event(event)
+  expect_true(outer$get.nrow()==1)
 })
