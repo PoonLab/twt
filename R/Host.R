@@ -123,6 +123,14 @@ HostSet <- R6Class(
       sapply(private$hosts, function(h) { h$get.compartment() })
     },
     
+    get.sampling.times = function() {
+      sapply(private$hosts, function(h) { h$get.sampling.time() })
+    },
+    
+    get.sources = function() {
+      sapply(private$hosts, function(h) { h$get.source() })
+    }
+    
     count.type = function(type=NA) {
       host.types <- self$get.types()
       if (is.na(type)) {

@@ -47,7 +47,7 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
   }
   
   outer <- OuterTree$new(mod=mod)  # recording outer events
-  active <- HostSet$new()  # store active Host lineages
+  active <- outer$get.active()
   
   # iterate through events in reverse (start with most recent)
   for (row in seq(nrow(eventlog), 1, -1)) {
@@ -66,9 +66,9 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
     
     if (e$event == "migration") {
       # transition of a Host from one compartment to another
-      .do.migration(e, active, outer.log)
+      .do.migration(e, outer)
     } else if (e$event == "transmission") {
-      .do.transmission(e, e.prev, active, outer.log)
+      .do.transmission(e, e.prev, outer)
     }
     
     # birth events do not affect infected compartments, so they cannot 
@@ -77,7 +77,7 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
     # death events are ignored because we are tracing infected host lineages 
     #  back in time
   }
-  return(outer.log)
+  return(outer)
 }
 
 
@@ -86,10 +86,11 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
 #' @param active:  R6 object of class HostSet
 #' @param outer:  R6 object of class OuterTree
 #' @keywords internal
-.do.migration <- function(e, active, outer) {
-  targets <- outer$get.targets()
+.do.migration <- function(e, outer) {
+  targets <- unlist(outer$get.targets())
   from.comp <- e[['from.comp']]
   to.comp <- e[['to.comp']]
+  active <- outer$get.active()
   
   if (to.comp %in% names(targets)) {
     # this was a sampling event
@@ -97,12 +98,11 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
     if (outer$nsamples() < sum(targets)) {
       # have not sampled all hosts yet
       host <- Host$new(
-        name=paste0(to.comp),
-        compartment=from.comp, 
+        compartment=from.comp, # we are going back in time 
         sampling.time=e[['time']]
       )
       active$add.host(host)
-      outer$add.sample(to.comp)
+      outer$add.sample(host)
     }
     
   } else {  
@@ -113,12 +113,6 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
       # check if migration affected active lineage
       
       tot <- e[[to.comp]]  # size of compartment AFTER migration
-      if (!is.numeric(tot)) {
-        print(e)
-        print(tot)
-        print(type(tot))
-        stop("tot is not numeric")
-      }
       prob <- active.in.comp / tot
       if (runif(1) < prob) {
         # choose an eligible Host at random to migrate
@@ -149,16 +143,19 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
 #' 
 #' @param e:  row from event log including counts
 #' @param e.prev:  preceding row from event log
-#' @param active:  R6 object of class HostSet
 #' @param outer:  R6 object of class OuterTree
 #' @keywords internal
-.do.transmission <- function(e, e.prev, active, outer) {
+.do.transmission <- function(e, e.prev, outer) {
   
   # how many recipients are in the destination compartment after transmission?
-  n.recip <- e[[e$dest]]
+  n.recip <- e[[e$to.comp]]
+  if (e$source == e$to.comp) {
+    n.recip <- n.recip - 1  # recipient cannot be source
+  }
   stopifnot(n.recip > 0)
   
   # how many of these hosts are active, i.e., carrying Pathogens?
+  active <- outer$get.active()
   n.active.recip <- active$count.type(e$to.comp)
   if (n.active.recip > n.recip) {
     stop("There are more active recipients (", n.active.recip, ") than ",
@@ -179,7 +176,8 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
     recip$set.transmission.time(e$time)  # can be appended
     
     # next identify source Host
-    n.source <- e.prev[[e$source]]
+    n.source <- ifelse(is.null(e.prev), e[[e$source]], e.prev[[e$source]])
+    
     stopifnot(n.source > 0)
     n.active.source <- active$count.type(e$source)
     stopifnot(n.active.source <= n.source)
@@ -195,6 +193,7 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
     }
     
     recip$set.source(source)  # record source (can be appended)
+    outer$add.retired(recip)  # transfer Host from active to retired Set
     
     # record transmission event in outer log
     event <- list(

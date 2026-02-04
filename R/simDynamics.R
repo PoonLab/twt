@@ -7,7 +7,7 @@
 #'   event:  str, type of event (birth, death, migration or transmission)
 #'   from.comp:  str, Compartment originating the event
 #'   to.comp:  str, for migration or transmission, the Compartment added to
-#'   source:  str, for transmission only - the infecting host
+#'   source:  str, for transmission only, compartment of the infecting host
 #' 
 #' @param mod:  R6 object of class Model
 #' @param logfile:  str, path to write event log; if not specified, then 
@@ -155,6 +155,7 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
       # a change in compartment size could affect any of these rates
       rates <- .update.rates(mod, e)
     }
+    # end while, cur.time exceeds limit
     
     # check sample sizes
     if (is.null(targets)) {
@@ -276,6 +277,7 @@ get.counts <- function(eventlog, mod, chunk.size=100) {
   for (cn in cnames) {
     counts[[cn]] <- integer(chunk.size)
   }
+  counts$time[1] <- 0
   counts[1, cnames] <- mod$get.init.sizes()
   row.num <- 2
   
