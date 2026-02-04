@@ -3,7 +3,7 @@
 #' Given the events generated under the model by forward-time simulation in 
 #' simulate.dynamics(), we determine the subset of events that are involved 
 #' in the transmission tree relating the sampled hosts.  This will generally
-#' be a much smaller subset of events
+#' be a much smaller subset of events.
 #' 
 #' @param mod:  R6 object of class Model
 #' @param eventlog:  character or data frame of event log from forward-time 
@@ -82,7 +82,7 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
 
 
 #' Handle migration event
-#' @param e:  row from event log
+#' @param e:  row from event log including counts
 #' @param active:  R6 object of class HostSet
 #' @param outer:  R6 object of class OuterTree
 #' @keywords internal
@@ -126,8 +126,8 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
         host$set.compartment(from.comp)
         
         event <- list(time=e[['time']], event=e[['event']], 
-                   host.anc=NA, host.des=host$get.name(), 
-                   comp.anc=from.comp, comp.des=to.comp)
+                   from.comp=from.comp, to.comp=to.comp,
+                   from.host=NA, to.host=NA)
         outer$add.event(event)
       }
       # otherwise ignore this migration
@@ -147,7 +147,7 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
 #'   to.comp:  the Compartment that the recipient Host becomes a member of 
 #'             *after* becoming infected, e.g., 'I' infected
 #' 
-#' @param e:  row from event log
+#' @param e:  row from event log including counts
 #' @param e.prev:  preceding row from event log
 #' @param active:  R6 object of class HostSet
 #' @param outer:  R6 object of class OuterTree
@@ -197,9 +197,11 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
     recip$set.source(source)  # record source (can be appended)
     
     # record transmission event in outer log
-    event <- list(time=e$time, event=e$event, 
-               host.anc=source$get.name(), host.des=recip$get.name(), 
-               comp.anc=e$from.comp, comp.des=e$to.comp)
+    event <- list(
+      time=e$time, event=e$event, 
+      from.comp=e$from.comp, to.comp=e$to.comp,
+      from.host=source$get.name(), to.host=recip$get.name()
+      )
     outer$add.event(event)
   }
   

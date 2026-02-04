@@ -12,11 +12,11 @@ test_that("Initialize OuterTree object", {
   outer.log <- outer$get.log()
   expect_true(is.data.frame(outer.log))
   expect_true(nrow(outer.log)==0)
-  expect_equal(names(outer.log), c('time', 'event', 'host.anc', 'host.des', 
-                                   'comp.anc', 'comp.des'))
+  expect_equal(names(outer.log), c('time', 'event', 'from.comp', 'to.comp', 
+                                   'from.host', 'to.host'))
   
-  event <- c(time=1.0, event='transmission', host.anc='S',
-             host.des='I', comp.anc='S', comp.des='I')
+  event <- list(time=1.0, event='transmission', from.comp='S', to.comp='I', 
+                from.host='S', to.host='I')
   outer$add.event(event)
   expect_true(outer$get.nrow()==1)
 })

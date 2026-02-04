@@ -10,9 +10,12 @@ OuterTree <- R6Class(
   public = list(
     initialize = function(mod) {
       private$outer.log <- data.frame(
-        time=numeric(), event=character(), 
-        host.anc=character(), host.des=character(), 
-        comp.anc=character(), comp.des=character()
+        time=numeric(),  # time of event
+        event=character(),  # type of event, e.g., migration
+        from.comp=character(),  # compartment before event
+        to.comp=character(),  # compartment after event
+        from.host=character(),  # source Host name (transmission only)
+        to.host=character()  # recipient Host name (transmission only)
       )
       
       private$targets <- mod$get.sampling()$targets
@@ -41,7 +44,7 @@ OuterTree <- R6Class(
     add.event = function(e) {
       if ( !all(names(e) == names(private$outer.log)) ) {
         stop("Event passed to OuterTree:add.event must be vector with ",
-             "names: time, event, host.anc, host.des, comp.anc, comp.des")
+             "names: ", names(private$outer.log))
       }
       private$outer.log[nrow(private$outer.log)+1, ] <- e
     },

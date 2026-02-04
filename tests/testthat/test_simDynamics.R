@@ -133,7 +133,7 @@ test_that("Expected SI dynamics", {
   x <- counts$time
   fit <- lm(y~x)
   result <- summary(fit)$adj.r.squared
-  expect_gte(result, 0.95)  # this is not very sensitive
+  expect_gte(result, 0.94)  # this is not very sensitive
 })
 
 

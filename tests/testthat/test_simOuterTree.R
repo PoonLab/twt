@@ -26,4 +26,9 @@ test_that("do migration", {
   .do.migration(e, active, outer)
   outer.log <- outer$get.log()
   expect_equal(nrow(outer.log), 1)
+  
+  result <- outer.log[1,]
+  expected <- data.frame(time=1.0, event='migration', from.comp='I', to.comp='R',
+                   from.host=as.character(NA), to.host=as.character(NA))
+  expect_equal(result, expected)
 })
