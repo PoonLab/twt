@@ -58,24 +58,25 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
     }
     
     e <- eventlog[row, ]  # retrieve the current event
-    if (row > 1) {
-      e.prev <- eventlog[row-1, ]  # previous event
-    } else {
-      e.prev <- e  # set counts to initial sizes
-      e.prev$time <- 0
-      e.prev$event <- NA
-      e.prev$from.comp <- NA
-      e.prev$to.comp <- NA
-      e.prev$source <- NA
-      for (cn in cnames) {
-        e.prev[[cn]] <- mod$get.init.sizes()[[cn]]
-      }
-    }
     
     if (e$event == "migration") {
       # transition of a Host from one compartment to another
       .do.migration(e, outer)
+      
     } else if (e$event == "transmission") {
+      if (row > 1) {
+        e.prev <- eventlog[row-1, ]  # previous event
+      } else {
+        e.prev <- e  # at first event
+        e.prev$time <- 0
+        e.prev$event <- NA
+        e.prev$from.comp <- NA
+        e.prev$to.comp <- NA
+        e.prev$source <- NA
+        for (cn in cnames) {
+          e.prev[[cn]] <- mod$get.init.sizes()[[cn]]
+        }
+      }
       .do.transmission(e, e.prev, outer)
     }
     
@@ -136,7 +137,7 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
     }
   }
   
-  print(paste('migration', active$get.names()))
+  #print(paste('migration', active$get.names()))
 }
 
 
@@ -159,21 +160,14 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
   
   # how many recipients are in the destination compartment after transmission?
   n.recip <- e[[e$to.comp]]
-  if (e$source == e$to.comp) {
-    n.recip <- n.recip - 1  # recipient cannot be source
-  }
   stopifnot(n.recip > 0)
   
   # how many of these hosts are active, i.e., carrying Pathogens?
   active <- outer$get.active()
   n.active.recip <- active$count.type(e$to.comp)
   if (n.active.recip > n.recip) {
-    if (e$source == e$to.comp) {
-     n.active.recip <- n.active.recip - 1 
-    } else {
-      stop("There are more active recipients (", n.active.recip, ") than ",
-           "total recipients (", n.recip, ") at event ", e)      
-    }
+    stop("There are more active recipients (", n.active.recip, ") than ",
+         "total recipients (", n.recip, ") at event ", e)      
   }
   
   # is recipient an active Host? otherwise ignore
@@ -189,19 +183,28 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
       )
     recip$set.transmission.time(e$time)  # can be appended
     
-    # next identify source Host
+    # next identify source Host, given recipient is an active Host
     n.source <- e[[e$source]]
+    if (e$source == e$to.comp) {
+      # remove recipient - will already have removed from `active`
+      n.source <- n.source - 1
+    }
     stopifnot(n.source > 0)
     n.active.source <- active$count.type(e$source)
     stopifnot(n.active.source <= n.source)
-    if (e$to.comp == e$source) { 
-      n.source <- n.source - 1 
-      }
     
     if (sample(1:n.source, 1) <= n.active.source) {
       # source is an active host
-      source <- active$sample.host(e$source)
-      
+      repeat {
+        source <- active$sample.host(e$source)  # with replacement
+        if (source$get.name() != recip$get.name()) { break }
+        # note recipient can only be sampled as source if it was not removed 
+        # from `active` (superinfection) and source belongs to same compartment
+        if (e$source == e$dest & n.active.source == 1) {
+          stop("Impossible event, Recipient host cannot be its own source")
+        }
+      }
+
     } else {
       # source is an inactive (not directly sampled) host
       source <- Host$new(compartment=e$source, unsampled=TRUE)
@@ -209,7 +212,9 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
     }
     
     recip$set.source(source)  # record source (can be appended)
-    outer$add.retired(recip)  # transfer Host from active to retired Set
+    if (!is.superinfect) {
+      outer$add.retired(recip)  # transfer recipient from active to retired Set  
+    }
     
     # record transmission event in outer log
     event <- list(
@@ -217,7 +222,7 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
       from.comp=e$from.comp, to.comp=e$to.comp,
       from.host=source$get.name(), to.host=recip$get.name()
       )
-    print(paste('transmission', active$get.names()))
+    #print(paste('transmission', active$get.names()))
     outer$add.event(event)
   }
   

@@ -13,6 +13,7 @@ test_that("do migration", {
   
   # if no Hosts are active, then the migration is not recorded
   .do.migration(e, outer)
+  
   outer.log <- outer$get.log()
   expect_equal(nrow(outer.log), 0)
   
@@ -26,6 +27,7 @@ test_that("do migration", {
   
   # only one member in R, so this should be recorded
   .do.migration(e, outer)
+  
   outer.log <- outer$get.log()
   expect_equal(nrow(outer.log), 1)
   
@@ -81,23 +83,36 @@ test_that("do transmission", {
   expect_equal(host$get.transmission.time(), numeric())
   
   # at this point, there are two individuals in I.  One of them is the 
-  # source and one is the recipient.
+  # source and one is the recipient (I_1).
   .do.transmission(event.log[2,], event.log[1,], outer)
   
   expect_equal(outer$nsamples(), 1)  # should be unchanged
   expect_equal(active$count.type(), 1)
-  expect_equal(active$get.names(), c("US_I_2"))  # replaced
   
-  result <- outer$get.log()
-  expected <- data.frame(
-    time=c(1.0),
-    event=c('transmission'),
-    from.comp=c('S'),
-    to.comp=c('I'),
-    from.host=c('US_I_2'),
-    to.host=c('I_1')
-  )
-  expect_equal(result, expected)
+  retired <- outer$get.retired()
+  
+  result <- active$get.names()
+  if (result == c("US_I_2")) {
+    expect_equal(retired$get.names(), "I_1")
+    result <- outer$get.log()
+    expected <- data.frame(
+      time=c(1.0),
+      event=c('transmission'),
+      from.comp=c('S'),
+      to.comp=c('I'),
+      from.host=c('US_I_2'),
+      to.host=c('I_1')
+    )
+    expect_equal(result, expected)
+    
+  } else if (result == c("I_1")) {
+    # active host was not the recipient
+    expect_equal(retired$count.type(), 0)
+    
+  } else {
+    fail("Unexpected membership in active HostSet: ", result)
+  }
+  
 })
 
 
@@ -128,9 +143,19 @@ test_that("full outer tree simulation", {
   outer <- sim.outer.tree(mod, event.log)
   expect_equal(class(outer), c("OuterTree", "R6"))
   result <- outer$get.log()
-  expected <- data.frame(
-    time=1.0, event= 'transmission', from.comp='S', to.comp='I', 
-    from.host='US_I_2', to.host='I_1'
-  )
-  expect_equal(result, expected)
+  
+  # half the time transmission is from US_I_2 to I_1
+  if (nrow(result) == 1) {
+    expected <- data.frame(
+      time=1.0, event= 'transmission', from.comp='S', to.comp='I', 
+      from.host='US_I_2', to.host='I_1'
+    )
+    expect_equal(result, expected)     
+    
+  } else {
+    # other times transmission is from I_1 to unrecorded host
+    expect_equal(nrow(result), 0)
+    
+  }
+ 
 })
