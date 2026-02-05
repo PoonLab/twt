@@ -141,13 +141,15 @@ HostSet <- R6Class(
     },
     
     add.host = function(host) {
-      # assign a unique name
-      if (host$is.sampled()) {
-        name <- paste(host$get.compartment(), private$index, sep="_")
-      } else {
-        name <- paste("US", host$get.compartment(), private$index, sep="_")
+      if (is.na(host$get.name())) {
+        # assign a unique name
+        if (host$is.sampled()) {
+          name <- paste(host$get.compartment(), private$index, sep="_")
+        } else {
+          name <- paste("US", host$get.compartment(), private$index, sep="_")
+        }
+        host$set.name(name)        
       }
-      host$set.name(name)
       private$index <- private$index + 1
       private$hosts[[length(private$hosts)+1]] <- host
     },

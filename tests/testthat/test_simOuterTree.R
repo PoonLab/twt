@@ -93,20 +93,31 @@ test_that("do transmission", {
   
   result <- active$get.names()
   if (result == c("US_I_2")) {
+    # active host was recipient and got retired
     expect_equal(retired$get.names(), "I_1")
     result <- outer$get.log()
     expected <- data.frame(
-      time=c(1.0),
-      event=c('transmission'),
-      from.comp=c('S'),
-      to.comp=c('I'),
-      from.host=c('US_I_2'),
-      to.host=c('I_1')
+      time=c(1.1, 1.0),
+      event=c('migration', 'transmission'),
+      from.comp=c('I', 'S'),
+      to.comp=c('I_samp', 'I'),
+      from.host=c('I_1', 'US_I_2'),
+      to.host=c(as.character(NA), 'I_1')
     )
     expect_equal(result, expected)
     
   } else if (result == c("I_1")) {
     # active host was not the recipient
+    expected <- data.frame(
+      time=c(1.1),
+      event=c('migration'),
+      from.comp=c('I'),
+      to.comp=c('I_samp'),
+      from.host=c('I_1'),
+      to.host=c(as.character(NA))
+    )
+    result <- outer$get.log()
+    expect_equal(result, expected)
     expect_equal(retired$count.type(), 0)
     
   } else {
@@ -145,17 +156,24 @@ test_that("full outer tree simulation", {
   result <- outer$get.log()
   
   # half the time transmission is from US_I_2 to I_1
-  if (nrow(result) == 1) {
+  if (nrow(result) == 2) {
     expected <- data.frame(
-      time=1.0, event= 'transmission', from.comp='S', to.comp='I', 
-      from.host='US_I_2', to.host='I_1'
+      time=c(1.1, 1.0), 
+      event=c('migration', 'transmission'), 
+      from.comp=c('I', 'S'), 
+      to.comp=c('I_samp', 'I'), 
+      from.host=c('I_1', 'US_I_2'), 
+      to.host=c(as.character(NA), 'I_1')
     )
-    expect_equal(result, expected)     
+    expect_equal(result, expected)
     
   } else {
     # other times transmission is from I_1 to unrecorded host
-    expect_equal(nrow(result), 0)
-    
+    expected <- data.frame(
+      time=1.1, event='migration', from.comp='I', to.comp='I_samp', 
+      from.host='I_1', to.host=as.character(NA)
+    )
+    expect_equal(result, expected)    
   }
  
 })

@@ -112,6 +112,11 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
       )
       active$add.host(host)
       outer$add.sample(host)
+      
+      event <- list(time=e[['time']], event=e[['event']], 
+                    from.comp=from.comp, to.comp=to.comp,
+                    from.host=host$get.name(), to.host=NA)
+      outer$add.event(event)
     }
     
   } else {  
@@ -222,8 +227,7 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
       from.comp=e$from.comp, to.comp=e$to.comp,
       from.host=source$get.name(), to.host=recip$get.name()
       )
-    #print(paste('transmission', active$get.names()))
+    #print(paste('transmission', active$get.names()))  
     outer$add.event(event)
   }
-  
 }

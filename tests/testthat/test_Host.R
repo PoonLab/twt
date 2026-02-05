@@ -45,8 +45,8 @@ test_that("Add/remove hosts from set", {
   
   hset$add.host(h1)
   result <- hset$get.names()
-  # previous name should get overwritten with new index
-  expected <- c("US_I_2", "I_3")
+  # previous name should NOT get overwritten with new index
+  expected <- c("US_I_2", "I_1")
   expect_equal(result, expected)
 })
 
