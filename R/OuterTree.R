@@ -55,6 +55,10 @@ OuterTree <- R6Class(
     
     add.retired = function(host) {
       private$retired$add.host(host)
+    },
+    
+    count.active = function() {
+      private$active$count.type()
     }
   ),
   

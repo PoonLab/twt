@@ -61,7 +61,15 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
     if (row > 1) {
       e.prev <- eventlog[row-1, ]  # previous event
     } else {
-      e.prev <- NULL  # at start of event log
+      e.prev <- e  # set counts to initial sizes
+      e.prev$time <- 0
+      e.prev$event <- NA
+      e.prev$from.comp <- NA
+      e.prev$to.comp <- NA
+      e.prev$source <- NA
+      for (cn in cnames) {
+        e.prev[[cn]] <- mod$get.init.sizes()[[cn]]
+      }
     }
     
     if (e$event == "migration") {
@@ -127,6 +135,8 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
       # otherwise ignore this migration
     }
   }
+  
+  print(paste('migration', active$get.names()))
 }
 
 
@@ -158,8 +168,12 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
   active <- outer$get.active()
   n.active.recip <- active$count.type(e$to.comp)
   if (n.active.recip > n.recip) {
-    stop("There are more active recipients (", n.active.recip, ") than ",
-         "total recipients (", n.recip, ") at event ", e)
+    if (e$source == e$to.comp) {
+     n.active.recip <- n.active.recip - 1 
+    } else {
+      stop("There are more active recipients (", n.active.recip, ") than ",
+           "total recipients (", n.recip, ") at event ", e)      
+    }
   }
   
   # is recipient an active Host? otherwise ignore
@@ -176,11 +190,13 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
     recip$set.transmission.time(e$time)  # can be appended
     
     # next identify source Host
-    n.source <- ifelse(is.null(e.prev), e[[e$source]], e.prev[[e$source]])
-    
+    n.source <- e[[e$source]]
     stopifnot(n.source > 0)
     n.active.source <- active$count.type(e$source)
     stopifnot(n.active.source <= n.source)
+    if (e$to.comp == e$source) { 
+      n.source <- n.source - 1 
+      }
     
     if (sample(1:n.source, 1) <= n.active.source) {
       # source is an active host
@@ -201,6 +217,7 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
       from.comp=e$from.comp, to.comp=e$to.comp,
       from.host=source$get.name(), to.host=recip$get.name()
       )
+    print(paste('transmission', active$get.names()))
     outer$add.event(event)
   }
   

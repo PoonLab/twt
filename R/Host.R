@@ -129,7 +129,7 @@ HostSet <- R6Class(
     
     get.sources = function() {
       sapply(private$hosts, function(h) { h$get.source() })
-    }
+    },
     
     count.type = function(type=NA) {
       host.types <- self$get.types()
