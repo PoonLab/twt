@@ -80,9 +80,9 @@ OuterTree <- R6Class(
 #' 
 #' @keywords internal
 .reorder.events <- function(events, node, result=c()) {
-  children <- events$from.comp[events$to.comp==node]
+  children <- unique(events$to.host[events$from.host==node])
   inf.times <- sapply(children, function(child) 
-    events$time[events$from.comp==child])
+    events$time[events$to.host==child])
   
   for (child in children[order(inf.times, decreasing=TRUE)]) {
     result <- .reorder.events(events, child, result)
@@ -96,36 +96,73 @@ OuterTree <- R6Class(
 #' S3 generic plot method for objects of class `outerTree`.  This visualizes
 #' the collection of events sampled in the outer simulation as a transmission 
 #' tree.
-plot.OuterTree <- function(obj) {
+plot.OuterTree <- function(obj, pad=1.05) {
   # retrieve sampling times
   sampled <- obj$get.sampled()
-  samp.times <- sampled$get.sampling.times()
+  stopifnot(sampled$count.type() > 0)
+  samp.times <- setNames(
+    as.numeric(sampled$get.sampling.times()), sampled$get.names())
+  sampled <- sampled$get.names()
   
-  retired <- obj$get.retired()
-  active <- obj$get.active()  # should only be one
-  host.names <- c(active$get.names(), retired$get.names())
-  host.types <- c(active$get.types(), retired$get.types())
-  sources <- c(active$get.)
+  # there should be only one Host in `active`
+  active <- obj$get.active()
+  stopifnot(active$count.type()==1)
+  root <- active$sample.host()
+  root.name <- root$get.name()
   
+  hosts <- obj$get.retired()
+  host.names <- hosts$get.names()
+  
+  # FIXME: what happens if there are multiple? i.e., superinfection
+  #inf.times <- setNames(hosts$get.transmission.times(), host.names)
+  sources <- setNames(
+    lapply(hosts$get.sources(), function(h) h$get.name()), host.names)
+  
+  # starting from tips, build edge list
   events <- obj$get.log()
+  events$time <- as.numeric(events$time)
   trans <- events[events$event=='transmission', ]
   
-  # find root
-  sources <- unique(trans$from.host)
-  root <- sources[!is.element(sources, trans$to.host)]
-  if (length(root) > 1) {
-    stop("Detected multiple roots in outer tree")
-  }
+  # reduce to the earliest transmission to each host
+  first.idx <- sapply(split(1:nrow(trans), trans$to.host), function(idx) {
+    idx[which.min(trans$time[idx])]
+  })
+  first.trans <- trans[first.idx, ]
   
-  # sort nodes by post-order traversal
-  nodes <- .reorder.events(trans, root)
+  # sort nodes by post-order traversal (children before parents)
+  nodes <- .reorder.events(first.trans, root.name)
   
   # prepare plot region
-  par(mar=c(5,5,1,1), mfrow=c(1,1))
-  plot(NA, xlim=c(-max(trans$time*1.05), 0), ylim=c(0.5, length(nodes)+0.5),
+  par(mar=c(5,1,1,5), mfrow=c(1,1))
+  plot(NA, xlim=c(0, max(trans$time)*pad), ylim=c(0.5, length(nodes)+0.5),
        xlab="Time", yaxt='n', ylab=NA, bty='n')
   
   for (node in nodes) {
+    is.sampled <- is.element(node, sampled)
     
+    if (node == root.name) {
+      inf.time <- 0
+      source <- NA
+    } else {
+      inf.time <- first.trans$time[first.trans$to.host==node]
+      source <- sources[[node]]
+    }
+    
+    samp.time <- 0
+    if (is.sampled) {
+      samp.time <- samp.times[[node]]
+    } else {
+      # unsampled host - set right limit at first transmission event
+      samp.time <- max(trans$time[trans$from.host==node])
+    }
+    
+    segments(x0=inf.time, x1=samp.time, y0=which(nodes==node),
+             lwd=2, lend=2, col=ifelse(is.sampled, 'black', 'grey'))
+    text(x=max(samp.times)*pad, y=which(nodes==node), label=node, 
+         xpd=NA, adj=0, cex=0.5)
+    if (!is.na(source)) {
+      arrows(x0=inf.time, y1=which(nodes==node), y0=which(nodes==source),
+             length=0.08, lwd=2, col='orangered')      
+    }
   }
 }

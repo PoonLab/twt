@@ -23,9 +23,9 @@
 Host <- R6Class(
   "Host",
   public = list(
-    initialize = function(name=NA, compartment=NA, source=character(), 
-                          transmission.time=numeric(), sampling.time=NA, 
-                          unsampled=FALSE, pathogens=list()) {
+    initialize = function(
+    name=NA, compartment=NA, source=character(), transmission.time=numeric(), 
+    sampling.time=as.numeric(NA), unsampled=FALSE, pathogens=list()) {
       private$name <- name
       private$compartment <- compartment
       private$source <- source
@@ -127,8 +127,16 @@ HostSet <- R6Class(
       sapply(private$hosts, function(h) { h$get.sampling.time() })
     },
     
+    get.transmission.times = function() {
+      lapply(private$hosts, function(h) { h$get.transmission.time() })
+    },
+    
+    is.sampled = function() {
+      sapply(private$hosts, function(h) { h$is.sampled() })
+    },
+    
     get.sources = function() {
-      sapply(private$hosts, function(h) { h$get.source() })
+      lapply(private$hosts, function(h) { h$get.source() })
     },
     
     count.type = function(type=NA) {
