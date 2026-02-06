@@ -247,7 +247,7 @@ as.phylo.OuterTree <- function(obj, singles=TRUE) {
   
   phy <- list(
     tip.label = tips,
-    Nnode = nrow(first.trans),
+    Nnode = length(internals),
     edge = edges,
     edge.length = edge.length
   )
