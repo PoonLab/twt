@@ -79,15 +79,24 @@ OuterTree <- R6Class(
 #' by post-order traversal (outputting parents after children).
 #' 
 #' @keywords internal
-.reorder.events <- function(events, node, result=c()) {
+.reorder.events <- function(events, node, order='postorder', result=c()) {
+  if (order=='preorder') {
+    result <- c(result, node)  # parent before children
+  }
+  
   children <- unique(events$to.host[events$from.host==node])
+  
   inf.times <- sapply(children, function(child) 
     events$time[events$to.host==child])
   
   for (child in children[order(inf.times, decreasing=TRUE)]) {
-    result <- .reorder.events(events, child, result)
+    result <- .reorder.events(events, child, order, result)
   }
-  result <- c(result, node)
+  
+  if (order=='postorder') {
+    result <- c(result, node)  # children before parent
+  }
+  
   return(result)
 }
 
@@ -165,4 +174,88 @@ plot.OuterTree <- function(obj, pad=1.05) {
              length=0.08, lwd=2, col='orangered')      
     }
   }
+}
+
+#' Generic S3 method for converting an OuterTree to a phylo object
+#' 
+#' `ape::phylo` is an S3 class object that represents a phylogenetic tree. We 
+#' use this object class to represent the transmission tree.  Because this 
+#' object is, by definition, an acyclic graph, it cannot represent cases of 
+#' superinfection.  For this reason, only the earliest transmission event is 
+#' used for each recipient host.  To represent the entire transmission 
+#' history including superinfection, use `as.igraph.OuterTree`.
+#' 
+#' Note that interpreting the resulting transmission tree as a pathogen
+#' phylogeny ignores all within-host evolution, e.g., lineage sorting.
+#' 
+#' @param obj:  R6 object of class `OuterTree`
+#' @param singles:  bool, keep single nodes that represent transmission or 
+#'                  migration events with only one descendant branch.
+#' @return S3 object of class `phylo`
+#' @export
+as.phylo.OuterTree <- function(obj, singles=TRUE) {
+  sampled <- obj$get.sampled()  # HostSet
+  tips <- sampled$get.names()  # most recent sample first
+  samp.times <- setNames(as.numeric(sampled$get.sampling.times()), tips)
+  
+  # get root node
+  active <- obj$get.active()
+  stopifnot(active$count.type()==1)
+  root <- active$sample.host()
+  root.name <- root$get.name()
+  
+  events <- obj$get.log()
+  events$time <- as.numeric(events$time)
+  
+  # extract the earliest transmission to each host
+  trans <- events[events$event=='transmission', ]
+  first.idx <- sapply(split(1:nrow(trans), trans$to.host), function(idx) {
+    idx[which.min(trans$time[idx])]
+  })
+  first.trans <- trans[first.idx, ]
+  
+  # sort nodes by preorder traversal
+  preorder <- .reorder.events(first.trans, root.name, order='preorder')
+  
+  # reorder node list
+  tips <- preorder[is.element(preorder, tips)]
+  internals <- preorder[!is.element(preorder, tips)]
+  nodes <- c(tips, internals)
+  
+  # generate edge list
+  order.trans <- first.trans[na.omit(match(preorder, first.trans$to.host)), ]
+  edges <- matrix(c(
+    sapply(order.trans$from.host, function(n) which(nodes==n)),
+    sapply(order.trans$to.host, function(n) which(nodes==n))
+  ), byrow=FALSE, ncol=2)
+  
+  edge.length <- sapply(1:nrow(order.trans), function(i) {
+    e <- order.trans[i,]
+    child <- e$to.host
+    inf.time <- e$time
+    if (child %in% tips) {
+      samp.times[[child]] - inf.time  # terminal branch
+    } else {
+      # internal branch
+      parent <- e$from.host
+      prev.time <- ifelse(
+        parent == root.name, 0,
+        order.trans$time[order.trans$to.host==parent])
+      inf.time - prev.time
+    }
+  })
+  
+  phy <- list(
+    tip.label = tips,
+    Nnode = nrow(first.trans),
+    edge = edges,
+    edge.length = edge.length
+  )
+  attr(phy, 'class') <- 'phylo'
+  phy  # return object
+}
+
+
+as.igraph.OuterTree <- function(obj) {
+  
 }

@@ -175,5 +175,4 @@ test_that("full outer tree simulation", {
     )
     expect_equal(result, expected)    
   }
- 
 })
