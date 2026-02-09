@@ -41,7 +41,7 @@ test_that("Convert OuterTree to phylo", {
   
   phy2 <- collapse.singles(phy)
   expected <- read.tree(
-    text="((I_2:0.04937079,I_1:0.07238023):0.1641129,I_4:0.2075166);")
+    text="((I_2:0.05211251,I_1:0.07238021):0.1641128,I_4:0.2075166);")
   result <- comparePhylo(phy2, expected)
   expect_true(is.element("Both trees have the same tip labels.", 
               result$messages))

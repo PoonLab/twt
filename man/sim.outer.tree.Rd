@@ -20,11 +20,11 @@ data frame, containing subset of events that comprise
 Given the events generated under the model by forward-time simulation in 
 simulate.dynamics(), we determine the subset of events that are involved 
 in the transmission tree relating the sampled hosts.  This will generally
-be a much smaller subset of events
+be a much smaller subset of events.
 }
 \examples{
 require(twt)
 mod <- Model$new(yaml.load_file("examples/SIRS_serial.yaml"))
-sim <- sim.dynamics(mod)
-outer <- sim.outer.tree(mod, sim)
+eventlog <- sim.dynamics(mod)
+outer <- sim.outer.tree(mod, eventlog)
 }

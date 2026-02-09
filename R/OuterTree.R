@@ -229,19 +229,21 @@ as.phylo.OuterTree <- function(obj, singles=TRUE) {
     sapply(order.trans$to.host, function(n) which(nodes==n))
   ), byrow=FALSE, ncol=2)
   
+  # locate first split
+  root.time <- min(order.trans$time[
+    order.trans$event=='transmission' & order.trans$from.host==root.name])
+  
   edge.length <- sapply(1:nrow(order.trans), function(i) {
     e <- order.trans[i,]
     child <- e$to.host
-    inf.time <- e$time
+    parent <- e$from.host
+    inf.time <- ifelse(e$from.host==root.name, root.time, e$time)
     if (child %in% tips) {
       samp.times[[child]] - inf.time  # terminal branch
     } else {
-      # internal branch
-      parent <- e$from.host
-      prev.time <- ifelse(
-        parent == root.name, 0,
-        order.trans$time[order.trans$to.host==parent])
-      inf.time - prev.time
+      # go to next event
+      next.time <- min(order.trans$time[order.trans$from.host==child])
+      next.time - inf.time
     }
   })
   
@@ -256,6 +258,3 @@ as.phylo.OuterTree <- function(obj, singles=TRUE) {
 }
 
 
-as.igraph.OuterTree <- function(obj) {
-  
-}

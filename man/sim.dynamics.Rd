@@ -26,8 +26,9 @@ Results are recorded as a data frame or exported to a CSV file with the
 following information:
   time:  numeric, time of event in simulation time
   event:  str, type of event (birth, death, migration or transmission)
-  src:  str, Compartment originating the event
-  dest:  str, for migration or transmission, the Compartment added to
+  from.comp:  str, Compartment originating the event
+  to.comp:  str, for migration or transmission, the Compartment added to
+  source:  str, for transmission only, compartment of the infecting host
 }
 \examples{
 require(twt)
