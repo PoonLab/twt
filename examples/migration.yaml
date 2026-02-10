@@ -1,9 +1,9 @@
 Parameters:
   simTime: 10.0
   beta: 0.001  # transmission within deme only
-  gamma: 0.001
-  mig: 0.002
-  psi: 0.0005
+  gamma: 0.01
+  mig: 0.005
+  psi: 0.05
 
 Compartments:
   S1:
@@ -15,7 +15,7 @@ Compartments:
     infected: false
     size: 1000
     transmission:
-      I2: {I2: betaS2*I2}
+      I2: {I2: beta*S2*I2}
   S3:
     infected: false
     size: 1000

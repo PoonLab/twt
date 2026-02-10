@@ -40,10 +40,28 @@ test_that("Convert OuterTree to phylo", {
   expect_true(has.singles(phy))
   
   phy2 <- collapse.singles(phy)
-  expected <- read.tree(
+  expect.phy <- read.tree(
     text="((I_2:0.05211251,I_1:0.07238021):0.1641128,I_4:0.2075166);")
-  result <- comparePhylo(phy2, expected)
+  result <- comparePhylo(phy2, expect.phy)
   expect_true(is.element("Both trees have the same tip labels.", 
               result$messages))
-  expect_false(is.element("No split in common.", result$messages))
+  
+  result <- sort(phy2$edge.length)
+  expected <- sort(expect.phy$edge.length)
+  expect_equal(result, expected, tolerance=1e-6)
+  
+  m1 <- cophenetic(phy2)
+  m2 <- cophenetic(expect.phy)
+  result <- m1[c('I_1', 'I_2', 'I_4'), c('I_1', 'I_2', 'I_4')]
+  expected <- m2[c('I_1', 'I_2', 'I_4'), c('I_1', 'I_2', 'I_4')]
+  expect_equal(result, expected, tolerance=1e-6)
+})
+
+
+test_that("migration", {
+  settings <- yaml.load_file("test_migration.yaml")
+  mod <- Model$new(settings)
+  set.seed(67)
+  event.log <- sim.dynamics(mod)
+  outer <- sim.outer.tree(mod, event.log)
 })

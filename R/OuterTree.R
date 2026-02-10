@@ -235,16 +235,25 @@ as.phylo.OuterTree <- function(obj, singles=TRUE) {
   
   edge.length <- sapply(1:nrow(order.trans), function(i) {
     e <- order.trans[i,]
-    child <- e$to.host
     parent <- e$from.host
-    inf.time <- ifelse(e$from.host==root.name, root.time, e$time)
-    if (child %in% tips) {
-      samp.times[[child]] - inf.time  # terminal branch
-    } else {
-      # go to next event
-      next.time <- min(order.trans$time[order.trans$from.host==child])
-      next.time - inf.time
+    child <- e$to.host
+    
+    end.time <- ifelse(
+      child %in% tips,  # branch terminates
+      samp.times[[child]],  
+      min(order.trans$time[order.trans$from.host==child])  # next event
+      )
+    
+    start.time <- e$time
+    if( sum(order.trans$from.host==parent) > 1 ) {
+      # go to previous event
+      idx <- which(order.trans$from.host==parent)
+      precedes <- (order.trans$time[idx] < e$time)
+      if (any(precedes)) {
+        start.time <- order.trans$time[idx][precedes]
+      }
     }
+    end.time - start.time  # return value
   })
   
   phy <- list(

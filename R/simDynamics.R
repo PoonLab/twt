@@ -360,7 +360,7 @@ get.counts <- function(eventlog, mod, chunk.size=100) {
 #' 
 #' @export
 plot.twt.counts <- function(counts, pal=NA, xlab="Time", ylab="Frequency", 
-                            lwd=2, ...) {
+                            lwd=2, bty='n', ...) {
   k <- ncol(counts)-1
   cnames <- names(counts)[2:(k+1)]
   
@@ -368,12 +368,14 @@ plot.twt.counts <- function(counts, pal=NA, xlab="Time", ylab="Frequency",
     pal <- hcl.colors(n=k, palette="Dark2")
   }
   
-  par(mar=c(5,5,1,1))
+  par(mar=c(5,5,1,5))
   plot(counts$time, counts[,2], ylim=range(counts[,2:(k+1)]), col=pal[1],
-       type='s', xlab=xlab, ylab=ylab, lwd=lwd, ...)
+       type='s', xlab=xlab, ylab=ylab, lwd=lwd, bty=bty, ...)
   if (k > 1) {
     for (i in 3:(k+1)) {
       lines(counts$time, counts[,i], type='s', col=pal[i-1], lwd=lwd)
+      text(1.05*max(counts$time), counts[nrow(counts),i], label=names(counts)[i],
+           xpd=NA, adj=0, col=pal[i-1], cex=0.7)
     }
   }
 }

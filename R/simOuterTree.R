@@ -52,7 +52,9 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
   # iterate through events in reverse (start with most recent)
   for (row in seq(nrow(eventlog), 1, -1)) {
     # check stopping criterion
-    if (outer$nsamples() == sum(unlist(targets)) &  # sampled all hosts
+    if (all(sapply(names(targets), function(tn) {
+      sampled$count.type(tn) >= targets[[tn]]
+    })) &  # sampled all hosts
         active$count.type() == 1) {  # reached root of transmission tree
       break  
     }
@@ -86,6 +88,12 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
     # death events are ignored because we are tracing infected host lineages 
     #  back in time
   }
+  
+  if (active$count.type() > 1) {
+    warning("Failed to converge to root of outer tree, active HostSet has ",
+            active$count.type(), " hosts remaining.")
+  }
+  
   return(outer)
 }
 
