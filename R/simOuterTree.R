@@ -146,7 +146,7 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
         
         event <- list(time=e[['time']], event=e[['event']], 
                    from.comp=from.comp, to.comp=to.comp,
-                   from.host=NA, to.host=NA)
+                   from.host=host$get.name(), to.host=NA)
         outer$add.event(event)
       }
       # otherwise ignore this migration

@@ -248,12 +248,15 @@ as.phylo.OuterTree <- function(obj, singles=TRUE) {
       )
     
     start.time <- e$time
-    if( sum(order.trans$from.host==parent) > 1 ) {
+    
+    # check if this is the last transmission from parent
+    temp <- order.trans[order.trans$from.host==parent, ]
+    if( nrow(temp) > 1 & max(temp$time) == e$time ) {
       # go to previous event
       idx <- which(order.trans$from.host==parent)
       precedes <- (order.trans$time[idx] < e$time)
       if (any(precedes)) {
-        start.time <- order.trans$time[idx][precedes]
+        start.time <- max(order.trans$time[idx][precedes])
       }
     }
     end.time - start.time  # return value

@@ -29,6 +29,8 @@ test_that("Convert OuterTree to phylo", {
   settings$Sampling$targets$I_samp <- 3
   mod <- Model$new(settings)
   
+  # FIXME: This test is fragile - if the following simulation code is changed,
+  #        then the expected values may be different.
   set.seed(13)
   event.log <- sim.dynamics(mod)
   
@@ -57,11 +59,12 @@ test_that("Convert OuterTree to phylo", {
   expect_equal(result, expected, tolerance=1e-6)
 })
 
-
-test_that("migration", {
+test_that("as.phylo.OuterTree captures migration events", {
   settings <- yaml.load_file("test_migration.yaml")
   mod <- Model$new(settings)
-  set.seed(67)
+  set.seed(66)
   event.log <- sim.dynamics(mod)
   outer <- sim.outer.tree(mod, event.log)
+  
+  result <- as.phylo(outer)
 })
