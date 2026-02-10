@@ -4,7 +4,15 @@
 \alias{plot.twt.counts}
 \title{plot.twt.counts}
 \usage{
-\method{plot}{twt.counts}(counts, pal = NA, xlab = "Time", ylab = "Frequency", lwd = 2, ...)
+\method{plot}{twt.counts}(
+  counts,
+  pal = NA,
+  xlab = "Time",
+  ylab = "Frequency",
+  lwd = 2,
+  bty = "n",
+  ...
+)
 }
 \arguments{
 \item{counts:}{S3 object of class twt.counts}

@@ -22,6 +22,9 @@ was directly sampled from this Host.  If NA, then this is an unsampled
 Host, i.e., its lineages are ancestral to lineages in subsequent 
 hosts where they are sampled.}
 
+\item{sampling.comp:}{character, name of sampling compartment.  Used for 
+checking whether target sample sizes are obtained.}
+
 \item{pathogens:}{list, store objects of class Pathogen associated with 
 this Host}
 }

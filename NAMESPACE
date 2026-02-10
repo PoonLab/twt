@@ -2,6 +2,7 @@
 
 S3method(as.phylo,OuterTree)
 S3method(plot,Model)
+S3method(plot,OuterTree)
 S3method(plot,twt.counts)
 S3method(print,Model)
 S3method(summary,Model)

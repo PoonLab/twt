@@ -3,15 +3,20 @@
 \name{plot.OuterTree}
 \alias{plot.OuterTree}
 \title{plot.OuterTree
-S3 generic plot method for objects of class `outerTree`.  This visualizes
+S3 generic plot method for objects of class `OuterTree`.  This visualizes
 the collection of events sampled in the outer simulation as a transmission 
 tree.}
 \usage{
 \method{plot}{OuterTree}(obj, pad = 1.05)
 }
+\arguments{
+\item{obj:}{R6 object of class `OuterTree`}
+
+\item{pad:}{numeric, controls padding around tree in plot region}
+}
 \description{
 plot.OuterTree
-S3 generic plot method for objects of class `outerTree`.  This visualizes
+S3 generic plot method for objects of class `OuterTree`.  This visualizes
 the collection of events sampled in the outer simulation as a transmission 
 tree.
 }

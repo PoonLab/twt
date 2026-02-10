@@ -17,6 +17,8 @@
 #'        was directly sampled from this Host.  If NA, then this is an unsampled
 #'        Host, i.e., its lineages are ancestral to lineages in subsequent 
 #'        hosts where they are sampled.
+#' @param sampling.comp:  character, name of sampling compartment.  Used for 
+#'        checking whether target sample sizes are obtained.
 #' @param pathogens:  list, store objects of class Pathogen associated with 
 #'        this Host
 #' @export
@@ -25,12 +27,14 @@ Host <- R6Class(
   public = list(
     initialize = function(
     name=NA, compartment=NA, source=character(), transmission.time=numeric(), 
-    sampling.time=as.numeric(NA), unsampled=FALSE, pathogens=list()) {
+    sampling.time=as.numeric(NA), sampling.comp=NA, unsampled=FALSE, 
+    pathogens=list()) {
       private$name <- name
       private$compartment <- compartment
       private$source <- source
       private$transmission.time <- transmission.time
       private$sampling.time <- sampling.time
+      private$sampling.comp <- sampling.comp
       private$unsampled <- unsampled
       private$pathogens <- pathogens
     },
@@ -69,6 +73,9 @@ Host <- R6Class(
       }))
     },
     
+    get.sampling.comp = function() { private$sampling.comp },
+    set.sampling.comp = function(comp) { private$sampling.comp <- comp },
+    
     get.pathogens = function() { private$pathogens },
     add.pathogen = function(new.pathogen) {
       private$pathogens[[length(private$pathogens)+1]] <- new.pathogen
@@ -91,6 +98,7 @@ Host <- R6Class(
     source = NULL,
     transmission.time = NULL,
     sampling.time = NULL,
+    sampling.comp = NULL,
     unsampled = NULL,
     pathogens = NULL
   )
@@ -127,6 +135,10 @@ HostSet <- R6Class(
       sapply(private$hosts, function(h) { h$get.sampling.time() })
     },
     
+    get.sampling.types = function() {
+      sapply(private$hosts, function(h) { h$get.sampling.comp() })
+    },
+    
     get.transmission.times = function() {
       lapply(private$hosts, function(h) { h$get.transmission.time() })
     },
@@ -146,6 +158,11 @@ HostSet <- R6Class(
       } else {
         sum(host.types == type)
       }
+    },
+    
+    count.sampling.type = function(type) {
+      sampling.types <- self$get.sampling.types()
+      sum(sampling.types == type)
     },
     
     add.host = function(host) {

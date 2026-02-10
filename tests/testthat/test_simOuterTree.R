@@ -129,6 +129,7 @@ test_that("do transmission", {
 
 test_that("full outer tree simulation", {
   settings <- yaml.load_file("test_SIR.yaml")
+  settings$Sampling$targets$I_samp <- 1
   mod <- Model$new(settings)
   
   # one transmission that is immediately sampled

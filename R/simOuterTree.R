@@ -38,9 +38,9 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
   }
   targets <- sampling$targets
   for (cn in names(targets)) {
-    size <- sum(eventlog$event=="migration" & eventlog$dest==cn)
+    size <- sum(eventlog$event=="migration" & eventlog$to.comp==cn)
     target <- targets[[cn]]
-    if (target < size) {
+    if (size < target) {
       stop("Insufficient number in sampling compartment ", 
            cn, " (", size , "<", target, ")")
     }
@@ -48,12 +48,13 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
   
   outer <- OuterTree$new(mod=mod)  # recording outer events
   active <- outer$get.active()
+  sampled <- outer$get.sampled()
   
   # iterate through events in reverse (start with most recent)
   for (row in seq(nrow(eventlog), 1, -1)) {
     # check stopping criterion
     if (all(sapply(names(targets), function(tn) {
-      sampled$count.type(tn) >= targets[[tn]]
+      sampled$count.sampling.type(tn) >= targets[[tn]]
     })) &  # sampled all hosts
         active$count.type() == 1) {  # reached root of transmission tree
       break  
@@ -108,15 +109,17 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
   from.comp <- e[['from.comp']]
   to.comp <- e[['to.comp']]
   active <- outer$get.active()
+  sampled <- outer$get.sampled()
   
   if (to.comp %in% names(targets)) {
     # this was a sampling event
     
-    if (outer$nsamples() < sum(targets)) {
-      # have not sampled all hosts yet
+    if (sampled$count.sampling.type(to.comp) < targets[[to.comp]]) {
+      # have not sampled all hosts from this compartment yet
       host <- Host$new(
-        compartment=from.comp, # we are going back in time 
-        sampling.time=e[['time']]
+        compartment=from.comp,  # we are going back in time 
+        sampling.time=e[['time']],
+        sampling.comp=to.comp
       )
       active$add.host(host)
       outer$add.sample(host)
@@ -213,7 +216,7 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
         if (source$get.name() != recip$get.name()) { break }
         # note recipient can only be sampled as source if it was not removed 
         # from `active` (superinfection) and source belongs to same compartment
-        if (e$source == e$dest & n.active.source == 1) {
+        if (e$source == e$to.comp & n.active.source == 1) {
           stop("Impossible event, Recipient host cannot be its own source")
         }
       }

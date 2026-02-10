@@ -102,9 +102,12 @@ OuterTree <- R6Class(
 
 
 #' plot.OuterTree
-#' S3 generic plot method for objects of class `outerTree`.  This visualizes
+#' S3 generic plot method for objects of class `OuterTree`.  This visualizes
 #' the collection of events sampled in the outer simulation as a transmission 
 #' tree.
+#' @param obj:  R6 object of class `OuterTree`
+#' @param pad:  numeric, controls padding around tree in plot region
+#' @export
 plot.OuterTree <- function(obj, pad=1.05) {
   # retrieve sampling times
   sampled <- obj$get.sampled()
