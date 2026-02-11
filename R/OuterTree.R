@@ -211,83 +211,46 @@ as.phylo.OuterTree <- function(obj, singles=TRUE) {
   events <- .filter.firsts(events)  # remove superinfections
   events <- .relabel.nodes(events, targets)
   
-  # locate the root event
-  root.idx <- which(events$from.host==root.name)
-  stopifnot(length(root.idx) > 1)
-  root.time <- events$time[min(root.idx)]
-  i1 <- root.idx[2]  # the *second* event is the first branch
-  
   # re-order events by preorder traversal (parents before children)
   preorder <- .reorder.events(events, root.name, order='preorder')
-  preorder <- preorder[!is.na(preorder)]  # FIXME: why so many NAs?
-  # TODO: apply this to data frame!
+  idx <- match(preorder, events$to.host)
+  events <- events[idx[-1], ]
+  
+  root.time <- min(events$time[events$from.host==root.name])
+  #events$branch.len <- ifelse(events$from.host==)
+  ## FIXME: WORK IN PROGRESS - unfold transmission history into tree
   
   
-  
-  
-  
+  # locate the root events
+  root.idx <- which(events$from.host==root.name)
+  stopifnot(length(root.idx) > 1)
+  root.time <- events$time[min(root.idx)]  # first event defines tree root
+  i1 <- root.idx[2]  # the *second* root event is the first branch
   
   # let every event except first be the descendant node of a branch
   n <- nrow(events) - (i1-1)
-  branches <- data.frame(parent=character(n), child=character(n), 
-                         length=numeric(n), label=character(n))
+  branches <- data.frame(
+    parent=character(n), 
+    child=character(n), 
+    length=numeric(n))
   
   for (i in i1:nrow(events)) {
     e <- events[i,]
     # retrieve previous event involving this host
-    e.prev <- 
-    branches[i-(i1-1)] <- list(
+    t0 <- ifelse(e$from.host==root.name, root.time,
+      events$time[events$to.host==e$from.host])
+    branches[i-(i1-1),] <- c(
       parent=e$from.host, child=e$to.host, 
-      length=e$time-root.time  # FIXME: 
+      length=e$time-t0
       )
   }
   
-
-  
-  # sort nodes by preorder traversal
-  preorder <- .reorder.events(first.trans, root.name, order='preorder')
-  
-  # reorder node list
-  tips <- preorder[is.element(preorder, tips)]
-  internals <- preorder[!is.element(preorder, tips)]
-  nodes <- c(tips, internals)
-  
-  # generate edge list
-  order.trans <- first.trans[na.omit(match(preorder, first.trans$to.host)), ]
-  edges <- matrix(c(
-    sapply(order.trans$from.host, function(n) which(nodes==n)),
-    sapply(order.trans$to.host, function(n) which(nodes==n))
-  ), byrow=FALSE, ncol=2)
-  
-  # locate first split
-  root.time <- min(order.trans$time[
-    order.trans$event=='transmission' & order.trans$from.host==root.name])
-  
-  edge.length <- sapply(1:nrow(order.trans), function(i) {
-    e <- order.trans[i,]
-    parent <- e$from.host
-    child <- e$to.host
-    
-    end.time <- ifelse(
-      child %in% tips,  # branch terminates
-      samp.times[[child]],  
-      min(order.trans$time[order.trans$from.host==child])  # next event
-      )
-    
-    start.time <- e$time
-    
-    # check if this is the last transmission from parent
-    temp <- order.trans[order.trans$from.host==parent, ]
-    if( nrow(temp) > 1 & max(temp$time) == e$time ) {
-      # go to previous event
-      idx <- which(order.trans$from.host==parent)
-      precedes <- (order.trans$time[idx] < e$time)
-      if (any(precedes)) {
-        start.time <- max(order.trans$time[idx][precedes])
-      }
-    }
-    end.time - start.time  # return value
-  })
+  node.label <- preorder[!is.element(preorder, tips)]
+  tip.label <- preorder[is.element(preorder, tips)]
+  nodes <- c(tip.label, node.label)
+  edge <- matrix(0, nrow=nrow(branches), ncol=2)
+  edge[,1] <- match(branches$parent, nodes)
+  edge[,2] <- match(branches$child, nodes)
   
   phy <- list(
     tip.label = tips,
@@ -341,12 +304,14 @@ as.phylo.OuterTree <- function(obj, singles=TRUE) {
         events$from.host[i] <- new.node        
       }
       
-      if (events$event[i] == 'migration' & 
-          !is.element(events$to.comp[i], names(targets))
-          ) {
-
-        new.node <- paste(node, label, sep="_")  # renaming
-        label <- label + 1
+      if (events$event[i] == 'migration') {
+        if (events$to.comp[i] %in% names(targets)) {
+          # terminal node, can happen only once
+          new.node <- paste(node, "sample", sep="_")
+        } else {
+          new.node <- paste(node, label, sep="_")  # internal node
+          label <- label + 1
+        }
         events$to.host[i] <- new.node
       }
     }

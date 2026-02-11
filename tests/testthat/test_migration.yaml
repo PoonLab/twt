@@ -1,0 +1,47 @@
+Parameters:
+  simTime: 10.0
+  beta: 0.005  # transmission within deme only
+  gamma: 0.01
+  mig: 0.05
+  psi: 0.1
+
+Compartments:
+  S1:
+    infected: false
+    size: 1000
+    transmission:
+      I1: {I1: beta*S1*I1}
+  S2:
+    infected: false
+    size: 1000
+    transmission:
+      I2: {I2: beta*S2*I2}
+  I1:
+    infected: true
+    size: 1
+    migration:
+      R: gamma*I1
+      I2: mig*I1  # moving between demes
+      I_samp1: psi*I1
+  I2:
+    infected: true
+    size: 0
+    migration:
+      R: gamma*I2
+      I1: mig*I2
+      I_samp2: psi*I2
+  I_samp1:
+    infected: true
+    size: 0
+  I_samp2:
+    infected: true
+    size: 0
+  R:
+    infected: false
+    size: 0
+
+Sampling:
+  mode: compartment
+  targets:
+    I_samp1: 3
+    I_samp2: 2
