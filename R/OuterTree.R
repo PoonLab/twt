@@ -83,20 +83,17 @@ OuterTree <- R6Class(
   if (order=='preorder') {
     result <- c(result, node)  # parent before children
   }
-  
-  children <- unique(events$to.host[events$from.host==node])
+  children <- na.omit(unique(events$to.host[events$from.host==node]))
+  if (length(children) == 0) { return(result) }
   
   inf.times <- sapply(children, function(child) 
     events$time[events$to.host==child])
-  
   for (child in children[order(inf.times, decreasing=TRUE)]) {
     result <- .reorder.events(events, child, order, result)
   }
-  
   if (order=='postorder') {
     result <- c(result, node)  # children before parent
   }
-  
   return(result)
 }
 
@@ -200,6 +197,7 @@ as.phylo.OuterTree <- function(obj, singles=TRUE) {
   sampled <- obj$get.sampled()  # HostSet
   tips <- sampled$get.names()  # most recent sample first
   samp.times <- setNames(as.numeric(sampled$get.sampling.times()), tips)
+  targets <- obj$get.targets()
   
   # get root node
   active <- obj$get.active()
@@ -210,12 +208,41 @@ as.phylo.OuterTree <- function(obj, singles=TRUE) {
   events <- obj$get.log()
   events$time <- as.numeric(events$time)
   
-  # extract the earliest transmission to each host
-  trans <- events[events$event=='transmission', ]
-  first.idx <- sapply(split(1:nrow(trans), trans$to.host), function(idx) {
-    idx[which.min(trans$time[idx])]
-  })
-  first.trans <- trans[first.idx, ]
+  events <- .filter.firsts(events)  # remove superinfections
+  events <- .relabel.nodes(events, targets)
+  
+  # locate the root event
+  root.idx <- which(events$from.host==root.name)
+  stopifnot(length(root.idx) > 1)
+  root.time <- events$time[min(root.idx)]
+  i1 <- root.idx[2]  # the *second* event is the first branch
+  
+  # re-order events by preorder traversal (parents before children)
+  preorder <- .reorder.events(events, root.name, order='preorder')
+  preorder <- preorder[!is.na(preorder)]  # FIXME: why so many NAs?
+  # TODO: apply this to data frame!
+  
+  
+  
+  
+  
+  
+  # let every event except first be the descendant node of a branch
+  n <- nrow(events) - (i1-1)
+  branches <- data.frame(parent=character(n), child=character(n), 
+                         length=numeric(n), label=character(n))
+  
+  for (i in i1:nrow(events)) {
+    e <- events[i,]
+    # retrieve previous event involving this host
+    e.prev <- 
+    branches[i-(i1-1)] <- list(
+      parent=e$from.host, child=e$to.host, 
+      length=e$time-root.time  # FIXME: 
+      )
+  }
+  
+
   
   # sort nodes by preorder traversal
   preorder <- .reorder.events(first.trans, root.name, order='preorder')
@@ -273,3 +300,56 @@ as.phylo.OuterTree <- function(obj, singles=TRUE) {
 }
 
 
+#' Remove any superinfections, keeping only the first transmission event 
+#' to each host.
+#' @param events:  data frame
+#' @keywords internal
+.filter.firsts <- function(events) {
+  # extract the earliest transmission to each host
+  idx <- which(events$event=='transmission')
+  first.idx <- sapply(split(idx, events$to.host[idx]), function(i) {
+    i[which.min(events$time[i])]
+  })
+  remove <- idx[!is.element(idx, first.idx)]
+  if (length(remove) > 0) {
+    events[-remove, ]
+  } else {
+    events
+  }
+}
+
+
+#' Modify host names in the event log to make them unique.  This assumes 
+#' that we have removed superinfection events from the log, i.e., with 
+#' `.filter.firsts`, so there is a linear sequence of events for each host.
+#' We assume the first event is the transmission of infection to the host.
+#' Only migration events (not sampling) require a new label.
+#' @keywords internal
+.relabel.nodes <- function(events, targets) {
+  # make sure events are ordered in time
+  events <- events[order(events$time), ]
+  
+  # relabel host names for migration events
+  nodes <- na.omit( unique(c(events$from.host, events$to.host)) )
+  for (node in nodes) {
+    idx <- which(events$from.host == node | events$to.host==node)
+    new.node <- node
+    label <- 1
+    for (i in idx) {
+      if (events$from.host[i] == node) {
+        # overwrite node name in case it's been updated
+        events$from.host[i] <- new.node        
+      }
+      
+      if (events$event[i] == 'migration' & 
+          !is.element(events$to.comp[i], names(targets))
+          ) {
+
+        new.node <- paste(node, label, sep="_")  # renaming
+        label <- label + 1
+        events$to.host[i] <- new.node
+      }
+    }
+  }
+  events
+}
