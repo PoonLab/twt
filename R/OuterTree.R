@@ -232,44 +232,43 @@ as.phylo.OuterTree <- function(obj, singles=TRUE) {
   edge.list <- data.frame(parent=character(n.edges), 
                           child=character(n.edges),
                           length=numeric(n.edges),
-                          label=character(n.edges))
+                          label1=character(n.edges),
+                          label2=character(n.edges))
   for (i in 2:nrow(events)) {
     e <- events[i,]
     
     if (events$to.host[i-1] == e$from.host) {
       e.prev <- events[i-1, ]  # next step in chain of events
-      
-    } else if (any(events$to.host[1:(i-1)] == e$from.host & 
-                   events$time[1:(i-1)] < e$time)) {
+    } else {
       # preceding event from same host
       temp <- events[1:(i-1), ]
-      temp <- temp[temp$to.host == e$from.host, ]
+      temp <- temp[temp$from.host == e$from.host, ]
       e.prev <- temp[which.max(temp$time), ]
-    } else if (e$from.host == root.name) {
-      e.prev <- events[1,]  # root is a special case
     }
     edge.list[i-1, ] <- c(
       parent=paste(e.prev$from.host, e.prev$to.host, sep="__"),
       child=paste(e$from.host, e$to.host, sep="__"),
       length=e$time - e.prev$time,
-      label=e$to.host
+      label1=e.prev$to.host,
+      label2=e$to.host
     )
   }
   
-  
-  node.label <- preorder[!is.element(preorder, tips)]
-  tip.label <- preorder[is.element(preorder, tips)]
+  preorder <- preorder[-1]  # discard first host label
+  node.label <- preorder[!grepl("_sample$", preorder)]
+  tip.label <- preorder[grepl("_sample$", preorder)]
   nodes <- c(tip.label, node.label)
   
   edge <- matrix(0, nrow=nrow(edge.list), ncol=2)
-  edge[,1] <- match(edge.list$parent, nodes)
-  edge[,2] <- match(edge.list$child, nodes)
+  edge[,1] <- match(edge.list$label1, nodes)
+  edge[,2] <- match(edge.list$label2, nodes)
   
   phy <- list(
-    tip.label = tips,
-    Nnode = length(internals),
-    edge = edges,
-    edge.length = edge.length
+    tip.label = tip.label,
+    node.label = node.label,
+    Nnode = length(node.label),
+    edge = edge,
+    edge.length = edge.list$length
   )
   attr(phy, 'class') <- 'phylo'
   phy  # return object
