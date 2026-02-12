@@ -78,8 +78,14 @@ OuterTree <- R6Class(
 #' A helper function that recursively generates a list of node labels
 #' by post-order traversal (outputting parents after children).
 #' 
+#' @param events:  data.frame, transmission and migration events
+#' @param node:  character, label a Host object named in at least one event
+#' @param order:  character, 'preorder' or 'postorder' traversal
+#' @param decreasing:  bool, sort events with respect to time (default: TRUE)
+#' @param result:  character, node names are appended to this vector
 #' @keywords internal
-.reorder.events <- function(events, node, order='postorder', result=c()) {
+.reorder.events <- function(events, node, order='postorder', decreasing=TRUE,
+                            result=c()) {
   if (order=='preorder') {
     result <- c(result, node)  # parent before children
   }
@@ -88,8 +94,8 @@ OuterTree <- R6Class(
   
   inf.times <- sapply(children, function(child) 
     events$time[events$to.host==child])
-  for (child in children[order(inf.times, decreasing=TRUE)]) {
-    result <- .reorder.events(events, child, order, result)
+  for (child in children[order(inf.times, decreasing=decreasing)]) {
+    result <- .reorder.events(events, child, order, decreasing, result)
   }
   if (order=='postorder') {
     result <- c(result, node)  # children before parent
@@ -212,7 +218,8 @@ as.phylo.OuterTree <- function(obj, singles=TRUE) {
   events <- .relabel.nodes(events, targets)
   
   # re-order events by preorder traversal (parents before children)
-  preorder <- .reorder.events(events, root.name, order='preorder')
+  preorder <- .reorder.events(events, root.name, order='preorder',
+                              decreasing=FALSE)
   idx <- match(preorder, events$to.host)
   events <- events[idx[-1], ]
   
@@ -220,37 +227,43 @@ as.phylo.OuterTree <- function(obj, singles=TRUE) {
   #events$branch.len <- ifelse(events$from.host==)
   ## FIXME: WORK IN PROGRESS - unfold transmission history into tree
   
-  
-  # locate the root events
-  root.idx <- which(events$from.host==root.name)
-  stopifnot(length(root.idx) > 1)
-  root.time <- events$time[min(root.idx)]  # first event defines tree root
-  i1 <- root.idx[2]  # the *second* root event is the first branch
-  
-  # let every event except first be the descendant node of a branch
-  n <- nrow(events) - (i1-1)
-  branches <- data.frame(
-    parent=character(n), 
-    child=character(n), 
-    length=numeric(n))
-  
-  for (i in i1:nrow(events)) {
+  # each event creates a node - need to convert node list to edge list
+  n.edges <- nrow(events)-1
+  edge.list <- data.frame(parent=character(n.edges), 
+                          child=character(n.edges),
+                          length=numeric(n.edges),
+                          label=character(n.edges))
+  for (i in 2:nrow(events)) {
     e <- events[i,]
-    # retrieve previous event involving this host
-    t0 <- ifelse(e$from.host==root.name, root.time,
-      events$time[events$to.host==e$from.host])
-    branches[i-(i1-1),] <- c(
-      parent=e$from.host, child=e$to.host, 
-      length=e$time-t0
-      )
+    
+    if (events$to.host[i-1] == e$from.host) {
+      e.prev <- events[i-1, ]  # next step in chain of events
+      
+    } else if (any(events$to.host[1:(i-1)] == e$from.host & 
+                   events$time[1:(i-1)] < e$time)) {
+      # preceding event from same host
+      temp <- events[1:(i-1), ]
+      temp <- temp[temp$to.host == e$from.host, ]
+      e.prev <- temp[which.max(temp$time), ]
+    } else if (e$from.host == root.name) {
+      e.prev <- events[1,]  # root is a special case
+    }
+    edge.list[i-1, ] <- c(
+      parent=paste(e.prev$from.host, e.prev$to.host, sep="__"),
+      child=paste(e$from.host, e$to.host, sep="__"),
+      length=e$time - e.prev$time,
+      label=e$to.host
+    )
   }
+  
   
   node.label <- preorder[!is.element(preorder, tips)]
   tip.label <- preorder[is.element(preorder, tips)]
   nodes <- c(tip.label, node.label)
-  edge <- matrix(0, nrow=nrow(branches), ncol=2)
-  edge[,1] <- match(branches$parent, nodes)
-  edge[,2] <- match(branches$child, nodes)
+  
+  edge <- matrix(0, nrow=nrow(edge.list), ncol=2)
+  edge[,1] <- match(edge.list$parent, nodes)
+  edge[,2] <- match(edge.list$child, nodes)
   
   phy <- list(
     tip.label = tips,
