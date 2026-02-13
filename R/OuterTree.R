@@ -78,11 +78,13 @@ OuterTree <- R6Class(
 #' A helper function that recursively generates a list of node labels
 #' by post-order traversal (outputting parents after children).
 #' 
-#' @param events:  data.frame, transmission and migration events
+#' @param events:  data.frame, transmission and migration events; must have 
+#'                 `time`, `from.host` and `to.host` fields.
 #' @param node:  character, label a Host object named in at least one event
 #' @param order:  character, 'preorder' or 'postorder' traversal
 #' @param decreasing:  bool, sort events with respect to time (default: TRUE)
 #' @param result:  character, node names are appended to this vector
+#' 
 #' @keywords internal
 .reorder.events <- function(events, node, order='postorder', decreasing=TRUE,
                             result=c()) {
@@ -135,21 +137,17 @@ plot.OuterTree <- function(obj, pad=1.05) {
   
   # starting from tips, build edge list
   events <- obj$get.log()
+  events <- events[!(events$event=='migration' & is.na(events$to.host)), ]
   events$time <- as.numeric(events$time)
-  trans <- events[events$event=='transmission', ]
-  
-  # reduce to the earliest transmission to each host
-  first.idx <- sapply(split(1:nrow(trans), trans$to.host), function(idx) {
-    idx[which.min(trans$time[idx])]
-  })
-  first.trans <- trans[first.idx, ]
+  events <- .filter.firsts(events)
+  events <- .relabel.nodes(events, obj$get.targets())
   
   # sort nodes by post-order traversal (children before parents)
-  nodes <- .reorder.events(first.trans, root.name)
+  nodes <- .reorder.events(events, root.name, order="preorder", decreasing=FALSE)
   
   # prepare plot region
   par(mar=c(5,1,1,5), mfrow=c(1,1))
-  plot(NA, xlim=c(0, max(trans$time)*pad), ylim=c(0.5, length(nodes)+0.5),
+  plot(NA, xlim=c(0, max(events$time)*pad), ylim=c(0.5, length(nodes)+0.5),
        xlab="Time", yaxt='n', ylab=NA, bty='n')
   
   for (node in nodes) {
@@ -159,8 +157,8 @@ plot.OuterTree <- function(obj, pad=1.05) {
       inf.time <- 0
       source <- NA
     } else {
-      inf.time <- first.trans$time[first.trans$to.host==node]
-      source <- sources[[node]]
+      inf.time <- events$time[events$to.host==node]
+      source <- events$from.host[events$to.host==node]
     }
     
     samp.time <- 0
@@ -168,7 +166,7 @@ plot.OuterTree <- function(obj, pad=1.05) {
       samp.time <- samp.times[[node]]
     } else {
       # unsampled host - set right limit at first transmission event
-      samp.time <- max(trans$time[trans$from.host==node])
+      samp.time <- max(events$time[events$from.host==node])
     }
     
     segments(x0=inf.time, x1=samp.time, y0=which(nodes==node),

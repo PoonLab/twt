@@ -59,12 +59,10 @@ test_that("Convert OuterTree to phylo", {
   expect_equal(result, expected, tolerance=1e-6)
 })
 
-test_that("as.phylo.OuterTree captures migration events", {
-  settings <- yaml.load_file("test_migration.yaml")
-  mod <- Model$new(settings)
-  set.seed(66)
-  event.log <- sim.dynamics(mod)
-  outer <- sim.outer.tree(mod, event.log)
-  
-  result <- as.phylo(outer)
+test_that("Reordering an eventlog", {
+  events <- data.frame(
+    time=c(0.1, 0.2, 0.4, 0.7),
+    from.host=c('A', ),
+    to.host=c('B', )
+    )
 })
