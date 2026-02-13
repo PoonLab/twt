@@ -59,10 +59,18 @@ test_that("Convert OuterTree to phylo", {
   expect_equal(result, expected, tolerance=1e-6)
 })
 
+
 test_that("Reordering an eventlog", {
   events <- data.frame(
-    time=c(0.1, 0.2, 0.4, 0.7),
-    from.host=c('A', ),
-    to.host=c('B', )
+    time=c(0.4, 0.1, 0.5, 0.2, 0.7),
+    from.host=c('C', 'A', 'B', 'A', 'D'),
+    to.host=c('D', 'B', 'B_samp', 'C', 'D_samp')
     )
+  result <- .reorder.events(events, 'A')  # postorder, decreasing
+  expected <- data.frame(
+    time=c(0.7, 0.4, 0.2, 0.5, 0.1),
+    from.host=c('D', 'C', 'A', 'B', 'A'),
+    to.host=c('D_samp', 'D', 'C', 'B_samp', 'B')
+  )
+  expect_equal(result, expected)
 })
