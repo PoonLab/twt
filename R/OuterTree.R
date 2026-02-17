@@ -275,7 +275,7 @@ as.phylo.OuterTree <- function(obj, singles=TRUE) {
 
 #' Remove any superinfections, keeping only the first transmission event 
 #' to each host.
-#' @param events:  data frame
+#' @param events:  data frame with fields `time`, `event` and `to.host`
 #' @keywords internal
 .filter.firsts <- function(events) {
   # extract the earliest transmission to each host
@@ -296,9 +296,19 @@ as.phylo.OuterTree <- function(obj, singles=TRUE) {
 #' that we have removed superinfection events from the log, i.e., with 
 #' `.filter.firsts`, so there is a linear sequence of events for each host.
 #' We assume the first event is the transmission of infection to the host.
-#' Only migration events (not sampling) require a new label.
+#' Only migration events require a new label.
+#' 
+#' @param events:  data frame with fields `time`, `event`, `from.comp`, 
+#'                 `to.comp`, `from.host`, and `to.host`
+#' @param targets:  list from Model$get.sampling()$targets
 #' @keywords internal
 .relabel.nodes <- function(events, targets) {
+  # make sure events have been filtered of superinfection
+  n.inf <- table(events$to.host)
+  if (any(n.inf > 1)) {
+    stop("ERROR: .relabel.nodes assumes events have been filtered of ",
+         "superinfection events.")
+  }
   # make sure events are ordered in time
   events <- events[order(events$time), ]
   

@@ -83,3 +83,55 @@ test_that("Reordering an eventlog", {
   expected <- c('A', 'B', 'B_samp', 'C', 'D', 'D_samp')
   expect_equal(result, expected)
 })
+
+
+test_that("Filter out superinfection events", {
+  events <- data.frame(
+    time=c(0.4, 0.1, 0.5, 0.2, 0.7),
+    event=rep('transmission', 5),
+    from.host=c('E', 'A', 'B', 'A', 'B'),
+    to.host=c('D', 'B', 'E', 'E', 'E')
+  )
+  result <- .filter.firsts(events)
+  expected <- data.frame(
+    time=c(0.4, 0.1, 0.2),
+    event=rep('transmission', 3),
+    from.host=c('E', 'A', 'A'),
+    to.host=c('D', 'B', 'E'),
+    row.names=as.integer(c(1, 2, 4))
+  )
+  expect_equal(result, expected)
+})
+
+
+test_that("Migration events relabel nodes", {
+  events <- data.frame(
+    time=seq(0.1, 0.4, 0.1),
+    event=c("transmission", "migration", "transmission", "migration"),
+    from.comp=c("S", "I1", "S", "I2"),
+    to.comp=c("I1", "I2", "I1", "I2_samp"),
+    from.host=c("A", "B", "B", "B"),
+    to.host=c("B", NA, "C", NA)
+  )
+  targets <- list("I1_samp"=1, "I2_samp"=1)
+  result <- .relabel.nodes(events, targets)
+  expected <- data.frame(
+    time=seq(0.1, 0.4, 0.1),
+    event=c("transmission", "migration", "transmission", "migration"),
+    from.comp=c("S", "I1", "S", "I2"),
+    to.comp=c("I1", "I2", "I1", "I2_samp"),
+    from.host=c("A", "B", "B_1", "B_1"),
+    to.host=c("B", "B_1", "C", "B_sample")
+  )
+  expect_equal(result, expected)
+  
+  events <- data.frame(
+    time=seq(0.1, 0.4, 0.1),
+    event=c("transmission", "transmission", "transmission", "migration"),
+    from.comp=c("S", "I1", "S", "I2"),
+    to.comp=c("I1", "I1", "I1", "I2_samp"),
+    from.host=c("A", "A", "B", "B"),
+    to.host=c("B", "B", "C", NA)
+  )
+  expect_error(.relabel.nodes(events, targets))
+})
