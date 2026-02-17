@@ -266,7 +266,7 @@ as.phylo.OuterTree <- function(obj, singles=TRUE) {
     node.label = node.label,
     Nnode = length(node.label),
     edge = edge,
-    edge.length = edge.list$length
+    edge.length = as.numeric(edge.list$length)
   )
   attr(phy, 'class') <- 'phylo'
   phy  # return object
