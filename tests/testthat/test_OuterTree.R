@@ -43,7 +43,7 @@ test_that("Convert OuterTree to phylo", {
   
   phy2 <- collapse.singles(phy)
   expect.phy <- read.tree(
-    text="((I_2:0.05211251,I_1:0.07238021):0.1641128,I_4:0.2075166);")
+    text="((I_2_sample:0.05211251,I_1_sample:0.07238021):0.1641128,I_4_sample:0.2075166);")
   result <- comparePhylo(phy2, expect.phy)
   expect_true(is.element("Both trees have the same tip labels.", 
               result$messages))
@@ -54,8 +54,9 @@ test_that("Convert OuterTree to phylo", {
   
   m1 <- cophenetic(phy2)
   m2 <- cophenetic(expect.phy)
-  result <- m1[c('I_1', 'I_2', 'I_4'), c('I_1', 'I_2', 'I_4')]
-  expected <- m2[c('I_1', 'I_2', 'I_4'), c('I_1', 'I_2', 'I_4')]
+  labels <- c("I_1_sample", "I_2_sample", "I_4_sample")
+  result <- m1[labels, labels]
+  expected <- m2[labels, labels]
   expect_equal(result, expected, tolerance=1e-6)
 })
 
@@ -66,11 +67,19 @@ test_that("Reordering an eventlog", {
     from.host=c('C', 'A', 'B', 'A', 'D'),
     to.host=c('D', 'B', 'B_samp', 'C', 'D_samp')
     )
-  result <- .reorder.events(events, 'A')  # postorder, decreasing
-  expected <- data.frame(
-    time=c(0.7, 0.4, 0.2, 0.5, 0.1),
-    from.host=c('D', 'C', 'A', 'B', 'A'),
-    to.host=c('D_samp', 'D', 'C', 'B_samp', 'B')
-  )
+  result <- .reorder.events(events, 'A', order='postorder', decreasing=TRUE)
+  expected <- c('D_samp', 'D', 'C', 'B_samp', 'B', 'A')
+  expect_equal(result, expected)
+  
+  result <- .reorder.events(events, 'A', order='postorder', decreasing=FALSE)
+  expected <- c('B_samp', 'B', 'D_samp', 'D', 'C', 'A')
+  expect_equal(result, expected)
+  
+  result <- .reorder.events(events, 'A', order='preorder', decreasing=TRUE)
+  expected <- c('A', 'C', 'D', 'D_samp', 'B', 'B_samp')
+  expect_equal(result, expected)
+  
+  result <- .reorder.events(events, 'A', order='preorder', decreasing=FALSE)
+  expected <- c('A', 'B', 'B_samp', 'C', 'D', 'D_samp')
   expect_equal(result, expected)
 })

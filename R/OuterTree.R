@@ -76,7 +76,9 @@ OuterTree <- R6Class(
 #' .reorder.events
 #' 
 #' A helper function that recursively generates a list of node labels
-#' by post-order traversal (outputting parents after children).
+#' by post-order (outputting children before parent), or preorder (parents
+#' before children) traversal.  When there are multiple children from a node,
+#' they are ordered in decreasing (increasing) order by event time.
 #' 
 #' @param events:  data.frame, transmission and migration events; must have 
 #'                 `time`, `from.host` and `to.host` fields.
@@ -89,18 +91,16 @@ OuterTree <- R6Class(
 .reorder.events <- function(events, node, order='postorder', decreasing=TRUE,
                             result=c()) {
   if (order=='preorder') {
-    result <- c(result, node)  # parent before children
+    result <- c(result, node)  # append parent before children
   }
   children <- na.omit(unique(events$to.host[events$from.host==node]))
-  if (length(children) == 0) { return(result) }
-  
   inf.times <- sapply(children, function(child) 
     events$time[events$to.host==child])
   for (child in children[order(inf.times, decreasing=decreasing)]) {
     result <- .reorder.events(events, child, order, decreasing, result)
   }
   if (order=='postorder') {
-    result <- c(result, node)  # children before parent
+    result <- c(result, node)  # append children before parent
   }
   return(result)
 }

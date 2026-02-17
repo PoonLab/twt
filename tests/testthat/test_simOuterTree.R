@@ -34,7 +34,7 @@ test_that("do migration", {
   result <- outer.log[1,]
   expected <- data.frame(
     time=1.0, event='migration', from.comp='I', to.comp='R',
-    from.host=as.character(NA), to.host=as.character(NA)
+    from.host="R_1", to.host=as.character(NA)
     )
   expect_equal(result, expected)
   
