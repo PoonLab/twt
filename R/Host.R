@@ -77,6 +77,7 @@ Host <- R6Class(
     set.sampling.comp = function(comp) { private$sampling.comp <- comp },
     
     get.pathogens = function() { private$pathogens },
+    count.pathogens = function () { length(private$pathogens) },
     add.pathogen = function(new.pathogen) {
       private$pathogens[[length(private$pathogens)+1]] <- new.pathogen
       self$set.sampling.time()
@@ -126,6 +127,25 @@ HostSet <- R6Class(
       sapply(private$hosts, function(h) { h$get.name() })
     },
     
+    get.hosts = function() {
+      private$hosts
+    },
+    
+    get.host.by.name = function(host.name, remove=FALSE) {
+      members <- self$get.names()
+      if (host.name %in% members) {
+        idx <- which(members == host.name)
+        if (remove) {
+          self$remove.host(idx)
+        } else {
+          private$hosts[[idx]]
+        }
+      } else {
+        warning("HostSet does not contain Host ", host.name)
+        invisible(NULL)
+      }
+    },
+    
     get.types = function() {
       # generate a vector of compartment memberships for current Hosts
       sapply(private$hosts, function(h) { h$get.compartment() })
@@ -166,7 +186,8 @@ HostSet <- R6Class(
     },
     
     add.host = function(host) {
-      if (is.na(host$get.name())) {
+      host.name <- host$get.name()
+      if (is.na(host.name)) {
         # assign a unique name
         if (host$is.sampled()) {
           name <- paste(host$get.compartment(), private$index, sep="_")
@@ -174,6 +195,13 @@ HostSet <- R6Class(
           name <- paste("US", host$get.compartment(), private$index, sep="_")
         }
         host$set.name(name)        
+      } else {
+        # check if named Host is already in this HostSet
+        current <- self$get.names()
+        if (host.name %in% current) {
+          warning("Host ", host.name, " is already in this HostSet!")
+          invisible(NULL)
+        }
       }
       private$index <- private$index + 1
       private$hosts[[length(private$hosts)+1]] <- host

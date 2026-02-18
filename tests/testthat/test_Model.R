@@ -35,10 +35,12 @@ test_that("Load SIR model", {
   result <- mod$get.death.rates()
   expect_equal(result, expected)
   
-  result <- mod$get.bottleneck.sizes()
+  result <- mod$get.bottleneck.size()
+  expected <- c(S="1", I="1", I_samp="1", R="1")
   expect_equal(result, expected)
   
-  result <- mod$get.coalescent.rates()
+  result <- mod$get.coalescent.rate()
+  expected <- c(S="Inf", I="Inf", I_samp="Inf", R="Inf")
   expect_equal(result, expected)
   
   # rate matrices

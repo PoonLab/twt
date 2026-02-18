@@ -2,8 +2,8 @@ Parameters:
   simTime: 10.0
   beta: 0.001  # transmission within deme only
   gamma: 0.01
-  mig: 0.005
-  psi: 0.05
+  mig: 0.05
+  psi: 0.1
 
 Compartments:
   S1:

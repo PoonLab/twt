@@ -74,8 +74,31 @@ Model <- R6Class(
     get.transmission.rates = function() { private$transmission.rates },
     
     # named vectors
-    get.bottleneck.sizes = function() { private$bottleneck.sizes },
-    get.coalescent.rates = function() { private$coalescent.rates },
+    get.bottleneck.size = function(cname=NA) { 
+      if (is.na(cname)) {
+        return(private$bottleneck.sizes)  # return all sizes as named vector
+        
+      } else {
+        if (cname %in% self$get.compartments()) {
+          return (private$bottleneck.sizes[[cname]])
+        }
+        warning("Unrecognized compartment name ", cname)
+        return (NULL)
+      }
+    },
+    
+    get.coalescent.rate = function(cname=NA) { 
+      if (is.na(cname)) {
+        return (private$coalescent.rates)  # return all rates as named vector
+        
+      } else {
+        if (cname %in% self$get.compartments()) {
+          return (private$coalescent.rates[[cname]])
+        }
+        warning("Unrecognized compartment name ", cname)
+        return (NULL)
+      }
+    },
     
     get.graph = function() { private$graph }
   ),
@@ -93,7 +116,7 @@ Model <- R6Class(
     migration.rates = NULL,  # 
     transmission.rates = NULL,
     
-    bottleneck.sizes = NULL,
+    bottleneck.sizes = NULL,  # note these are expressions, not numeric
     coalescent.rates = NULL,
     
     graph = NULL,
@@ -169,8 +192,8 @@ Model <- R6Class(
       # initialize containers
       private$init.sizes <- setNames(rep(0, k), cnames)
       private$is.infected <- setNames(rep(NA, k), cnames)
-      private$bottleneck.sizes <- setNames(rep("0", k), cnames)
-      private$coalescent.rates <- setNames(rep("0", k), cnames)
+      private$bottleneck.sizes <- setNames(rep("1", k), cnames)
+      private$coalescent.rates <- setNames(rep("Inf", k), cnames)
       
       private$birth.rates <- setNames(rep("0", k), cnames)
       private$death.rates <- setNames(rep("0", k), cnames)
