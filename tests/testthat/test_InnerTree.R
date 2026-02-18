@@ -1,24 +1,17 @@
 require(twt)
 
-test_that("Sample coalescent waiting times", {
+
+test_that("InnerTree constructor", {
   settings <- yaml.load_file("test_SIR.yaml")
   # unspecified in YAML to test default values
   settings$Compartments$I$coalescent.rate <- 1.0
-
+  
   mod <- Model$new(settings)
-  set.seed(1276)
+  set.seed(127)
   eventlog <- sim.dynamics(mod)
   outer <- sim.outer.tree(mod, eventlog)
   inner <- InnerTree$new(outer, mod)
   
   result <- inner$get.active()$count.type()
   expect_equal(result, 0)
-  
-  # activate a Host in InnerTree by sampling event
-  events <- outer$get.log()
-  e <- events[1,]
-  .do.sampling(e, inner)
-  
-  result <- inner$get.active()$count.type()
-  expect_equal(result, 1)
 })

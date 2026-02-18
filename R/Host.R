@@ -67,11 +67,6 @@ Host <- R6Class(
     },
     
     get.sampling.time = function() { private$sampling.time },
-    set.sampling.time = function() {
-      private$sampling.time <- min(sapply(private$pathogens, function(line) {
-        line$get.sampling.time()
-      }))
-    },
     
     get.sampling.comp = function() { private$sampling.comp },
     set.sampling.comp = function(comp) { private$sampling.comp <- comp },
@@ -80,11 +75,11 @@ Host <- R6Class(
     count.pathogens = function () { length(private$pathogens) },
     add.pathogen = function(new.pathogen) {
       private$pathogens[[length(private$pathogens)+1]] <- new.pathogen
-      self$set.sampling.time()
+      #self$set.sampling.time()
     },
     remove.pathogen = function(ex.pathogen) {
       private$pathogens[[ex.pathogen$get.name()]] <- NULL
-      self$set.sampling.time()
+      #self$set.sampling.time()
     },
     
     is.sampled = function() {

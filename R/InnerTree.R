@@ -79,6 +79,7 @@ InnerTree <- R6Class(
         host=host
       )
       private$p.index <- private$p.index + 1  # increment counter
+      return(path)
     },
     
     add.event = function(e) {
@@ -96,6 +97,7 @@ InnerTree <- R6Class(
     prefix = NULL,
     p.index = NULL,
     inactive = NULL,
-    active = NULL
+    active = NULL,
+    sampled = NULL
   )
 )
