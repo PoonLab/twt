@@ -16,6 +16,8 @@ Compartments:
     migration:
       R: gamma*I
       I_samp: psi*I
+    coalescent.rate: 1.0
+    bottleneck.size: 1
   I_samp:
     size: 0
     infected: true

@@ -88,6 +88,7 @@ OuterTree <- R6Class(
 #' @param result:  character, node names are appended to this vector
 #' 
 #' @keywords internal
+#' @noRd
 .reorder.events <- function(events, node, order='postorder', decreasing=TRUE,
                             result=c()) {
   if (order=='preorder') {
@@ -277,6 +278,7 @@ as.phylo.OuterTree <- function(obj, singles=TRUE) {
 #' to each host.
 #' @param events:  data frame with fields `time`, `event` and `to.host`
 #' @keywords internal
+#' @noRd
 .filter.firsts <- function(events) {
   # extract the earliest transmission to each host
   idx <- which(events$event=='transmission')
@@ -302,6 +304,7 @@ as.phylo.OuterTree <- function(obj, singles=TRUE) {
 #'                 `to.comp`, `from.host`, and `to.host`
 #' @param targets:  list from Model$get.sampling()$targets
 #' @keywords internal
+#' @noRd
 .relabel.nodes <- function(events, targets) {
   # make sure events have been filtered of superinfection
   n.inf <- table(events$to.host)

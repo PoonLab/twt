@@ -57,6 +57,7 @@ sim.inner.tree <- function(outer, mod) {
 #'         - dt: numeric, minimum waiting time to coalescence
 #'         - host name
 #' @keywords internal
+#' @noRd
 .rcoal <- function(active, mod) {
   wait.times <- sapply(active$get.hosts(), function(h) {
     k <- h$count.pathogens()
@@ -82,6 +83,7 @@ sim.inner.tree <- function(outer, mod) {
 #' @param e:  row from event log
 #' @param inner:  R6 object of class `InnerTree`
 #' @keywords internal
+#' @noRd
 .do.sampling <- function(e, inner) {
   # transfer Host from sampled to active HostSets
   sampled <- inner$get.sampled()
@@ -104,6 +106,7 @@ sim.inner.tree <- function(outer, mod) {
 #' @param e:  row from outer event log
 #' @param inner:  R6 object of class `InnerTree`
 #' @keywords internal
+#' @noRd
 .do.coalescent <- function(e, inner) {
   
 }

@@ -194,6 +194,7 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
 #' @param mod:  R6 object of class Model
 #' @return  R environment
 #' @keywords internal
+#' @noRd
 .init.model <- function(mod) {
   params <- mod$get.parameters()
   e <- new.env()
@@ -212,6 +213,7 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
 #'                defined in Model object
 #' @return  list with rate vectors and matrices, keyed by event type
 #' @keywords internal
+#' @noRd
 .update.rates <- function(mod, envir, reset=FALSE) {
   
   if (reset) {
@@ -246,10 +248,13 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
 
 #' Convenience functions
 #' @keywords internal
+#' @noRd
 .plus.one <- function(comp, envir) {
   eval(parse(text=paste(comp, "<-", comp, "+1")), envir=envir)
 }
+
 #' @keywords internal
+#' @noRd
 .minus.one <- function(comp, envir) {
   eval(parse(text=paste(comp, "<-", comp, "-1")), envir=envir)
 }

@@ -4,34 +4,17 @@
 \alias{sim.inner.tree}
 \title{sim.inner.tree}
 \usage{
-sim.inner.tree(run)
+sim.inner.tree(outer, mod)
 }
 \arguments{
-\item{run:}{R6 object of class Run.  The Run object tracks the locations of 
-Lineage objects among Compartments that are modified by transmission 
-and migration; and tracks the presence/absence of Lineages that change 
-with sampling, coalescence and bottleneck events.}
+\item{outer:}{R6 object of class `OuterTree`}
+
+\item{mod:}{R6 object of class `Model`}
 }
 \value{
-R6 object of class EventLogger
+R6 object of class `InnerTree`
 }
 \description{
-Simulate the coalescence of Lineages within Compartments, and resolve
-migration events that may involve sampled Lineages.
-}
-\examples{
-# load model
-path <- system.file('extdata', 'SI.yaml', package='twt')
-
-# load file and parse to construct MODEL object
-settings <- yaml.load_file(path)
-mod <- Model$new(settings)
-
-# simulate outer tree - returns a Run object carrying EventLogger
-run <- sim.outer.tree(mod)
-
-# simulate inner tree
-tree <- sim.inner.tree(run)
-plot(tree)  # converts to a Phylo object
-
+Simulate the coalescence of Pathogen lineages within Hosts, and resolve 
+superinfection events that may involve sampled lineages.
 }

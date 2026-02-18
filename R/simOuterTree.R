@@ -104,6 +104,7 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
 #' @param active:  R6 object of class HostSet
 #' @param outer:  R6 object of class OuterTree
 #' @keywords internal
+#' @noRd
 .do.migration <- function(e, outer) {
   targets <- unlist(outer$get.targets())
   from.comp <- e[['from.comp']]
@@ -172,6 +173,7 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
 #' @param e.prev:  preceding row from event log
 #' @param outer:  R6 object of class OuterTree
 #' @keywords internal
+#' @noRd
 .do.transmission <- function(e, e.prev, outer) {
   
   # how many recipients are in the destination compartment after transmission?

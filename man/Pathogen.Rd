@@ -9,7 +9,7 @@
 \item{sampling.time:}{numeric, time that the Pathogen was sampled; left to 
 NA for unsampled Pathogens}
 
-\item{host:}{a reference to a Host object}
+\item{host:}{character, name of Host object associated with this Pathogen}
 }
 \description{
 \code{Pathogen} is an R6 class for objects that represent pathogen lineages
