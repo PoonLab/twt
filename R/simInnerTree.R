@@ -29,7 +29,7 @@ sim.inner.tree <- function(outer, mod) {
     
     # check if coalescence occurs before next event
     if (inner$n.active() > 0) {
-      wait.time <- .rcoal(active, mod)
+      wait.time <- .rcoal(active, mod, env)
       if (!is.na(wait.time) & wait.time < time.delta[row]) {
         .do.coalescent(e, inner)
         time.delta[row] <- time.delta[row] - wait.time
@@ -58,7 +58,7 @@ sim.inner.tree <- function(outer, mod) {
 #'         - host name
 #' @keywords internal
 #' @noRd
-.rcoal <- function(active, mod) {
+.rcoal <- function(active, mod, envir=baseenv()) {
   wait.times <- sapply(active$get.hosts(), function(h) {
     k <- h$count.pathogens()
     if (k < 2) { return(NA) } else {
@@ -67,15 +67,19 @@ sim.inner.tree <- function(outer, mod) {
       expr <- mod$get.coalescent.rate(comp)
       
       # TODO: compute time since infection for time-varying rates
-      rate <- eval(parse(text=expr), envir=env)
+      rate <- eval(parse(text=expr), envir=envir)
       if (rate == 0) { return(NA) } else {
         return(rexp(1, choose(k, 2)*rate))
       }
     }
   })
+  wait.times <- setNames(wait.times, active$get.names())
   
   if ( all(is.na(wait.times)) ) { return(NA) } else {
-    return(list(dt=min(wait.times, na.rm=TRUE)))
+    return(list(
+      dt=min(wait.times, na.rm=TRUE),
+      host=names(wait.times)[which.min(wait.times)]
+      ))
   }
 }
 
@@ -92,7 +96,7 @@ sim.inner.tree <- function(outer, mod) {
   active$add.host(host)
   
   # create a Pathogen and link to sampled Host
-  path <- inner$new.pathogen(e$time, host$get.name())
+  path <- inner$new.pathogen(e$time)
   host$add.pathogen(path)
   
   event <- list(
@@ -102,6 +106,27 @@ sim.inner.tree <- function(outer, mod) {
   inner$add.event(event)
 }
 
+
+#' .do.infection
+#' Transfer Pathogen from 
+#' @param e:  row from outer event log
+#' @param inner:  R6 object of class `InnerTree`
+#' @keywords internal
+#' @noRd
+.do.infection <- function(e, inner) {
+  active <- inner$get.active()
+  
+  # remove Pathogen from recipient Host
+  recipient <- active$get.host.by.name(e$to.host)
+  path <- recipient$sample.pathogen(remove=TRUE)
+  if (recipient$count.pathogens() == 0) {
+    active$remove.host(recipient)  # deactivate if Host is empty
+  }
+  
+  # transfer Pathogen to source Host
+  source <- active$get.host.by.name(e$from.host)
+  source$add.pathogen(path)
+}
 
 #' @param e:  row from outer event log
 #' @param inner:  R6 object of class `InnerTree`

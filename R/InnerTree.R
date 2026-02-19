@@ -72,11 +72,10 @@ InnerTree <- R6Class(
       is.element(cname, names(private$mod$get.sampling()$targets))
     },
     
-    new.pathogen = function(time, host) {
+    new.pathogen = function(time) {
       path <- Pathogen$new(
         name=paste(private$prefix, private$p.index, sep="_"),
-        sampling.time=time,
-        host=host
+        end.time=time,
       )
       private$p.index <- private$p.index + 1  # increment counter
       return(path)

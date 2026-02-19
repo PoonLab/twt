@@ -4,33 +4,46 @@
 #' that are carried by Hosts and which comprise the "inner" tree of the 
 #' simulation.
 #' 
-#' @param name: character, unique identifier for Pathogen object
-#' @param sampling.time: numeric, time that the Pathogen was sampled; left to 
-#'                       NA for unsampled Pathogens
-#' @param host:  character, name of Host object associated with this Pathogen
-#' 
+#' @param name:  character, unique identifier for Pathogen object
+#' @param start.time:  numeric, start time of lineage; a coalescent event 
+#'        terminates the parent and starts two child lineages.
+#' @param end.time:   numeric, end time of lineage; associated with a 
+#'        coalescent event (if parent) or sampling event.
+#' @param parent:  character, name of parent Pathogen object
+#' @param children:  list, names of child Pathogen objects
 #' @export
 Pathogen <- R6Class(
   "Pathogen",
   public = list(
-    initialize = function(name=NA, sampling.time=NA, host=NA) {
+    initialize = function(name=NA, start.time=NA, end.time=NA, parent=NA,
+                          children=list()) {
       private$name <- name
-      private$sampling.time <- sampling.time
-      private$host <- host
+      private$start.time <- start.time
+      private$end.time <- end.time
+      private$parent <- parent
+      private$children <- children
     },
     
     # immutable attributes
     get.name = function() { private$name },
-    get.sampling.time = function() { private$sampling.time },
+    get.end.time = function() { private$end.time },
     
-    get.host = function() { private$host },
-    set.host = function(host) {
-      private$host <- host
+    # mutables
+    get.start.time = function() { private$start.time },
+    set.start.time = function(time) { private$start.time <- time },
+    get.parent = function() { private$parent },
+    set.parent = function(parent) { private$parent <- parent },
+    get.children = function() { private$children },
+    add.child = function(child) { 
+      private$children[[length(private$children)+1]] <- child 
     }
+    
   ),
   private = list(
     name = NULL,
-    sampling.time = NULL,
-    host = NULL
+    start.time = NULL,
+    end.time = NULL,
+    parent = NULL,
+    children = NULL
   )
 )

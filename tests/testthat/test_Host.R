@@ -36,7 +36,7 @@ test_that("Add/remove hosts from set", {
   expected <- c("I_1", "US_I_2")
   expect_equal(result, expected)
   
-  result <- hset$remove.host(1)
+  result <- hset$remove.host.by.idx(1)
   expect_equal(result, h1)
   
   result <- hset$get.names()

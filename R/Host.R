@@ -67,24 +67,40 @@ Host <- R6Class(
     },
     
     get.sampling.time = function() { private$sampling.time },
-    
     get.sampling.comp = function() { private$sampling.comp },
     set.sampling.comp = function(comp) { private$sampling.comp <- comp },
+    is.sampled = function() {
+      #!all(is.na(private$sampling.time))
+      !private$unsampled
+    },
     
+    # Pathogen-related functions
     get.pathogens = function() { private$pathogens },
     count.pathogens = function () { length(private$pathogens) },
+    
     add.pathogen = function(new.pathogen) {
       private$pathogens[[length(private$pathogens)+1]] <- new.pathogen
       #self$set.sampling.time()
     },
-    remove.pathogen = function(ex.pathogen) {
-      private$pathogens[[ex.pathogen$get.name()]] <- NULL
-      #self$set.sampling.time()
+    
+    remove.pathogen = function(idx) {
+      path <- private$pathogens[[idx]]
+      private$pathogens[[idx]] <- NULL
+      return(path)
     },
     
-    is.sampled = function() {
-      #!all(is.na(private$sampling.time))
-      !private$unsampled
+    sample.pathogen = function(remove=FALSE) {
+      count <- self$count.pathogens()
+      if (count > 0) {
+        idx <- sample(1:count, 1)
+        if (remove) {
+          return(self$remove.pathogen(idx))
+        } else {
+          return(private$pathogens[[idx]])
+        }
+      } else {
+        return(NULL)
+      }
     }
   ),
   
@@ -131,7 +147,7 @@ HostSet <- R6Class(
       if (host.name %in% members) {
         idx <- which(members == host.name)
         if (remove) {
-          self$remove.host(idx)
+          self$remove.host.by.idx(idx)
         } else {
           private$hosts[[idx]]
         }
@@ -202,15 +218,27 @@ HostSet <- R6Class(
       private$hosts[[length(private$hosts)+1]] <- host
     },
     
-    remove.host = function(idx) {
+    remove.host.by.idx = function(idx) {
       if (idx < 1) { 
-        stop("HostSet$remove.host cannot use negative index")
+        stop("HostSet$remove.host.by.idx cannot use negative index")
       } else if (idx > self$count.type()) {
-        stop("HostSet$remove.host index ", idx, " exceeds number of hosts")
+        stop("HostSet$remove.host.by.idx index ", idx, " exceeds number of hosts")
       }
       host <- private$hosts[[idx]]
       private$hosts <- private$hosts[-idx]
       return(host)
+    },
+    
+    remove.host = function(host) {
+      host.name <- host$get.name()
+      members <- self$get.names()
+      if (host.name %in% members) {
+        idx <- which(members == host.name)
+        self$remove.host.by.idx(idx)
+      } else {
+        warning("Failed to locate host ", host.name)
+        return(NULL)
+      }
     },
     
     sample.host = function(type=NA, remove=FALSE) {
@@ -218,7 +246,7 @@ HostSet <- R6Class(
         # any host will do
         idx <- sample(1:self$count.type(), 1)
         if (remove) {
-          self$remove.host(idx)  # without replacement
+          self$remove.host.by.idx(idx)  # without replacement
         } else {
           private$hosts[[idx]]  # with replacement
         }
@@ -227,7 +255,7 @@ HostSet <- R6Class(
         if (self$count.type(type) > 0) {
           idx <- sample(which(self$get.types()==type), 1)
           if (remove) {
-            self$remove.host(idx)  # without replacement
+            self$remove.host.by.idx(idx)  # without replacement
           } else {
             # with replacement
             private$hosts[[idx]]
