@@ -7,7 +7,6 @@
 #'   sampling: `pathogen1` in `from.host`
 #'   transmission: `from.host`->`to.host` of `pathogen1`
 #'   coalescence: `pathogen1` and `pathogen2` within `from.host`
-#'   bottleneck: `pathogen1` and `pathogen2` within `from.host`
 #' 
 #' @param mod:  R6 object of class Model
 #' @param prefix:  character, used for labeling Pathogen objects (default 'P')
@@ -20,6 +19,8 @@ InnerTree <- R6Class(
       private$inner.log <- data.frame(
         time=numeric(),  # time of event
         event=character(),  # type of event, e.g., coalescence
+        from.comp=character(),
+        to.comp=character(),
         from.host=character(),  # source Host name (transmission only)
         to.host=character(),  # recipient Host name (transmission only)
         pathogen1=character(),

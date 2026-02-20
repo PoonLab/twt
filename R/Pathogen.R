@@ -9,8 +9,9 @@
 #'        terminates the parent and starts two child lineages.
 #' @param end.time:   numeric, end time of lineage; associated with a 
 #'        coalescent event (if parent) or sampling event.
-#' @param parent:  character, name of parent Pathogen object
-#' @param children:  list, names of child Pathogen objects
+#' @param parent:  character, parent Pathogen object
+#' @param children:  list, child Pathogen objects (NOTE: avoid cloning 
+#'        Pathogen objects or there will be a circular reference problem!)
 #' @export
 Pathogen <- R6Class(
   "Pathogen",

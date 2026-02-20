@@ -19,8 +19,8 @@
 #'        hosts where they are sampled.
 #' @param sampling.comp:  character, name of sampling compartment.  Used for 
 #'        checking whether target sample sizes are obtained.
-#' @param pathogens:  list, store objects of class Pathogen associated with 
-#'        this Host
+#' @param pathogens:  list, store references to R6 objects of class `Pathogen` 
+#'        associated with this Host
 #' @export
 Host <- R6Class(
   "Host",
@@ -80,7 +80,6 @@ Host <- R6Class(
     
     add.pathogen = function(new.pathogen) {
       private$pathogens[[length(private$pathogens)+1]] <- new.pathogen
-      #self$set.sampling.time()
     },
     
     remove.pathogen = function(idx) {

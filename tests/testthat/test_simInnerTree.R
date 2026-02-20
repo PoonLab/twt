@@ -1,14 +1,15 @@
 require(twt)
 
-test_that("Add sampling event to inner tree", {
-  settings <- yaml.load_file("test_SIR.yaml")
-  # unspecified in YAML to test default values
-  settings$Compartments$I$coalescent.rate <- 1.0
+# generate test fixtures
+settings <- yaml.load_file("test_SIR.yaml")
+settings$Compartments$I$coalescent.rate <- 1.0
+mod <- Model$new(settings)
+set.seed(276)
+eventlog <- sim.dynamics(mod)
+outer <- sim.outer.tree(mod, eventlog)
 
-  mod <- Model$new(settings)
-  set.seed(1276)
-  eventlog <- sim.dynamics(mod)
-  outer <- sim.outer.tree(mod, eventlog)
+
+test_that("Add sampling event to inner tree", {
   inner <- InnerTree$new(outer, mod)
   
   result <- inner$get.active()$count.type()
@@ -32,15 +33,9 @@ test_that("Add sampling event to inner tree", {
 
 
 test_that("Sample coalescent event", {
-  settings <- yaml.load_file("test_SIR.yaml")
-  settings$Compartments$I$coalescent.rate <- 1.0
-  mod <- Model$new(settings)
-  set.seed(276)
-  eventlog <- sim.dynamics(mod)
-  outer <- sim.outer.tree(mod, eventlog)
   inner <- InnerTree$new(outer, mod)
   
-  # manually set outer event log
+  # manually set outer event log - note this may not agree with Host variables
   events <- data.frame(
     time=c(5, 4, 3),
     event=c('migration', 'migration', 'transmission'),

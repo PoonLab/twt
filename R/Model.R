@@ -100,6 +100,16 @@ Model <- R6Class(
       }
     },
     
+    get.pop.size = function(cname=NA) { 
+      if (is.na(cname)) { return (private$pop.sizes) } else {
+        if (cname %in% self$get.compartments()) {
+          return (private$pop.sizes[[cname]])
+        }
+        warning("Unrecognized compartment name ", cname)
+        return (NULL)
+      }
+    },
+    
     get.graph = function() { private$graph }
   ),
   
@@ -118,6 +128,7 @@ Model <- R6Class(
     
     bottleneck.sizes = NULL,  # note these are expressions, not numeric
     coalescent.rates = NULL,
+    pop.sizes = NULL,
     
     graph = NULL,
     
@@ -194,6 +205,7 @@ Model <- R6Class(
       private$is.infected <- setNames(rep(NA, k), cnames)
       private$bottleneck.sizes <- setNames(rep("1", k), cnames)
       private$coalescent.rates <- setNames(rep("Inf", k), cnames)
+      private$pop.sizes <- setNames(rep("100", k), cnames)
       
       private$birth.rates <- setNames(rep("0", k), cnames)
       private$death.rates <- setNames(rep("0", k), cnames)
@@ -298,6 +310,16 @@ Model <- R6Class(
           }
           private$check.expression(params$coalescent.rate, env)
           private$coalescent.rates[[src]] <- params$coalescent.rate
+        }
+        
+        # check population sizes
+        if (!is.null(params$pop.size)) {
+          if (is.list(params$pop.size)) {
+            stop(src, "`pop.size` should be a number or R expression,",
+                 "not an associative array.")
+          }
+          private$check.expression(params$pop.size, env)
+          private$pop.sizes[[src]] <- params$pop.size
         }
       }  # end loop
       
