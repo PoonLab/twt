@@ -9,133 +9,207 @@ within host transmission trees.
 
 ## Usage
 
-This illustrates a basic use case of the `twt` package, where we
-simulate the transmission (outer) tree and coalescent (inner) tree for
-10 host individuals.
+This illustrates a basic workflow under a serial SIR model:
+
+1.  Simulate forward-time epidemic dynamics  
+2.  Reconstruct the transmission (*outer*) tree  
+3.  Clean and export the transmission tree
 
 ``` r
-require(twt, quietly=TRUE)
+require(twt, quietly = TRUE)
 #> 
 #> Attaching package: 'ggfree'
 #> The following object is masked from 'package:ape':
 #> 
 #>     unroot
-# locate the YAML file that specifies a compartmental SI model
-path <- system.file('extdata', 'SI.yaml', package='twt')
-model <- Model$new(yaml.load_file(path))
+#> 
+#> Attaching package: 'igraph'
+#> The following objects are masked from 'package:ape':
+#> 
+#>     degree, edges, mst, ring
+#> The following objects are masked from 'package:stats':
+#> 
+#>     decompose, spectrum
+#> The following object is masked from 'package:base':
+#> 
+#>     union
 
-# run an outer tree simulation
-outer <- sim.outer.tree(model)
-# display the population trajectories
-plot(outer, type='s')
+# Load example YAML model from this repository
+path <- file.path("examples", "SIR_serial.yaml")
+stopifnot(file.exists(path))
+
+settings <- yaml::read_yaml(path)
+
+# Create model
+mod <- Model$new(settings)
+mod
+#> twt ModelParameters:
+#>    simTime :  10 
+#>    beta :  1e-4 
+#>    gamma :  0.1 
+#>    psi :  0.05 
+#> Compartments: S  I  I_samp  R
+
+# Optional: visualize model structure
+plot(mod)
 ```
 
 <img src="man/figures/README-unnamed-chunk-3-1.png" width="400" style="display: block; margin: auto;" />
 
 ``` r
-# display the outer tree, dark lines = sampled hosts, grey = unsampled
-plot(outer)
+
+# 1) Simulate epidemic dynamics (forward time)
+elog <- sim.dynamics(mod)
+#> Failed sample size requirements (attempt 1/3)
+#> Failed sample size requirements (attempt 2/3)
+
+# Plot population trajectories
+counts <- get.counts(elog, mod)
+plot(counts)
 ```
 
 <img src="man/figures/README-unnamed-chunk-3-2.png" width="400" style="display: block; margin: auto;" />
 
 ``` r
 
-# run an inner tree simulation
-inner <- sim.inner.tree(outer)
-# display the inner tree annotated with transmission events (points)
-plot(inner)
+# 2) Reconstruct transmission tree (outer tree)
+outer <- sim.outer.tree(mod, elog)
+
+# Plot outer tree (raw)
+plot(outer)
 ```
 
 <img src="man/figures/README-unnamed-chunk-3-3.png" width="400" style="display: block; margin: auto;" />
 
+``` r
+
+# Convert to phylo object
+phy <- as.phylo(outer)
+
+# Clean up single-child nodes (migration bookkeeping)
+phy <- ape::collapse.singles(phy)
+
+# Plot cleaned transmission tree
+plot(phy)
+```
+
+<img src="man/figures/README-unnamed-chunk-3-4.png" width="400" style="display: block; margin: auto;" />
+
+``` r
+
+# Export Newick tree
+ape::write.tree(phy, file = "transmission_tree.nwk")
+```
+
+## Description
+
+`twt` performs discrete event simulation of nested host–pathogen trees
+using a combination of forward- and reverse-time methods.
+
+Forward-time simulation models stochastic epidemic dynamics starting
+from an [index case](https://en.wikipedia.org/wiki/Index_case). All
+stochastic events are recorded in an event log.
+
+Backward-time reconstruction extracts the ancestry of sampled infections
+to produce a transmission (*outer*) tree. This approach is
+computationally efficient because it traces only sampled lineages rather
+than the entire host population.
+
+## Inner trees (within-host coalescent)
+
+Given an outer transmission tree, `twt` can simulate *inner* trees that
+describe within-host pathogen ancestry and coalescent dynamics along
+transmission histories.
+
+Conceptually:
+
+- Each infected host carries pathogen lineages.
+- Transmission events move lineages between hosts, optionally through
+  bottlenecks.
+- Within each host, lineages coalesce backward in time at rates defined
+  in the model (`coalescent.rate`).
+- The resulting inner tree embeds within-host genealogies along the
+  outer transmission tree.
+
+The inner-tree interface is under active development, and function
+signatures or output formats may change across versions. Consult package
+documentation and vignettes for the most current usage.
+
+`twt` supports:
+
+- [Compartmental epidemic
+  models](https://en.wikipedia.org/wiki/Compartmental_models_in_epidemiology)
+  (e.g., SIR)  
+- Structured populations and migration  
+- Serial sampling  
+- Within-host coalescent simulation  
+- Gillespie-style discrete stochastic simulation
+
+Models are specified using the
+[YAML](https://en.wikipedia.org/wiki/YAML) markup language.
+
+## Example Serial SIR Model
+
+The example above uses `examples/SIR_serial.yaml`:
+
+``` yaml
+Parameters:
+  simTime:  10.0
+  beta:  1e-4
+  gamma:  0.1
+  psi:  0.05
+
+Compartments:
+  S:
+    infected: false
+    transmission:
+      I: {I: beta*S*I}
+    size: 9999
+  I:
+    infected: true
+    migration:
+      R: gamma*I
+      I_samp: psi*I
+    size: 1
+    bottleneck.size: 1
+    coalescent.rate: 0.01
+  I_samp:
+    infected: true
+    size: 0
+  R:
+    infected: false
+    size: 0
+
+Sampling:
+  mode: compartment
+  targets:
+    I_samp: 100
+```
+
 ## Installation
 
-`twt` is an R package. It was developed and tested with R version 3.6+,
-so you may encounter problems if you try running this package on much
-older versions. It depends on the following R packages:
+`twt` is developed and tested with R ≥ 3.6 and depends on:
 
-  - [R6](https://cran.r-project.org/web/packages/R6/index.html)
-  - [ape](https://cran.r-project.org/web/packages/ape/index.html)
-  - [yaml](https://cran.r-project.org/web/packages/yaml/index.html)
-  - [ggfree](https://github.com/ArtPoon/ggfree)
+- [R6](https://cran.r-project.org/web/packages/R6/index.html)  
+- [ape](https://cran.r-project.org/web/packages/ape/index.html)  
+- [yaml](https://cran.r-project.org/web/packages/yaml/index.html)  
+- [ggfree](https://github.com/ArtPoon/ggfree)
 
-`twt` can be installed from the GitHub repository using the `devtools`
-package in R:
+Install from GitHub using `devtools`:
 
 ``` r
 if (!require(devtools)) {
-  # install devtools if not already present
-  install.packages('devtools')
+  install.packages("devtools")
 }
 devtools::install_github("PoonLab/twt")
 ```
 
-For detailed instructions, please refer to [INSTALL.md](INSTALL.md).
-
-## Description
-
-`twt` is an R package for discrete event simulation of nested
-host-pathogen trees using a mixture of forward- and reverse-time
-methods. Forward-time simulation is used to simulate the stochastic
-growth and decline of host populations starting from an [index
-case](https://en.wikipedia.org/wiki/Index_case). Next, a transmission
-tree is simulated backwards in time from a number of individual hosts
-that have been sampled from the population(s) (potentially at different
-points in time). We refer to this tree as the *outer* tree. When this
-sample size is substantially smaller than the entire population,
-simulating backwards is far more efficient because we can ignore a
-large number of unrelated hosts. Finally, `twt` simulates the *inner*
-tree relating lineages that have been transmitted from host to another.
-
-`twt` is designed to be modular and customizable so that it can
-accommodate a range of models at different levels of diversity, such as:
-
-  - [compartmental epidemic
-    models](https://en.wikipedia.org/wiki/Compartmental_models_in_epidemiology),
-    *e.g.,* susceptible-infected-recovered (SIR)
-    models
-  - [cospeciation](https://en.wikipedia.org/wiki/Cospeciation)/cophylogeny
-    models
-  - models of [compartmentalized within-host
-    evolution](https://veg.github.io/hyphy-site/resources/compartmentalization_detection_ppt.pdf),
-    *e.g.,* migration between the blood and genital tract
-
-### Model specification
-To be more versatile, `twt` requires users to specify a model using the
-[YAML](https://en.wikipedia.org/wiki/YAML) markup language.
-For instructions on writing your own YAML file for a custom model, please refer to 
-our [wiki documentation](https://github.com/PoonLab/twt/wiki/Input-Specification) on this topic:
-https://github.com/PoonLab/twt/wiki/Input-Specification
-
-### Model structure
-`twt` attempts to accommodate a variety of nested models with a common set of basic
-components: [compartments](Compartment) and [lineages](Lineage). A
-[lineage](Lineage) is a sequence of individual pathogens descending from
-an ancestor in the past. A [compartment](Compartment) represents an
-individual environment in which lineages are contained.
-[Compartments](Compartment) are grouped into [Compartment
-Types](CompartmentType) to make it more convenient to specify models and
-for more efficient simulation. We assume that the compartments are
-related through by a transmission or host tree, whose shape is
-determined by the transmission rates among hosts. Lineages may also
-migrate between compartments that are both hosts to other lineages.
-
-### Discrete event simulation
-Like many other simulation programs, twt uses a conventional [Gillespie
-method](https://en.wikipedia.org/wiki/Gillespie_algorithm) to sample a
-sequence of discrete stochastic events over reverse time. If a host tree
-is not specified by the user, then the host/transmission tree is
-simulated while simulating the coalescence of the pathogen lineages
-within the hosts. Otherwise, the timing and direction of transmission
-events are parsed from the user tree and set as [fixed events](Events)
-in the simulation.
+For detailed instructions, see [INSTALL.md](INSTALL.md).
 
 ## Funding
 
-Development of *treeswithintrees* was directly supported by a grant from
-the Government of Canada through [Genome
-Canada](https://www.genomecanada.ca/) and the [Ontario Genomics
-Institute](https://www.ontariogenomics.ca/) (OGI-131) and by the
-[Canadian Institutes of Health
-Research](http://cihr-irsc.gc.ca/e/193.html) (project grant PJT-155990).
+Development of *treeswithintrees* was supported by the Government of
+Canada through [Genome Canada](https://www.genomecanada.ca/) and the
+[Ontario Genomics Institute](https://www.ontariogenomics.ca/) (OGI-131),
+and by the [Canadian Institutes of Health
+Research](http://cihr-irsc.gc.ca/e/193.html) (PJT-155990).
