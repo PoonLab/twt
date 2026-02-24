@@ -40,19 +40,15 @@ sim.inner.tree <- function(outer, mod) {
     
     # otherwise no coalescence, handle the event
     if (e$event == "migration") {
-      
       if ( inner$has.target(e$to.comp) ) {
         # this is a sampling event, add a new Pathogen
         .do.sampling(e, inner)
-        #
       } else {
         # record the migration event for any Pathogens carried by the Host
         .migrate.pathogens(e, inner)
       } 
-    } 
-    
-    if (e$event == "transmission") {
-      
+    } else if (e$event == "transmission") {
+      .do.infection(e, inner)
     }
     
     row <- row + 1  # go to next event
@@ -128,6 +124,14 @@ sim.inner.tree <- function(outer, mod) {
 #' bottleneck.  If it is a subsequent infection (superinfection), one of the 
 #' Pathogens is transferred with probability equal to the coalescence rate.
 #' 
+#' We assume that superinfection samples [b.size] Pathogens from 
+#' a population of [p.size] at random without replacement.  [count] of 
+#' these are actively tracked lineages, so 0, 1, ..., [bsize] of them 
+#' may be transferred to the super-infecting source Host.  It is possible 
+#' that all active lineages are transferred at this event, leaving none 
+#' for the first transmission to this Host, in which case the Host is 
+#' deactivated.
+#' 
 #' @param e:  row from outer event log
 #' @param inner:  R6 object of class `InnerTree`
 #' @keywords internal
@@ -157,22 +161,25 @@ sim.inner.tree <- function(outer, mod) {
     expr <- inner$get.model()$get.pop.size(e$to.comp)
     p.size <- eval(parse(text=expr), envir=envir)
     
-    # We assume that superinfection samples [b.size] Pathogens from 
-    # a population of [p.size] at random without replacement.  [count] of 
-    # these are actively tracked lineages, so 0, 1, ..., [bsize] of them 
-    # may be transferred to the super-infecting source Host.  It is possible 
-    # that all active lineages are transferred at this event, leaving none 
-    # for the first transmission to this Host!
-    n <- rhyper(1, count, p.size-count, b.size)
+    n.transfer <- rhyper(1, count, p.size-count, b.size)
+    if (n.transfer > 0) {
+      for (i in 1:n.transfer) {
+        path <- recipient$remove.pathogen(1)
+        source$add.pathogen(path)
+        event$pathogen1 <- path$get.name()
+        inner$add.event(event)
+      }      
+    }
     
   } else {
     # first infection
+    
     if (recipient$count.pathogens() > 1) {
-      # check bottleneck
+      # bottleneck remaining Pathogen lineages
       .do.coalescent(recipient$get.name(), inner, e$time, bottleneck=TRUE)
     }
     
-    # move all Pathogens from recipient to source
+    # move remaining Pathogens from recipient to source
     count <- recipient$count.pathogens()
     for (i in 1:count) {
       path <- recipient$remove.pathogen(1)
@@ -180,23 +187,12 @@ sim.inner.tree <- function(outer, mod) {
       event$pathogen1 <- path$get.name()  # copy-on-modify
       inner$add.event(event)
     }
-    
+  }
+  
+  # deactivate if Host is empty
+  if (recipient$count.pathogens() == 0) {
     active$remove.host(recipient)
   }
-  
-  # remove Pathogen from recipient Host
-  recipient <- active$get.host.by.name(e$to.host)
-  path <- recipient$sample.pathogen(remove=TRUE)
-  if (recipient$count.pathogens() == 0) {
-    active$remove.host(recipient)  # deactivate if Host is empty
-  }
-  
-  # transfer Pathogen to source Host
-  source <- active$get.host.by.name(e$from.host)
-  source$add.pathogen(path)
-  
-
-  inner$add.event(event)
 }
 
 

@@ -70,3 +70,37 @@ test_that("Sample coalescent event", {
   expect_true(is.numeric(result$dt))
   expect_true(result$dt>0)
 })
+
+
+test_that("Coalesce pathogen lineages", {
+  inner <- InnerTree$new(outer, mod)
+  
+  # override outer events to get Pathogens into the same Host
+  events <- data.frame(
+    time=c(15, 14, 13, 12, 11),
+    event=c('migration', 'migration', 'migration', 
+            'transmission', 'transmission'),
+    from.comp=c("I", "I", "I", "S", "S"),
+    to.comp=c("I_samp", "I_samp", "I_samp", "I", "I"),
+    from.host=c("I_1", "I_2", "I_3", "I_1", "I_1"),
+    to.host=c(NA, NA, NA, "I_2", "I_3")
+  )
+  .do.sampling(events[1,], inner)
+  .do.sampling(events[2,], inner)
+  .do.sampling(events[3,], inner)
+  .do.infection(events[4,], inner)
+  .do.infection(events[5,], inner)
+  
+  active <- inner$get.active()
+  expect_equal(active$count.type(), 1)
+  expect_equal(active$get.names(), "I_1")
+  host <- active$get.host.by.name("I_1")
+  expect_equal(host$count.pathogens(), 3)
+  
+  .do.coalescent("I_1", inner, 10.)
+  expect_equal(host$count.pathgens(), 2)
+  .do.coalescent("I_1", inner, 9.)
+  expect_equal(host$count.pathogens(), 1)
+  expect_warning(.do.coalescent("I_1", inner, 8.))
+  expect_equal(host$count.pathogens(), 1)
+})
