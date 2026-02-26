@@ -98,9 +98,9 @@ test_that("Coalesce pathogen lineages", {
   expect_equal(host$count.pathogens(), 3)
   
   .do.coalescent("I_1", inner, 10.)
-  expect_equal(host$count.pathgens(), 2)
+  expect_equal(host$count.pathogens(), 2)
   .do.coalescent("I_1", inner, 9.)
   expect_equal(host$count.pathogens(), 1)
   expect_warning(.do.coalescent("I_1", inner, 8.))
-  expect_equal(host$count.pathogens(), 1)
+  expect_equal(host$count.pathogens(), 1)  # no coalescence
 })

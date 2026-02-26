@@ -134,6 +134,8 @@ sim.inner.tree <- function(outer, mod) {
 #' 
 #' @param e:  row from outer event log
 #' @param inner:  R6 object of class `InnerTree`
+#' @return R6 object of class `Host` if it is empty (no more Pathogens)
+#' 
 #' @keywords internal
 #' @noRd
 .do.infection <- function(e, inner, envir=baseenv()) {
@@ -270,8 +272,8 @@ sim.inner.tree <- function(outer, mod) {
     # assign ancestral/descendant relations
     anc$add.child(p1)
     anc$add.child(p2)
-    p1$add.parent(anc)
-    p2$add.parent(anc)
+    p1$set.parent(anc)
+    p2$set.parent(anc)
     
     # update inner log
     event <- list(
@@ -279,9 +281,9 @@ sim.inner.tree <- function(outer, mod) {
       from.host=host$get.name(), to.host=NA,
       pathogen1=anc$get.name(), pathogen2=p1$get.name()
     )
-    inner$add.event()
+    inner$add.event(event)
     event$pathogen2 <- p2$get.name()
-    inner$add.event()
+    inner$add.event(event)
     
     count <- host$count.pathogens()  # update count
   }
