@@ -7,6 +7,7 @@
 #' @param mod:  R6 object of class `Model`
 #' 
 #' @return R6 object of class `InnerTree`
+#' @export
 sim.inner.tree <- function(outer, mod) {
   inner <- InnerTree$new(outer, mod)
   active <- inner$get.active()
@@ -25,17 +26,20 @@ sim.inner.tree <- function(outer, mod) {
   
   while (row <= nrow(events)) {
     e <- events[row, ]  # retrieve this event
-    e.prev <- ifelse(row < nrow(events), events[row+1, ], NA)  # FIXME
+    t.delta <- time.delta[row-1]  # time between last event and this one
+    t.prev <- ifelse(row > 1, events$time[row-1], NA)  # time of last event
     
     # check if coalescence occurs before next event
     #   it is okay to reroll because exponential process is memoryless
-    if (inner$n.active() > 0) {
+    if (row > 1 & inner$n.active() > 0) {
       wait.time <- .rcoal(active, mod, env)
-      if (!is.na(wait.time) & wait.time < time.delta[row]) {
-        .do.coalescent(e, inner)
-        time.delta[row] <- time.delta[row] - wait.time
-        next
-      }
+      if ( !any(is.na(wait.time)) ) {
+        if (wait.time$dt < t.delta) {
+          t.delta <- t.delta - wait.time$dt 
+          .do.coalescent(wait.time$host, inner, e$time + t.delta)
+          next
+        }
+      } 
     }
     
     # otherwise no coalescence, handle the event
@@ -53,6 +57,11 @@ sim.inner.tree <- function(outer, mod) {
     
     row <- row + 1  # go to next event
   }
+  
+  # finish coalescence in last host
+  
+  
+  return(inner)
 }
 
 
@@ -140,8 +149,19 @@ sim.inner.tree <- function(outer, mod) {
 #' @noRd
 .do.infection <- function(e, inner, envir=baseenv()) {
   active <- inner$get.active()
+  
+  # we are going back in time, so a recipient must already be active
   recipient <- active$get.host.by.name(e$to.host)
-  source <- active$get.host.by.name(e$from.host)
+  
+  # source may or may not be an active Host
+  source.is.active <- TRUE
+  suppressWarnings({
+    source <- active$get.host.by.name(e$from.host)
+    if (is.null(source)) {
+      source <- inactive$get.host.by.name(e$from.host, remove=TRUE)
+      source.is.active <- FALSE
+    }
+  })
   
   # prepare log entry
   event <- list(
@@ -170,7 +190,12 @@ sim.inner.tree <- function(outer, mod) {
         source$add.pathogen(path)
         event$pathogen1 <- path$get.name()
         inner$add.event(event)
-      }      
+      }
+      if (!source.is.active) { active$add.host(source) }
+      
+    } else {
+      # no Pathogens transferred to source, restore to inactive HostSet
+      inactive$add.host(source)
     }
     
   } else {
@@ -189,11 +214,14 @@ sim.inner.tree <- function(outer, mod) {
       event$pathogen1 <- path$get.name()  # copy-on-modify
       inner$add.event(event)
     }
+    
+    if (!source.is.active) { active$add.host(source) }
   }
   
   # deactivate if Host is empty
   if (recipient$count.pathogens() == 0) {
-    active$remove.host(recipient)
+    host <- active$remove.host(recipient)
+    inactive$add.host(host)
   }
 }
 

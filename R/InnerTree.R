@@ -38,6 +38,7 @@ InnerTree <- R6Class(
       }
       index.case <- root$sample.host()
       
+      # inactive Hosts are part of the transmission history
       private$inactive <- HostSet$new()
       private$inactive$add.host(index.case$clone())
       private$sampled <- HostSet$new()
@@ -101,3 +102,9 @@ InnerTree <- R6Class(
     sampled = NULL
   )
 )
+
+
+as.phylo.InnerTree <- function(obj) {
+  events <- obj$get.log()
+  
+}
