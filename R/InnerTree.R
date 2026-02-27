@@ -104,8 +104,55 @@ InnerTree <- R6Class(
 )
 
 
+#' as.phylo.InnerTree
+#' @param obj:  R6 object of class `InnerTree`
+#' @return object of class `phylo`
+#' @export
 as.phylo.InnerTree <- function(obj) {
-  
   events <- obj$get.log()
+  events$time <- as.numeric(events$time)
   
+  active <- inner$get.active()
+  if (active$count.type() != 1) {
+    stop("Error, expected only one Host in active HostSet")
+  }
+  
+  index.case <- active$get.hosts()[[1]]
+  if (index.case$count.pathogens() != 1)  {
+    stop("Error: expected only one Pathogen in index.case")
+  }
+  
+  root <- index.case$get.pathogens()[[1]]
+  
+  tips <- events$pathogen1[events$event=='sampling']
+}
+
+
+#' @keywords
+.relabel.inner.events <- function(events, tips) {
+  # re-order events in forward time
+  events <- events[order(events$time), ]
+  
+  nodes <- na.omit(unique(c(events$pathogen1, events$pathogen2)))
+  for (node in nodes) {
+    idx <- which(events$pathogen1==node | events$pathogen2==node)
+    new.node <- node  # for storing the revised label
+    label <- 1
+    for (i in idx) {
+      if (events$pathogen1[i] == node) {
+        # overwrite original node name in case it's been updated
+        events$pathogen1[i] <- new.node
+      }
+      
+      if (is.na(events$pathogen2[i])) {
+        if (events$event[i] == 'sampling') {
+          new.node <- paste(node, "sample", sep="_")
+        } else {
+          new.node <- paste(node, label, sep="_")
+          label <- label + 1
+        }
+        events$pathogen2[i] <- new.node
+      }
+    }
+  }
 }
