@@ -20,21 +20,19 @@ sim.inner.tree <- function(outer, mod) {
   events$time <- as.numeric(events$time)
   events <- events[order(events$time, decreasing=TRUE), ]
   
-  row <- 1
   time.delta <- -diff(events$time)  # time to next event
+  row <- 1
   p.index <- 1  # uniquely label Pathogens
   
   while (row <= nrow(events)) {
-    e <- events[row, ]  # retrieve this event
-    t.delta <- time.delta[row-1]  # time between last event and this one
-    t.prev <- ifelse(row > 1, events$time[row-1], NA)  # time of last event
+    e <- events[row, ]
+    t.delta <-  ifelse(row==1, NA, time.delta[row-1])
     
     # check if coalescence occurs before next event
-    #   it is okay to reroll because exponential process is memoryless
     if (row > 1 & inner$n.active() > 0) {
       wait.time <- .rcoal(active, mod, env)
-      if ( !any(is.na(wait.time)) ) {
-        if (wait.time$dt < t.delta) {
+      if ( !all(is.na(wait.time)) ) {
+        if ( wait.time$dt < t.delta ) {
           t.delta <- t.delta - wait.time$dt 
           .do.coalescent(wait.time$host, inner, e$time + t.delta)
           next
@@ -58,8 +56,21 @@ sim.inner.tree <- function(outer, mod) {
     row <- row + 1  # go to next event
   }
   
-  # finish coalescence in last host
-  
+  count <- active$count.type()
+  if (count > 1) {
+    warning("Multiple (", count, ") hosts remain in active HostSet at end of ",
+            "simulation.")
+  } else if (count == 0) {
+    warning("Empty active HostSet at end of simulation!")
+    
+  } else {
+    # finish coalescence in last host
+    root <- active$get.hosts()[[1]]
+    while (root$count.pathogens() > 1) {
+      wait.time <- .rcoal(active, mod, envir=env)
+      .do.coalescent(root$get.name(), inner, e$time - wait.time$dt)
+    }
+  }
   
   return(inner)
 }

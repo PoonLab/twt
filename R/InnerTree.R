@@ -105,6 +105,7 @@ InnerTree <- R6Class(
 
 
 as.phylo.InnerTree <- function(obj) {
+  
   events <- obj$get.log()
   
 }
