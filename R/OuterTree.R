@@ -181,8 +181,9 @@ plot.OuterTree <- function(obj, pad=1.05) {
   }
 }
 
-#' Generic S3 method for converting an OuterTree to a phylo object
+#' as.phylo.OuterTree
 #' 
+#' A generic S3 method for converting an OuterTree to a phylo object.
 #' `ape::phylo` is an S3 class object that represents a phylogenetic tree. We 
 #' use this object class to represent the transmission tree.  Because this 
 #' object is, by definition, an acyclic graph, it cannot represent cases of 
@@ -194,11 +195,9 @@ plot.OuterTree <- function(obj, pad=1.05) {
 #' phylogeny ignores all within-host evolution, e.g., lineage sorting.
 #' 
 #' @param obj:  R6 object of class `OuterTree`
-#' @param singles:  bool, keep single nodes that represent transmission or 
-#'                  migration events with only one descendant branch.
 #' @return S3 object of class `phylo`
 #' @export
-as.phylo.OuterTree <- function(obj, singles=TRUE) {
+as.phylo.OuterTree <- function(obj) {
   sampled <- obj$get.sampled()  # HostSet
   tips <- sampled$get.names()  # most recent sample first
   samp.times <- setNames(as.numeric(sampled$get.sampling.times()), tips)

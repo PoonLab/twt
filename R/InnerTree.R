@@ -105,6 +105,11 @@ InnerTree <- R6Class(
 
 
 #' as.phylo.InnerTree
+#' 
+#' A generic S3 method for converting an InnerTree object to an S3 object of 
+#' class `ape::phylo` that represents a phylogenetic tree.  This inner 
+#' phylogeny is nested within an "outer" transmission tree.  
+#' 
 #' @param obj:  R6 object of class `InnerTree`
 #' @return object of class `phylo`
 #' @export
@@ -126,30 +131,58 @@ as.phylo.InnerTree <- function(obj) {
   events <-  .relabel.inner.events(events)
   
   preorder <- .reorder.inner.events(events, root, order='preorder')
+  idx <- match(preorder, events$pathogen2)
+  events <- events[idx[-1], ]  # reorder events
   
+  root.time <- min(events$time[events$pathogen1==root])
   
-  tip.label <- events$pathogen2[events$event=='sampling']
-  nodes <- unique(c(events$pathogen1, events$pathogen2))
-  node.label <- nodes[!grepl("_sample$", nodes)]
+  n.edges <- nrow(events)-1
+  edge.list <- data.frame(parent=character(n.edges), 
+                          child=character(n.edges),
+                          length=numeric(n.edges),
+                          label1=character(n.edges),
+                          label2=character(n.edges))
+  for (i in 2:nrow(events)) {
+    e <- events[i,]
+    
+    if (events$pathogen2[i-1] == e$pathogen1) {
+      e.prev <- events[i-1, ]  # next step in chain of events
+    } else {
+      # preceding event involving same pathogen
+      temp <- events[1:(i-1), ]
+      temp <- temp[temp$pathogen1 == e$pathogen1, ]
+      e.prev <- temp[which.max(temp$time), ]
+    }
+    
+    edge.list[i-1, ] <- c(
+      parent=paste(e.prev$pathogen1, e.prev$pathogen2, sep="__"),
+      child=paste(e$pathogen1, e$pathogen2, sep="__"),
+      length=e$time - e.prev$time,
+      label1=e.prev$pathogen2,
+      label2=e$pathogen2
+    )
+  }
+  
+  preorder <- preorder[-1]  # discard first label
+  node.label <- preorder[!grepl("_sample$", preorder)]
+  tip.label <- preorder[grepl("_sample$", preorder)]
   nodes <- c(tip.label, node.label)
   
   edge <- matrix(0, nrow=nrow(events), ncol=2)
   edge[,1] <- match(events$pathogen1, nodes)
   edge[,2] <- match(events$pathogen2, nodes)
   
-  edge.length <- rep(NA, nrow(events))
-  for (i in 1:nrow(events)) {
-    e <- events[i,]
-    t0 <- e$time
-    t1 <- events$time[which(events$pathogen1 == e$pathogen2)]
-    edge.length[i] <- t1-t0
-  }
+  edge  <- matrix(0, nrow=nrow(edge.list), ncol=2)
+  edge[,1] <- match(edge.list$label1, nodes)
+  edge[,2] <- match(edge.list$label2, nodes)
   
   phy <- list(
     tip.label=tip.label, node.label=node.label,
     Nnode=length(node.label), edge=edge, 
-    edge.length=as.numeric(events)
+    edge.length=as.numeric(edge.list$length)
   )
+  attr(phy, 'class') <- 'phylo'
+  phy
 }
 
 
@@ -160,7 +193,9 @@ as.phylo.InnerTree <- function(obj) {
 #' @param events:  data frame including fields `time`, `event`, `pathogen1` and 
 #'                 `pathogen2`
 #' @return data frame
-#' @keywords
+#' 
+#' @keywords internal
+#' @noRd
 .relabel.inner.events <- function(events) {
   # re-order events in forward time
   events$event <- factor(
@@ -194,6 +229,17 @@ as.phylo.InnerTree <- function(obj) {
 }
 
 
+#' .reorder.inner.events
+#' Recursive function for traversing inner tree event log.
+#' 
+#' @param events:  data.frame
+#' @param node:  character, Pathogen name
+#' @param order:  character, 'preorder' or 'postorder'
+#' @param result:  character, vector to append results by recursive calls
+#' @result character, Pathogen names ordered by tree traversal
+#' 
+#' @keywords internal
+#' @noRd
 .reorder.inner.events <- function(events, node, order='postorder', result=c()) {
   if (order == 'preorder') {
     result <- c(result, node)
