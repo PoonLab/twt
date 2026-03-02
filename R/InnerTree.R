@@ -122,16 +122,51 @@ as.phylo.InnerTree <- function(obj) {
     stop("Error: expected only one Pathogen in index.case")
   }
   
-  root <- index.case$get.pathogens()[[1]]
+  root <- index.case$get.pathogens()[[1]]$get.name()
+  events <-  .relabel.inner.events(events)
   
-  tips <- events$pathogen1[events$event=='sampling']
+  preorder <- .reorder.inner.events(events, root, order='preorder')
+  
+  
+  tip.label <- events$pathogen2[events$event=='sampling']
+  nodes <- unique(c(events$pathogen1, events$pathogen2))
+  node.label <- nodes[!grepl("_sample$", nodes)]
+  nodes <- c(tip.label, node.label)
+  
+  edge <- matrix(0, nrow=nrow(events), ncol=2)
+  edge[,1] <- match(events$pathogen1, nodes)
+  edge[,2] <- match(events$pathogen2, nodes)
+  
+  edge.length <- rep(NA, nrow(events))
+  for (i in 1:nrow(events)) {
+    e <- events[i,]
+    t0 <- e$time
+    t1 <- events$time[which(events$pathogen1 == e$pathogen2)]
+    edge.length[i] <- t1-t0
+  }
+  
+  phy <- list(
+    tip.label=tip.label, node.label=node.label,
+    Nnode=length(node.label), edge=edge, 
+    edge.length=as.numeric(events)
+  )
 }
 
 
+#' Modify Pathogen names in the inner tree event log to make them unique.
+#' This makes it easier to label single nodes (transmission, migration events)
+#' in the tree. 
+#' 
+#' @param events:  data frame including fields `time`, `event`, `pathogen1` and 
+#'                 `pathogen2`
+#' @return data frame
 #' @keywords
-.relabel.inner.events <- function(events, tips) {
+.relabel.inner.events <- function(events) {
   # re-order events in forward time
-  events <- events[order(events$time), ]
+  events$event <- factor(
+    events$event, 
+    levels=c("transmission", "coalescent", "migration", "sampling"))
+  events <- events[order(events$time, events$event), ]
   
   nodes <- na.omit(unique(c(events$pathogen1, events$pathogen2)))
   for (node in nodes) {
@@ -155,4 +190,20 @@ as.phylo.InnerTree <- function(obj) {
       }
     }
   }
+  return(events)
+}
+
+
+.reorder.inner.events <- function(events, node, order='postorder', result=c()) {
+  if (order == 'preorder') {
+    result <- c(result, node)
+  }
+  children <- na.omit(unique(events$pathogen2[events$pathogen1==node]))
+  for (child in children) {
+    result <- .reorder.inner.events(events, child, order, result)
+  }
+  if (order=='postorder') {
+    result <- c(result, node)
+  }
+  return(result)
 }
