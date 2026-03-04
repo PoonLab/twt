@@ -130,6 +130,9 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
                     from.host=host$get.name(), to.host=NA)
       outer$add.event(event)
     }
+    # FIXME: what if there are more sampling events than the target size?
+    #        Right now we are always using the most recent sampling events.
+    #        Is this a bias?
     
   } else {  
     # this was NOT a sampling event

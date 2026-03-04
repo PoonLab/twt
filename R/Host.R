@@ -44,7 +44,7 @@ Host <- R6Class(
     set.name = function(name) { private$name = name },
     
     get.compartment = function() { private$compartment },
-    set.compartment = function(comp) { private$compartment=comp },
+    set.compartment = function(comp) { private$compartment <- comp },
     
     get.source = function() { private$source },
     set.source = function(new.source) {
@@ -252,7 +252,8 @@ HostSet <- R6Class(
       } else {
         # sample host of specific type
         if (self$count.type(type) > 0) {
-          idx <- sample(which(self$get.types()==type), 1)
+          x <- which(self$get.types()==type)
+          idx <- ifelse(length(x) > 1, sample(x, 1), x)
           if (remove) {
             self$remove.host.by.idx(idx)  # without replacement
           } else {
