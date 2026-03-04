@@ -6,10 +6,16 @@
 \arguments{
 \item{name:}{character, unique identifier for Pathogen object}
 
-\item{sampling.time:}{numeric, time that the Pathogen was sampled; left to 
-NA for unsampled Pathogens}
+\item{start.time:}{numeric, start time of lineage; a coalescent event 
+terminates the parent and starts two child lineages.}
 
-\item{host:}{character, name of Host object associated with this Pathogen}
+\item{end.time:}{numeric, end time of lineage; associated with a 
+coalescent event (if parent) or sampling event.}
+
+\item{parent:}{character, parent Pathogen object}
+
+\item{children:}{list, child Pathogen objects (NOTE: avoid cloning 
+Pathogen objects or there will be a circular reference problem!)}
 }
 \description{
 \code{Pathogen} is an R6 class for objects that represent pathogen lineages

@@ -19,5 +19,4 @@ The following types of events are recorded in the `inner.log`:
   sampling: `pathogen1` in `from.host`
   transmission: `from.host`->`to.host` of `pathogen1`
   coalescence: `pathogen1` and `pathogen2` within `from.host`
-  bottleneck: `pathogen1` and `pathogen2` within `from.host`
 }

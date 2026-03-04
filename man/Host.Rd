@@ -25,8 +25,8 @@ hosts where they are sampled.}
 \item{sampling.comp:}{character, name of sampling compartment.  Used for 
 checking whether target sample sizes are obtained.}
 
-\item{pathogens:}{list, store objects of class Pathogen associated with 
-this Host}
+\item{pathogens:}{list, store references to R6 objects of class `Pathogen` 
+associated with this Host}
 }
 \description{
 \code{Host} is an R6 class representing a host individual carrying 

@@ -2,20 +2,18 @@
 % Please edit documentation in R/OuterTree.R
 \name{as.phylo.OuterTree}
 \alias{as.phylo.OuterTree}
-\title{Generic S3 method for converting an OuterTree to a phylo object}
+\title{as.phylo.OuterTree}
 \usage{
-\method{as.phylo}{OuterTree}(obj, singles = TRUE)
+\method{as.phylo}{OuterTree}(obj)
 }
 \arguments{
 \item{obj:}{R6 object of class `OuterTree`}
-
-\item{singles:}{bool, keep single nodes that represent transmission or 
-migration events with only one descendant branch.}
 }
 \value{
 S3 object of class `phylo`
 }
 \description{
+A generic S3 method for converting an OuterTree to a phylo object.
 `ape::phylo` is an S3 class object that represents a phylogenetic tree. We 
 use this object class to represent the transmission tree.  Because this 
 object is, by definition, an acyclic graph, it cannot represent cases of 

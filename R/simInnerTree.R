@@ -160,6 +160,7 @@ sim.inner.tree <- function(outer, mod) {
 #' @noRd
 .do.infection <- function(e, inner, envir=baseenv()) {
   active <- inner$get.active()
+  inactive <- inner$get.inactive()
   
   # we are going back in time, so a recipient must already be active
   recipient <- active$get.host.by.name(e$to.host)
