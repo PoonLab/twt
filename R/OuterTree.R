@@ -266,20 +266,21 @@ as.phylo.OuterTree <- function(obj) {
     node.label = node.label,
     Nnode = length(node.label),
     edge = edge,
-    edge.length = as.numeric(edge.list$length)
+    edge.length = as.numeric(edge.list$length),
+    events = events[-1, ]
   )
   attr(phy, 'class') <- 'phylo'
   phy  # return object
 }
 
 
+#' .filter.firsts
 #' Remove any superinfections, keeping only the first transmission event 
 #' to each host.
 #' @param events:  data frame with fields `time`, `event` and `to.host`
 #' @keywords internal
 #' @noRd
 .filter.firsts <- function(events) {
-  # extract the earliest transmission to each host
   idx <- which(events$event=='transmission')
   first.idx <- sapply(split(idx, events$to.host[idx]), function(i) {
     i[which.min(events$time[i])]
@@ -293,6 +294,7 @@ as.phylo.OuterTree <- function(obj) {
 }
 
 
+#' .relabel.nodes
 #' Modify host names in the event log to make them unique.  This assumes 
 #' that we have removed superinfection events from the log, i.e., with 
 #' `.filter.firsts`, so there is a linear sequence of events for each host.
