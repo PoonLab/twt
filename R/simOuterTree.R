@@ -38,11 +38,17 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
   }
   targets <- sampling$targets
   for (cn in names(targets)) {
-    size <- sum(eventlog$event=="migration" & eventlog$to.comp==cn)
+    idx <- which(eventlog$event=="migration" & eventlog$to.comp==cn)
+    size <- length(idx)
     target <- targets[[cn]]
     if (size < target) {
       stop("Insufficient number in sampling compartment ", 
            cn, " (", size , "<", target, ")")
+    }
+    if (size > target) {
+      # downsample sampling events
+      remove <- sample(idx, size-target)
+      eventlog <- eventlog[-remove, ]  # induces copy-on-modify
     }
   }
   
@@ -57,7 +63,7 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
       sampled$count.sampling.type(tn) >= targets[[tn]]
     })) &  # sampled all hosts
         active$count.type() == 1) {  # reached root of transmission tree
-      break  
+      break
     }
     
     e <- eventlog[row, ]  # retrieve the current event
