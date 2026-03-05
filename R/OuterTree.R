@@ -222,8 +222,6 @@ as.phylo.OuterTree <- function(obj) {
   events <- events[idx[-1], ]
   
   root.time <- min(events$time[events$from.host==root.name])
-  #events$branch.len <- ifelse(events$from.host==)
-  ## FIXME: WORK IN PROGRESS - unfold transmission history into tree
   
   # each event creates a node - need to convert node list to edge list
   n.edges <- nrow(events)-1
@@ -261,13 +259,17 @@ as.phylo.OuterTree <- function(obj) {
   edge[,1] <- match(edge.list$label1, nodes)
   edge[,2] <- match(edge.list$label2, nodes)
   
+  # prepare events data.frame for export
+  events <- events[-1, ]
+  events$time <- events$time - root.time
+  
   phy <- list(
     tip.label = tip.label,
     node.label = node.label,
     Nnode = length(node.label),
     edge = edge,
     edge.length = as.numeric(edge.list$length),
-    events = events[-1, ]
+    events = events
   )
   attr(phy, 'class') <- 'phylo'
   phy  # return object
