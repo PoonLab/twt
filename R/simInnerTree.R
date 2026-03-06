@@ -129,7 +129,7 @@ sim.inner.tree <- function(outer, mod) {
   
   event <- list(
     time=e$time, event='sampling', 
-    from.comp=host$get.compartment(), to.comp=host$get.sampling.comp(),
+    from.comp=e$from.comp, to.comp=e$to.comp,
     from.host=host$get.name(), to.host=NA,
     pathogen1=path$get.name(), pathogen2=NA
   )
@@ -178,8 +178,8 @@ sim.inner.tree <- function(outer, mod) {
   # prepare log entry
   event <- list(
     time=e$time, event='transmission', 
-    from.comp=source$get.compartment(), to.comp=recipient$get.compartment(),
-    from.host=source$get.name(), to.host=recipient$get.name(),
+    from.comp=e$src.comp, to.comp=e$to.comp,
+    from.host=e$from.host, to.host=e$to.host,
     pathogen1=NA, pathogen2=NA
   )
   
@@ -255,7 +255,7 @@ sim.inner.tree <- function(outer, mod) {
       from.host=host$get.name(), to.host=NA,
       pathogen1=path$get.name(), pathogen2=NA
     )
-    inner$add.event()
+    inner$add.event(event)
   }
 }
 

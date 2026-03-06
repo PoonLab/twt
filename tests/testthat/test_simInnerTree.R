@@ -40,6 +40,7 @@ test_that("Sample coalescent event", {
     time=c(5, 4, 3),
     event=c('migration', 'migration', 'transmission'),
     from.comp=c("I", "I", "S"),
+    src.comp=c(NA, NA, "I"),
     to.comp=c("I_samp", "I_samp", "I"),
     from.host=c("I_2", "I_1", "I_1"),
     to.host=c(NA, NA, "I_2")
@@ -81,6 +82,7 @@ test_that("Coalesce pathogen lineages", {
     event=c('migration', 'migration', 'migration', 
             'transmission', 'transmission'),
     from.comp=c("I", "I", "I", "S", "S"),
+    src.comp=c(NA, NA, NA, "I", "I"),
     to.comp=c("I_samp", "I_samp", "I_samp", "I", "I"),
     from.host=c("I_1", "I_2", "I_3", "I_1", "I_1"),
     to.host=c(NA, NA, NA, "I_2", "I_3")

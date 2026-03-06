@@ -141,7 +141,8 @@ as.phylo.InnerTree <- function(obj) {
                           child=character(n.edges),
                           length=numeric(n.edges),
                           label1=character(n.edges),
-                          label2=character(n.edges))
+                          label2=character(n.edges),
+                          compartment=character(n.edges))
   for (i in 2:nrow(events)) {
     e <- events[i,]
     
@@ -159,7 +160,8 @@ as.phylo.InnerTree <- function(obj) {
       child=paste(e$pathogen1, e$pathogen2, sep="__"),
       length=e$time - e.prev$time,
       label1=e.prev$pathogen2,
-      label2=e$pathogen2
+      label2=e$pathogen2,
+      compartment=e$from.comp
     )
   }
   
@@ -168,10 +170,6 @@ as.phylo.InnerTree <- function(obj) {
   tip.label <- preorder[grepl("_sample$", preorder)]
   nodes <- c(tip.label, node.label)
   
-  edge <- matrix(0, nrow=nrow(events), ncol=2)
-  edge[,1] <- match(events$pathogen1, nodes)
-  edge[,2] <- match(events$pathogen2, nodes)
-  
   edge  <- matrix(0, nrow=nrow(edge.list), ncol=2)
   edge[,1] <- match(edge.list$label1, nodes)
   edge[,2] <- match(edge.list$label2, nodes)
@@ -179,7 +177,9 @@ as.phylo.InnerTree <- function(obj) {
   phy <- list(
     tip.label=tip.label, node.label=node.label,
     Nnode=length(node.label), edge=edge, 
-    edge.length=as.numeric(edge.list$length)
+    edge.length=as.numeric(edge.list$length),
+    event=events$event[match(nodes, events$pathogen2)],
+    compartment=edge.list$compartment
   )
   attr(phy, 'class') <- 'phylo'
   phy
