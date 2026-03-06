@@ -23,7 +23,7 @@
 #' sim.dynamics(mod, logfile="eventlog.csv")
 #'
 #' @export
-sim.dynamics <- function(mod, logfile=NULL, max.attempts=3, 
+sim.dynamics <- function(mod, logfile=NULL, counted=TRUE, max.attempts=3, 
                               chunk.size=1e4) {
   # unpack the Model object
   params <- mod$get.parameters()
@@ -46,16 +46,24 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
       targets <- sampling$targets
     }
     
-    if (is.null(logfile)) {
-      # pre-allocate containers for logging events
-      events <- data.frame(
-        time=numeric(chunk.size), event=character(chunk.size),
-        from.comp=character(chunk.size), to.comp=character(chunk.size),
-        source=character(chunk.size),
-        stringsAsFactors=FALSE
-      )
-      row.num <- 1
-    } else {
+    # pre-allocate containers for logging events
+    events <- data.frame(
+      time=numeric(chunk.size), event=character(chunk.size),
+      from.comp=character(chunk.size), to.comp=character(chunk.size),
+      source=character(chunk.size),
+      stringsAsFactors=FALSE
+    )
+    
+    # check if we are recording compartment sizes over time
+    if (counted) {
+      for (cn in cnames) {
+        events[[cn]] <- integer(chunk.size)
+      }
+    }
+    
+    row.num <- 1
+    
+    if (!is.null(logfile)) {
       # open file to write event log
       conn <- file(logfile, open='w')
       writeLines(text="time,event,from.comp,to.comp,source", con=conn)
@@ -121,24 +129,28 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
       }
       
       # log event
-      if (is.null(logfile)) {
-        events[row.num, ] <- c(
-          params$simTime - cur.time, event, from.comp, to.comp, source)
-        
-        row.num <- row.num+1
-        if (row.num > nrow(events)) {
-          # allocate more space
-          events <- rbind(events, data.frame(
-            time=numeric(chunk.size), event=character(chunk.size), 
-            from.comp=character(chunk.size), to.comp=character(chunk.size), 
-            source=character(chunk.size),
-            stringsAsFactors = FALSE
-          ))
-        }        
-      } else {
-        writeLines(text=paste(
-          params$simTime-cur.time, event, from.comp, to.comp, source, 
-          sep=","), con=conn)
+      event <- c(params$simTime-cur.time, event, from.comp, to.comp, source)
+      if (counted) {
+        counts <- sapply(cnames, function(cn) {
+          eval(parse(text=cn), envir=e)
+        })
+        event <- c(event, counts)
+      }
+      events[row.num, ] <- event
+      
+      row.num <- row.num + 1
+      if (row.num > nrow(events)) {
+        # allocate more space
+        events <- rbind(events, data.frame(
+          time=numeric(chunk.size), event=character(chunk.size), 
+          from.comp=character(chunk.size), to.comp=character(chunk.size), 
+          source=character(chunk.size),
+          stringsAsFactors = FALSE
+        ))
+      }        
+      
+      if (!is.null(logfile)) {
+        writeLines(text=paste(event, sep=","), con=conn)
         flush(conn)
       }
       

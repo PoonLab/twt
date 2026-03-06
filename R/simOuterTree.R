@@ -13,8 +13,8 @@
 #' @examples
 #' require(twt)
 #' mod <- Model$new(yaml.load_file("examples/SIRS_serial.yaml"))
-#' eventlog <- sim.dynamics(mod)
-#' outer <- sim.outer.tree(mod, eventlog)
+#' dynamics <- sim.dynamics(mod)
+#' outer <- sim.outer.tree(mod, dynamics)
 #' @export
 sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
   cnames <- mod$get.compartments()
@@ -52,7 +52,9 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
     }
   } else if (sampling$mode == "fraction") {
     # create sampling events
-    
+    for (cn in names(targets)) {
+      
+    }
   }
 
   
