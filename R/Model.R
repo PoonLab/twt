@@ -368,6 +368,29 @@ Model <- R6Class(
             stop(paste("Sampling:targets:", cn, "must be a positive integer"))
           }
         }
+        
+      } else if (mode == "fraction") {
+        # contemporaneous sampling occurs at end of simulation time from 
+        # compartments specified by user, to target size or probability
+        # if value is between 0 and 1, then interpret as a probability
+        if (is.null(private$sampling$targets)) {
+          stop("Sampling field must specify `targets` (compartments)")
+        }
+        
+        # check that targeted compartments have been defined by user
+        if (is.null(private$compartments)) {
+          load.compartments(settings)
+        }
+        for (cn in names(private$sampling$targets)) {
+          if (!is.element(cn, private$compartments)) {
+            stop(paste("In Sampling:targets compartment", cn, 
+                       "has not been declared in Compartments"))
+          }
+          count <- private$sampling$targets[[cn]]
+          if (!is.numeric(count) | count <= 0) {
+            stop(paste("Sampling:targets:", cn, "must be a positive integer"))
+          }
+        }
       } else {
         stop(paste("Sampling mode `", mode, "` not recognized"))
       }

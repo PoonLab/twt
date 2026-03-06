@@ -33,24 +33,28 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
   
   # confirm sufficient numbers in sampled compartments 
   sampling <- mod$get.sampling()
-  if (sampling$mode != "compartment") {
-    stop("Unsupported sampling mode", sampling$mode)
-  }
   targets <- sampling$targets
-  for (cn in names(targets)) {
-    idx <- which(eventlog$event=="migration" & eventlog$to.comp==cn)
-    size <- length(idx)
-    target <- targets[[cn]]
-    if (size < target) {
-      stop("Insufficient number in sampling compartment ", 
-           cn, " (", size , "<", target, ")")
+  
+  if (sampling$mode == "compartment") {
+    for (cn in names(targets)) {
+      idx <- which(eventlog$event=="migration" & eventlog$to.comp==cn)
+      size <- length(idx)
+      target <- targets[[cn]]
+      if (size < target) {
+        stop("Insufficient number in sampling compartment ", 
+             cn, " (", size , "<", target, ")")
+      }
+      if (size > target) {
+        # downsample sampling events
+        remove <- sample(idx, size-target)
+        eventlog <- eventlog[-remove, ]  # induces copy-on-modify
+      }
     }
-    if (size > target) {
-      # downsample sampling events
-      remove <- sample(idx, size-target)
-      eventlog <- eventlog[-remove, ]  # induces copy-on-modify
-    }
+  } else if (sampling$mode == "fraction") {
+    # create sampling events
+    
   }
+
   
   outer <- OuterTree$new(mod=mod)  # recording outer events
   active <- outer$get.active()

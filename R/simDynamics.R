@@ -142,8 +142,8 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
         flush(conn)
       }
       
-      # check stopping criteria
-      if (event=='migration') {
+      # check stopping criteria (serial sampling)
+      if (event=='migration' & sampling$mode == 'compartment') {
         sampled <- sapply(names(targets), function(cn) {
           eval(parse(text=cn), envir=e)
         })
