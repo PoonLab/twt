@@ -10,12 +10,16 @@
 #'   source:  str, for transmission only, compartment of the infecting host
 #' 
 #' @param mod:  R6 object of class Model
-#' @param logfile:  str, path to write event log; if not specified, then 
-#'                  this function will return a data.frame
-#' @param max.attempts:  int, number of attempts to simulate trajectories
+#' @param logfile:  str, optional path to write event log (default: NULL)
+#' @param counted:  bool, if FALSE then do not record compartment sizes over 
+#'                  time to reduce memory consumption.  These counts can be 
+#'                  regenerated later from logged events by get.counts(). 
+#'                  (default: TRUE)
+#' @param max.attempts:  int, number of attempts to simulate trajectories 
+#'                       (default: 3)
 #' @param chunk.size:  int, number of rows to allocate to data.frame that 
-#'                     stores events
-#' @return data.frame if user does not specify logfile
+#'                     stores events (default: 1e4)
+#' @return data.frame
 #' @examples
 #' require(twt)
 #' settings <- yaml.load_file("examples/SIRS_serial.yaml")
@@ -129,14 +133,14 @@ sim.dynamics <- function(mod, logfile=NULL, counted=TRUE, max.attempts=3,
       }
       
       # log event
-      event <- c(params$simTime-cur.time, event, from.comp, to.comp, source)
+      row <- c(params$simTime-cur.time, event, from.comp, to.comp, source)
       if (counted) {
         counts <- sapply(cnames, function(cn) {
           eval(parse(text=cn), envir=e)
         })
-        event <- c(event, counts)
+        row <- c(row, counts)
       }
-      events[row.num, ] <- event
+      events[row.num, ] <- row
       
       row.num <- row.num + 1
       if (row.num > nrow(events)) {
