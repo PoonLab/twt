@@ -13,8 +13,9 @@ OuterTree <- R6Class(
         time=numeric(),  # time of event
         event=character(),  # type of event, e.g., migration
         from.comp=character(),  # compartment before event
+        src.comp=character(),  # compartment of source Host (transmission only)
         to.comp=character(),  # compartment after event
-        from.host=character(),  # source Host name (transmission only)
+        from.host=character(),  # Host name (source in case of transmission)
         to.host=character()  # recipient Host name (transmission only)
       )
       
@@ -229,7 +230,8 @@ as.phylo.OuterTree <- function(obj) {
                           child=character(n.edges),
                           length=numeric(n.edges),
                           label1=character(n.edges),
-                          label2=character(n.edges))
+                          label2=character(n.edges),
+                          compartment=character(n.edges))
   for (i in 2:nrow(events)) {
     e <- events[i,]
     
@@ -246,7 +248,8 @@ as.phylo.OuterTree <- function(obj) {
       child=paste(e$from.host, e$to.host, sep="__"),
       length=e$time - e.prev$time,
       label1=e.prev$to.host,
-      label2=e$to.host
+      label2=e$to.host,
+      compartment=ifelse(e$event=='migration', e$from.comp, e$src.comp)
     )
   }
   
@@ -259,17 +262,15 @@ as.phylo.OuterTree <- function(obj) {
   edge[,1] <- match(edge.list$label1, nodes)
   edge[,2] <- match(edge.list$label2, nodes)
   
-  # prepare events data.frame for export
-  events <- events[-1, ]
-  events$time <- events$time - root.time
-  
   phy <- list(
     tip.label = tip.label,
     node.label = node.label,
     Nnode = length(node.label),
     edge = edge,
     edge.length = as.numeric(edge.list$length),
-    events = events
+    event = events$event[match(nodes, events$to.host)],
+    compartment = edge.list$compartment,
+    time = events$time[-1] - root.time
   )
   attr(phy, 'class') <- 'phylo'
   phy  # return object

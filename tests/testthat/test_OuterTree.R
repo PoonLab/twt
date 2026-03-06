@@ -12,11 +12,11 @@ test_that("Initialize OuterTree object", {
   outer.log <- outer$get.log()
   expect_true(is.data.frame(outer.log))
   expect_true(nrow(outer.log)==0)
-  expect_equal(names(outer.log), c('time', 'event', 'from.comp', 'to.comp', 
-                                   'from.host', 'to.host'))
+  expect_equal(names(outer.log), c('time', 'event', 'from.comp', 'src.comp', 
+                                   'to.comp', 'from.host', 'to.host'))
   
-  event <- list(time=1.0, event='transmission', from.comp='S', to.comp='I', 
-                from.host='S', to.host='I')
+  event <- list(time=1.0, event='transmission', from.comp='S', src.comp='I', 
+                to.comp='I', from.host='S', to.host='I')
   outer$add.event(event)
   expect_true(outer$get.nrow()==1)
 })
@@ -109,6 +109,7 @@ test_that("Migration events relabel nodes", {
     time=seq(0.1, 0.4, 0.1),
     event=c("transmission", "migration", "transmission", "migration"),
     from.comp=c("S", "I1", "S", "I2"),
+    src.comp=c("I1", NA, "I1", NA),
     to.comp=c("I1", "I2", "I1", "I2_samp"),
     from.host=c("A", "B", "B", "B"),
     to.host=c("B", NA, "C", NA)
@@ -119,16 +120,19 @@ test_that("Migration events relabel nodes", {
     time=seq(0.1, 0.4, 0.1),
     event=c("transmission", "migration", "transmission", "migration"),
     from.comp=c("S", "I1", "S", "I2"),
+    src.comp=c("I1", NA, "I1", NA),
     to.comp=c("I1", "I2", "I1", "I2_samp"),
     from.host=c("A", "B", "B_1", "B_1"),
     to.host=c("B", "B_1", "C", "B_sample")
   )
   expect_equal(result, expected)
   
+  # .relabel.nodes checks for superinfection
   events <- data.frame(
     time=seq(0.1, 0.4, 0.1),
     event=c("transmission", "transmission", "transmission", "migration"),
-    from.comp=c("S", "I1", "S", "I2"),
+    from.comp=c("S", "S", "S", "I2"),
+    src.comp=c("I1", "I1", "I1", NA),
     to.comp=c("I1", "I1", "I1", "I2_samp"),
     from.host=c("A", "A", "B", "B"),
     to.host=c("B", "B", "C", NA)

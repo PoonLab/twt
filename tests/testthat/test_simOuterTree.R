@@ -8,8 +8,8 @@ test_that("do migration", {
   active <- outer$get.active()
   
   e <- list(
-    time=1.0, event='migration', from.comp='I', to.comp='R', source=NA,
-    S=98, I=1, I_samp=0, R=1)
+    time=1.0, event='migration', from.comp='I', src.comp=NA, to.comp='R', 
+    source=NA, S=98, I=1, I_samp=0, R=1)
   
   # if no Hosts are active, then the migration is not recorded
   .do.migration(e, outer)
@@ -33,8 +33,8 @@ test_that("do migration", {
   
   result <- outer.log[1,]
   expected <- data.frame(
-    time=1.0, event='migration', from.comp='I', to.comp='R',
-    from.host="R_1", to.host=as.character(NA)
+    time=1.0, event='migration', from.comp='I', src.comp=as.character(NA), 
+    to.comp='R', from.host="R_1", to.host=as.character(NA)
     )
   expect_equal(result, expected)
   
@@ -53,6 +53,7 @@ test_that("do transmission", {
     time = c(0, 1.0, 1.1), 
     event = c(NA, 'transmission', 'migration'), 
     from.comp = c(NA, 'S', 'I'), 
+    src.comp = c(NA, 'I', NA),
     to.comp = c(NA, 'I', 'I_samp'), 
     source = c(NA, 'I', NA), 
     S = c(100, 99, 98), 
@@ -100,6 +101,7 @@ test_that("do transmission", {
       time=c(1.1, 1.0),
       event=c('migration', 'transmission'),
       from.comp=c('I', 'S'),
+      src.comp=c(NA, 'I'),
       to.comp=c('I_samp', 'I'),
       from.host=c('I_1', 'US_I_2'),
       to.host=c(as.character(NA), 'I_1')
@@ -112,6 +114,7 @@ test_that("do transmission", {
       time=c(1.1),
       event=c('migration'),
       from.comp=c('I'),
+      src.comp=c(as.character(NA)),
       to.comp=c('I_samp'),
       from.host=c('I_1'),
       to.host=c(as.character(NA))
@@ -162,6 +165,7 @@ test_that("full outer tree simulation", {
       time=c(1.1, 1.0), 
       event=c('migration', 'transmission'), 
       from.comp=c('I', 'S'), 
+      src.comp=c(NA, 'I'),
       to.comp=c('I_samp', 'I'), 
       from.host=c('I_1', 'US_I_2'), 
       to.host=c(as.character(NA), 'I_1')
@@ -171,8 +175,8 @@ test_that("full outer tree simulation", {
   } else {
     # other times transmission is from I_1 to unrecorded host
     expected <- data.frame(
-      time=1.1, event='migration', from.comp='I', to.comp='I_samp', 
-      from.host='I_1', to.host=as.character(NA)
+      time=1.1, event='migration', from.comp='I', src.comp=as.character(NA), 
+      to.comp='I_samp', from.host='I_1', to.host=as.character(NA)
     )
     expect_equal(result, expected)    
   }

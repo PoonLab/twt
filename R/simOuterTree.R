@@ -80,6 +80,7 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
         e.prev$time <- 0
         e.prev$event <- NA
         e.prev$from.comp <- NA
+        e.prev$src.comp <- NA
         e.prev$to.comp <- NA
         e.prev$source <- NA
         for (cn in cnames) {
@@ -132,7 +133,7 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
       outer$add.sample(host)
       
       event <- list(time=e[['time']], event=e[['event']], 
-                    from.comp=from.comp, to.comp=to.comp,
+                    from.comp=from.comp, src.comp=NA, to.comp=to.comp,
                     from.host=host$get.name(), to.host=NA)
       outer$add.event(event)
     }
@@ -155,7 +156,7 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
         host$set.compartment(from.comp)
         
         event <- list(time=e[['time']], event=e[['event']], 
-                   from.comp=from.comp, to.comp=to.comp,
+                   from.comp=from.comp, src.comp=NA, to.comp=to.comp,
                    from.host=host$get.name(), to.host=NA)
         outer$add.event(event)
       }
@@ -245,11 +246,10 @@ sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
     
     # record transmission event in outer log
     event <- list(
-      time=e$time, event=e$event, 
-      from.comp=e$from.comp, to.comp=e$to.comp,
+      time=e$time, event=e$event, from.comp=e$from.comp, 
+      src.comp=source$get.compartment(), to.comp=e$to.comp,
       from.host=source$get.name(), to.host=recip$get.name()
       )
-    #print(paste('transmission', active$get.names()))  
     outer$add.event(event)
   }
 }
