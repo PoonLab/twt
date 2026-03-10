@@ -5,12 +5,12 @@ settings <- yaml.load_file("test_SIR.yaml")
 settings$Compartments$I$coalescent.rate <- 1.0
 mod <- Model$new(settings)
 set.seed(276)
-eventlog <- sim.dynamics(mod)
-outer <- sim.outer.tree(mod, eventlog)
+dynamics <- sim.dynamics(mod)
+outer <- sim.outer.tree(dynamics)
 
 
 test_that("Add sampling event to inner tree", {
-  inner <- InnerTree$new(outer, mod)
+  inner <- InnerTree$new(outer)
   
   result <- inner$get.active()$count.type()
   expect_equal(result, 0)
@@ -33,7 +33,7 @@ test_that("Add sampling event to inner tree", {
 
 
 test_that("Sample coalescent event", {
-  inner <- InnerTree$new(outer, mod)
+  inner <- InnerTree$new(outer)
   
   # manually set outer event log - note this may not agree with Host variables
   events <- data.frame(
@@ -74,7 +74,7 @@ test_that("Sample coalescent event", {
 
 
 test_that("Coalesce pathogen lineages", {
-  inner <- InnerTree$new(outer, mod)
+  inner <- InnerTree$new(outer)
   
   # override outer events to get Pathogens into the same Host
   events <- data.frame(

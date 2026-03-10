@@ -4,12 +4,10 @@
 \alias{sim.outer.tree}
 \title{sim.outer.tree}
 \usage{
-sim.outer.tree(mod, eventlog, chunk.size = 100)
+sim.outer.tree(dynamics, chunk.size = 100)
 }
 \arguments{
-\item{mod:}{R6 object of class Model}
-
-\item{eventlog:}{character or data frame of event log from forward-time 
+\item{dynamics:}{S3 object of class `dynamics` from forward-time 
 simulation of population trajectories}
 }
 \value{
@@ -25,6 +23,6 @@ be a much smaller subset of events.
 \examples{
 require(twt)
 mod <- Model$new(yaml.load_file("examples/SIRS_serial.yaml"))
-eventlog <- sim.dynamics(mod)
-outer <- sim.outer.tree(mod, eventlog)
+dynamics <- sim.dynamics(mod)
+outer <- sim.outer.tree(mod, dynamics)
 }

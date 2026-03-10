@@ -4,12 +4,10 @@
 \alias{sim.inner.tree}
 \title{sim.inner.tree}
 \usage{
-sim.inner.tree(outer, mod)
+sim.inner.tree(outer)
 }
 \arguments{
 \item{outer:}{R6 object of class `OuterTree`}
-
-\item{mod:}{R6 object of class `Model`}
 }
 \value{
 R6 object of class `InnerTree`

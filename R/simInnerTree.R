@@ -4,12 +4,12 @@
 #' superinfection events that may involve sampled lineages.
 #' 
 #' @param outer:  R6 object of class `OuterTree`
-#' @param mod:  R6 object of class `Model`
 #' 
 #' @return R6 object of class `InnerTree`
 #' @export
-sim.inner.tree <- function(outer, mod) {
-  inner <- InnerTree$new(outer, mod)
+sim.inner.tree <- function(outer) {
+  inner <- InnerTree$new(outer)
+  mod <- inner$get.model()
   active <- inner$get.active()
   inactive <- inner$get.inactive()
   

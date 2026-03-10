@@ -15,7 +15,7 @@
 InnerTree <- R6Class(
   "InnerTree",
   public = list(
-    initialize = function(outer, mod, prefix='P', p.index=1) {
+    initialize = function(outer, prefix='P', p.index=1) {
       private$inner.log <- data.frame(
         time=numeric(),  # time of event
         event=character(),  # type of event, e.g., coalescence
@@ -27,7 +27,7 @@ InnerTree <- R6Class(
         pathogen2=character()
       )
       
-      private$mod <- mod
+      private$mod <- outer$get.model()  # inherits model from OuterTree
       private$prefix <- prefix
       private$p.index <- p.index
       

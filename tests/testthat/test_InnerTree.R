@@ -8,9 +8,9 @@ test_that("InnerTree constructor", {
   
   mod <- Model$new(settings)
   set.seed(127)
-  eventlog <- sim.dynamics(mod)
-  outer <- sim.outer.tree(mod, eventlog)
-  inner <- InnerTree$new(outer, mod)
+  dynamics <- sim.dynamics(mod)
+  outer <- sim.outer.tree(dynamics)
+  inner <- InnerTree$new(outer)
   
   result <- inner$get.active()$count.type()
   expect_equal(result, 0)
@@ -30,6 +30,6 @@ test_that("Relabel inner events", {
   )
   result <- .relabel.inner.events(events)
   expected <- data.frame(
-    
+    # FIXME: work in progress!
   )
 })

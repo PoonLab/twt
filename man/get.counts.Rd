@@ -4,24 +4,16 @@
 \alias{get.counts}
 \title{get.counts}
 \usage{
-get.counts(eventlog, mod, chunk.size = 100)
+get.counts(dynamics)
 }
 \arguments{
-\item{eventlog:}{data.frame or character, result from sim.dynamics()}
-
-\item{mod:}{R6 object of class Model}
-
-\item{chunk.size:}{integer, used to allocate new rows for output data frame}
+\item{dynamics:}{S3 object of class 'dynamics'}
 }
 \value{
-data.frame of compartment sizes over time
+dynamics updated with compartment sizes
 }
 \description{
 Convert an event log into population size trajectories for every 
-compartment in the model.  We omit these to keep the event log compact.
-}
-\examples{
-counts <- get.counts("eventlog.csv", mod)
-plot(counts)  # S3 method
-
+compartment in the model.  The user may choose to omit these counts to 
+reduce the size of the eventlog `data.frame`.
 }
