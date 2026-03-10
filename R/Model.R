@@ -403,14 +403,14 @@ Model <- R6Class(
 #' S3 class function to display contents of a Model object
 #' @export
 print.Model <- function(obj) {
-  cat("twt Model")
-  cat("Parameters:\n")
+  cat("\033[93m\033[1mtwt Model object\033[22m\033[37m\n")  # bold color!
+  cat("  Parameters:\n")
   params <- obj$get.parameters()
   for (key in names(params)) {
     value <- params[[key]]
-    cat("  ", key, ": ", value, "\n")
+    cat("    ", key, ": ", value, "\n")
   }
-  cat("Compartments: ")
+  cat("  Compartments: ")
   compartments <- obj$get.compartments()
   for (cn in compartments) {
     cat(cn, " ")

@@ -332,6 +332,19 @@ get.counts <- function(dynamics) {
 }
 
 
+#' Generic S3 print function for dynamics objects
+#' @export
+#' @noRd
+print.dynamics <- function(obj) {
+  cat("\033[93m\033[1mtwt Dynamics object\033[22m\033[37m\n")  # bold color!
+  cat("  Counted: ", obj$is.counted, "\n")
+  cat(" ", nrow(obj$events), "events:")
+  print(table(obj$events$event))
+  t.range <- range(obj$events$time)
+  cat("  Time range: ", t.range[1], "->", t.range[2], "\n")
+}
+
+
 #' plot.dynamics
 #' 
 #' S3 method for visualizing the simulated population dynamics from 
