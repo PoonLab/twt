@@ -236,7 +236,7 @@ as.phylo.InnerTree <- function(obj) {
 #' @param node:  character, Pathogen name
 #' @param order:  character, 'preorder' or 'postorder'
 #' @param result:  character, vector to append results by recursive calls
-#' @result character, Pathogen names ordered by tree traversal
+#' @return character, Pathogen names ordered by tree traversal
 #' 
 #' @keywords internal
 #' @noRd

@@ -402,8 +402,9 @@ Model <- R6Class(
 #' print.Model
 #' S3 class function to display contents of a Model object
 #' @export
+#' @noRd
 print.Model <- function(obj) {
-  cat("\033[93m\033[1mtwt Model object\033[22m\033[37m\n")  # bold color!
+  cat("twt Model\n")  # bold
   cat("  Parameters:\n")
   params <- obj$get.parameters()
   for (key in names(params)) {
@@ -422,6 +423,7 @@ print.Model <- function(obj) {
 #' S3 class function to summarize a Model object - simply a wrapper 
 #' around print()
 #' @export
+#' @noRd
 summary.Model <- function(obj) {
   print(obj)
 }
