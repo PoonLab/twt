@@ -22,151 +22,84 @@ knitr::opts_chunk$set(
 
 # trees[within](http://github.com/PoonLab/twt)trees
 
-**trees[within](http://github.com/PoonLab/twt)trees** (`twt`) is an R package for the coalescent (reverse time) simulation of pathogen trees within host transmission trees.
+**trees[within](http://github.com/PoonLab/twt)trees** (`twt`) is an R package for running [phylodynamic](https://en.wikipedia.org/wiki/Viral_phylodynamics) simulations.
+Specifically, it uses exact stochastic simulation to generate forward-time population dynamics under a compartmental model, followed by the reverse-time simulation of a transmission history (outer tree) given these dynamics, and a pathogen phylogeny (inner tree) nested within that transmission history.
+
 
 ```{r echo=FALSE}
 # reduce overwrite of figures in repo
-set.seed(2)
+set.seed(7)
+```
+
+
+## Installation
+
+**twt** is implemented exclusively in the R statistical computing language.  The recommended method to install this package is to download a release or clone the repository, navigate to that directory and then run the `INSTALL` command:
+```bash
+git clone https://github.com/PoonLab/twt.git
+cd twt
+R CMD INSTALL .
+```
+The last command can be run as `sudo` if you want the package to be available for all users.
+
+Alternatively, you may use the [devtools](https://cran.r-project.org/web/packages/devtools/index.html) package to automate some of the above:
+```{r eval=FALSE}
+require(devtools)
+devtools::install_github("PoonLab/twt")
 ```
 
 ## Usage
 
-This illustrates a basic workflow under a serial SIR model:
+This illustrates a basic workflow under an [SIR model](https://en.wikipedia.org/wiki/Compartmental_models_(epidemiology)#SIR_model) with serial sampling and three demes.
 
-1. Simulate forward-time epidemic dynamics  
-2. Reconstruct the transmission (*outer*) tree  
-3. Clean and export the transmission tree  
-
-```{r}
+**twt** uses the [YAML](https://en.wikipedia.org/wiki/YAML) markup language to specify a model:
+```{r message=FALSE}
 require(twt, quietly = TRUE)
+settings <- read_yaml("examples/migration.yaml")
+```
+See below for an example of a YAML file.
 
-# Load example YAML model from this repository
-path <- file.path("examples", "SIR_serial.yaml")
-stopifnot(file.exists(path))
-
-settings <- yaml::read_yaml(path)
-
-# Create model
+This model specification (which is now a `list` object in R) is used to create a Model object that can be visualized as a network, which is a convenient means of troubleshooting your model:
+```{r out.width="60%", fig.width=4}
 mod <- Model$new(settings)
 mod
-
-# Optional: visualize model structure
 plot(mod)
+```
 
-# 1) Simulate epidemic dynamics (forward time)
-elog <- sim.dynamics(mod)
 
-# Plot population trajectories
-counts <- get.counts(elog, mod)
-plot(counts)
+Next, we simulate the population dynamics from this model forward in time.  The results can be visualized with a call to the generic `plot` method:
+```{r out.width="60%", fig.width=5, fig.height=4}
+dynamics <- sim.dynamics(mod)
+dynamics
+plot(dynamics, ylim=c(0, 200))
+```
 
-# 2) Reconstruct transmission tree (outer tree)
-outer <- sim.outer.tree(mod, elog)
+To simulate an "outer" transmission tree, we pass the `Dynamics` object to another function.
+```{r}
+outer <- sim.outer.tree(dynamics)
+outer
+```
 
-# Plot outer tree (raw)
+As before, **twt** provides a generic plot function for visualizing the simulation results.  Each horizontal line segment in this plot represents an infected host (grey if unsampled), and each vertical arrow represents a transmission event:
+```{r fig.width=4, fig.height=5}
 plot(outer)
+```
 
-# Convert to phylo object
+If you choose to stop at this point, you can convert the OuterTree object to a phylogeny that is compatible with the R package `ape`:
+```{r}
 phy <- as.phylo(outer)
-
-# Clean up single-child nodes (migration bookkeeping)
-phy <- ape::collapse.singles(phy)
-
-# Plot cleaned transmission tree
 plot(phy)
-
-# Export Newick tree
-ape::write.tree(phy, file = "transmission_tree.nwk")
 ```
 
-## Description
-
-`twt` performs discrete event simulation of nested host–pathogen trees using a combination of forward- and reverse-time methods.
-
-Forward-time simulation models stochastic epidemic dynamics starting from an [index case](https://en.wikipedia.org/wiki/Index_case). All stochastic events are recorded in an event log.
-
-Backward-time reconstruction extracts the ancestry of sampled infections to produce a transmission (*outer*) tree. This approach is computationally efficient because it traces only sampled lineages rather than the entire host population.
-
-## Inner trees (within-host coalescent)
-
-Given an outer transmission tree, `twt` can simulate *inner* trees that describe within-host pathogen ancestry and coalescent dynamics along transmission histories.
-
-Conceptually:
-
-- Each infected host carries pathogen lineages.
-- Transmission events move lineages between hosts, optionally through bottlenecks.
-- Within each host, lineages coalesce backward in time at rates defined in the model (`coalescent.rate`).
-- The resulting inner tree embeds within-host genealogies along the outer transmission tree.
-
-The inner-tree interface is under active development, and function signatures or output formats may change across versions. Consult package documentation and vignettes for the most current usage.
-
-`twt` supports:
-
-* [Compartmental epidemic models](https://en.wikipedia.org/wiki/Compartmental_models_in_epidemiology) (e.g., SIR)  
-* Structured populations and migration  
-* Serial sampling  
-* Within-host coalescent simulation  
-* Gillespie-style discrete stochastic simulation  
-
-Models are specified using the [YAML](https://en.wikipedia.org/wiki/YAML) markup language.
-
-## Example Serial SIR Model
-
-The example above uses `examples/SIR_serial.yaml`:
-
-```yaml
-Parameters:
-  simTime:  10.0
-  beta:  1e-4
-  gamma:  0.1
-  psi:  0.05
-
-Compartments:
-  S:
-    infected: false
-    transmission:
-      I: {I: beta*S*I}
-    size: 9999
-  I:
-    infected: true
-    migration:
-      R: gamma*I
-      I_samp: psi*I
-    size: 1
-    bottleneck.size: 1
-    coalescent.rate: 0.01
-  I_samp:
-    infected: true
-    size: 0
-  R:
-    infected: false
-    size: 0
-
-Sampling:
-  mode: compartment
-  targets:
-    I_samp: 100
+All simulated events are embedded in this `phylo` object, making it easier to annotate the tree.  In this example, we are colouring the branches to indicate which compartment (deme) is occupied in the transmission history:
+```{r}
+L <- tree.layout(phy)
+pal <- c(I1='firebrick', I2='orange', I3='cadetblue')
+plot(L, type='n')
+lines(L, col=pal[L$edge$compartment], lwd=2)
 ```
 
-## Installation
 
-`twt` is developed and tested with R ≥ 3.6 and depends on:
-
-* [R6](https://cran.r-project.org/web/packages/R6/index.html)  
-* [ape](https://cran.r-project.org/web/packages/ape/index.html)  
-* [yaml](https://cran.r-project.org/web/packages/yaml/index.html)  
-* [ggfree](https://github.com/ArtPoon/ggfree)  
-
-Install from GitHub using `devtools`:
-
-```R
-if (!require(devtools)) {
-  install.packages("devtools")
-}
-devtools::install_github("PoonLab/twt")
-```
-
-For detailed instructions, see [INSTALL.md](INSTALL.md).
 
 ## Funding
 

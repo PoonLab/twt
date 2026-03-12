@@ -431,8 +431,23 @@ summary.Model <- function(obj) {
 
 #' plot.Model
 #' Plot a graph summarizing compartments and rates
-#' TODO: label edges with rate expressions
+#' @param obj:  R6 object of class `Model`
+#' @param bg:  character, color for uninfected compartments
+#' @param bg2:  character, color for infected compartments
+#' @param mar:  numeric, margin size (default: 1)
+#' @param lwd:  numeric, line width for edges
 #' @export
-plot.Model <- function(obj) {
-  igraph::plot.igraph(obj$get.graph())
+plot.Model <- function(obj, bg='skyblue', bg2='pink2', mar=1, lwd=2) {
+  g <- obj$get.graph()
+  par(mar=rep(mar, 4))
+  igraph::plot.igraph(g, 
+    vertex.size=(nchar(names(V(g)))+2)*8, 
+    vertex.size2=20, 
+    vertex.shape='crectangle', 
+    vertex.color=ifelse(obj$get.infected(), bg2, bg), 
+    vertex.label.family='sans',
+    edge.arrow.size=0.8,
+    edge.arrow.width=1.2,
+    edge.width=lwd
+    )
 }

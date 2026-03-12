@@ -13,9 +13,13 @@
 #' require(twt)
 #' mod <- Model$new(yaml.load_file("examples/SIRS_serial.yaml"))
 #' dynamics <- sim.dynamics(mod)
-#' outer <- sim.outer.tree(mod, dynamics)
+#' outer <- sim.outer.tree(dynamics)
 #' @export
-sim.outer.tree <- function(dynamics, chunk.size=100) {
+sim.outer.tree <- function(dynamics) {
+  if (class(dynamics) != "dynamics") {
+    stop("Input argument must be an S3 object of class `dynamics`")
+  }
+  
   mod <- dynamics$model
   cnames <- mod$get.compartments()
   k <- length(cnames)

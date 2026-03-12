@@ -29,6 +29,11 @@
 #' @export
 sim.dynamics <- function(mod, logfile=NA, counted=TRUE, max.attempts=3, 
                               chunk.size=1e4) {
+  # check that input is a Model object
+  if ( !is.R6(mod) | !is.element("Model", class(mod)) ) {
+    stop("Error: input `mod` must be an R6 object of class `Model`")
+  }
+  
   # unpack the Model object
   params <- mod$get.parameters()
   cnames <- mod$get.compartments()
@@ -336,7 +341,7 @@ get.counts <- function(dynamics) {
 #' @export
 #' @noRd
 print.dynamics <- function(obj) {
-  cat("\033[93m\033[1mtwt Dynamics object\033[22m\033[37m\n")  # bold color!
+  cat("twt Dynamics object\n")
   cat("  Counted: ", obj$is.counted, "\n")
   cat(" ", nrow(obj$events), "events:")
   print(table(obj$events$event))
@@ -354,29 +359,41 @@ print.dynamics <- function(obj) {
 #' @param xlab:  character, label for x-axis (default: 'Time')
 #' @param ylab:  character, label for y-axis (default: 'Frequency')
 #' @param lwd:  numeric, line width for plotting
+#' @param bty:  character, box type (default: 'n')
+#' @param ylim:  numeric, y-axis limits (defaults to whole range)
+#' @param mar:  numeric, plot margins (defaults to c(5,5,1,5))
 #' @param ...:  additional arguments passed to base plot() function
 #' 
 #' @export
 plot.dynamics <- function(dynamics, pal=NA, xlab="Time", ylab="Frequency", 
-                            lwd=2, bty='n', ...) {
+                            lwd=2, bty='n', ylim=NA, mar=c(5,5,1,5), ...) {
   if (!dynamics$is.counted) {
     warning("plot.dynamics requires counts, calling get.counts()")
     dynamics <- get.counts(dynamics)
   }
+  
+  # unpack the input object
   mod <- dynamics$model
   events <- dynamics$events
+  
+  # extract compartment size trajectories
   cnames <- mod$get.compartments()
   counts <- events[c('time', cnames)]
   row0 <- c(time=0, mod$get.init.sizes())
   counts <- rbind(row0, counts)
   counts$time <- as.numeric(counts$time)
   
+  k <- length(cnames)
   if (all(is.na(pal))) {
-    pal <- hcl.colors(n=k, palette="Dark2")
+    pal <- hcl.colors(n=k, palette="Dark2")  # generate colour palette
   }
   
-  par(mar=c(5,5,1,5))
-  plot(counts$time, counts[,2], ylim=range(counts[,2:(k+1)]), col=pal[1],
+  if (any(is.na(ylim))) {
+    ylim <- range(counts[,2:(k+1)])  # default range
+  }
+  
+  par(mar=mar)  # plot margins
+  plot(counts$time, counts[,2], ylim=ylim, col=pal[1],
        type='s', xlab=xlab, ylab=ylab, lwd=lwd, bty=bty, ...)
   if (k > 1) {
     for (i in 2:(k+1)) {

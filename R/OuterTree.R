@@ -355,7 +355,7 @@ as.phylo.OuterTree <- function(obj) {
 #' @export
 #' @noRd
 print.OuterTree <- function(obj) {
-  cat("\033[93m\033[1mtwt OuterTree\033[22m\033[37m\n")  # bold color!
+  cat("twt OuterTree\n")  # bold color!
   cat(" ", obj$get.sampled()$count.type(), "sampled Hosts\n")
   cat(" ", obj$get.active()$count.type(), "active Hosts\n")
   cat(" ", obj$get.retired()$count.type(), "retired Hosts\n")

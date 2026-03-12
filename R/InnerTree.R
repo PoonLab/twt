@@ -265,7 +265,7 @@ as.phylo.InnerTree <- function(obj) {
 #' @export
 #' @noRd
 print.InnerTree <- function(obj) {
-  cat("\033[93m\033[1mtwt InnerTree\033[22m\033[37m\n")  # bold color!
+  cat("twt InnerTree\n")  # bold color!
   cat(" ", obj$get.sampled()$count.type(), "sampled Pathogens\n")
   cat(" ", obj$get.active()$count.type(), "active Pathogens\n")
   cat(" ", obj$get.inactive()$count.type(), "inactive Pathogens\n")

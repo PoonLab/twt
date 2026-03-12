@@ -8,6 +8,10 @@
 #' @return R6 object of class `InnerTree`
 #' @export
 sim.inner.tree <- function(outer) {
+  if ( !is.R6(outer) | !is.element("OuterTree", class(outer)) ) {
+    stop("Input argument must be an R6 object of class `OuterTree`")
+  }
+  
   inner <- InnerTree$new(outer)
   mod <- inner$get.model()
   active <- inner$get.active()
