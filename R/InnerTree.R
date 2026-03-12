@@ -40,7 +40,6 @@ InnerTree <- R6Class(
       
       # inactive Hosts are part of the transmission history
       private$inactive <- HostSet$new()
-      private$inactive$add.host(index.case$clone())
       private$sampled <- HostSet$new()
       
       # note there is overlap between `retired` and `sampled` HostSets
@@ -52,6 +51,13 @@ InnerTree <- R6Class(
         } else {
           private$inactive$add.host(host$clone())
         }
+      }
+      
+      # handle index case
+      if (index.case$get.name() %in% sampled$get.names()) {
+        private$sampled$add.host(index.case$clone())
+      } else {
+        private$inactive$add.host(index.case$clone())
       }
       
       # track Hosts with active Pathogen lineages

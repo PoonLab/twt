@@ -66,9 +66,11 @@ sim.inner.tree <- function(outer) {
   } else {
     # finish coalescence in last host
     root <- active$get.hosts()[[1]]
+    cur.time <- e$time
     while (root$count.pathogens() > 1) {
       wait.time <- .rcoal(active, mod, envir=env)
-      .do.coalescent(root$get.name(), inner, e$time - wait.time$dt)
+      cur.time <- cur.time - wait.time$dt
+      .do.coalescent(root$get.name(), inner, cur.time)
     }
   }
   

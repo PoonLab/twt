@@ -25,6 +25,15 @@ Pathogen <- R6Class(
       private$children <- children
     },
     
+    print = function() {
+      cat("twt Pathogen", self$get.name(), "\n")
+      cat("  Start time:", self$get.start.time(), "\n")
+      cat("  End time:", self$get.end.time(), "\n")
+      cat("  Parent:", self$get.parent()$get.name(), "\n")
+      children <- sapply(self$get.children(), function(child) child$get.name())
+      cat("  Children:", children, "\n")
+    },
+    
     # immutable attributes
     get.name = function() { private$name },
     get.end.time = function() { private$end.time },
