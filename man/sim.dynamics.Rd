@@ -4,21 +4,32 @@
 \alias{sim.dynamics}
 \title{sim.dynamics}
 \usage{
-sim.dynamics(mod, logfile = NULL, max.attempts = 3, chunk.size = 10000)
+sim.dynamics(
+  mod,
+  logfile = NA,
+  counted = TRUE,
+  max.attempts = 3,
+  chunk.size = 10000
+)
 }
 \arguments{
 \item{mod:}{R6 object of class Model}
 
-\item{logfile:}{str, path to write event log; if not specified, then 
-this function will return a data.frame}
+\item{logfile:}{str, optional path to write event log (default: NULL)}
 
-\item{max.attempts:}{int, number of attempts to simulate trajectories}
+\item{counted:}{bool, if FALSE then do not record compartment sizes over 
+time to reduce memory consumption.  These counts can be 
+regenerated later from logged events by get.counts(). 
+(default: TRUE)}
+
+\item{max.attempts:}{int, number of attempts to simulate trajectories 
+(default: 3)}
 
 \item{chunk.size:}{int, number of rows to allocate to data.frame that 
-stores events}
+stores events (default: 1e4)}
 }
 \value{
-data.frame if user does not specify logfile
+data.frame
 }
 \description{
 Simulate population trajectories for all compartments forward in time.

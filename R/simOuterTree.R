@@ -5,53 +5,57 @@
 #' in the transmission tree relating the sampled hosts.  This will generally
 #' be a much smaller subset of events.
 #' 
-#' @param mod:  R6 object of class Model
-#' @param eventlog:  character or data frame of event log from forward-time 
+#' @param dynamics:  S3 object of class `dynamics` from forward-time 
 #'                   simulation of population trajectories
 #' @return data frame, containing subset of events that comprise
 #'         the transmission tree
 #' @examples
 #' require(twt)
 #' mod <- Model$new(yaml.load_file("examples/SIRS_serial.yaml"))
-#' eventlog <- sim.dynamics(mod)
-#' outer <- sim.outer.tree(mod, eventlog)
+#' dynamics <- sim.dynamics(mod)
+#' outer <- sim.outer.tree(dynamics)
 #' @export
-sim.outer.tree <- function(mod, eventlog, chunk.size=100) {
+sim.outer.tree <- function(dynamics) {
+  if (class(dynamics) != "dynamics") {
+    stop("Input argument must be an S3 object of class `dynamics`")
+  }
+  
+  mod <- dynamics$model
   cnames <- mod$get.compartments()
   k <- length(cnames)
   
-  # append counts to event log
-  if (is.character(eventlog)) {
-    eventlog <- read.csv(eventlog)  # load logfile into memory
+  if (!dynamics$is.counted) {
+    warning("dynamics object is not counted, calling get.counts()")
+    dynamics <- get.counts(dynamics)
   }
-  counts <- get.counts(eventlog, mod)
-  stopifnot(all(names(counts)[2:ncol(counts)] == cnames))
-  stopifnot(all(counts$time == c(0, eventlog$time)))
-  for (cn in cnames) {
-    eventlog[[cn]] <- counts[[cn]][2:nrow(counts)]
-  }
+  eventlog <- dynamics$events
   
   # confirm sufficient numbers in sampled compartments 
   sampling <- mod$get.sampling()
-  if (sampling$mode != "compartment") {
-    stop("Unsupported sampling mode", sampling$mode)
-  }
   targets <- sampling$targets
-  for (cn in names(targets)) {
-    idx <- which(eventlog$event=="migration" & eventlog$to.comp==cn)
-    size <- length(idx)
-    target <- targets[[cn]]
-    if (size < target) {
-      stop("Insufficient number in sampling compartment ", 
-           cn, " (", size , "<", target, ")")
+  
+  if (sampling$mode == "compartment") {
+    for (cn in names(targets)) {
+      idx <- which(eventlog$event=="migration" & eventlog$to.comp==cn)
+      size <- length(idx)
+      target <- targets[[cn]]
+      if (size < target) {
+        stop("Insufficient number in sampling compartment ", 
+             cn, " (", size , "<", target, ")")
+      }
+      if (size > target) {
+        # downsample sampling events
+        remove <- sample(idx, size-target)
+        eventlog <- eventlog[-remove, ]  # induces copy-on-modify
+      }
     }
-    if (size > target) {
-      # downsample sampling events
-      remove <- sample(idx, size-target)
-      eventlog <- eventlog[-remove, ]  # induces copy-on-modify
+  } else if (sampling$mode == "fraction") {
+    # create sampling events
+    for (cn in names(targets)) {
+      # FIXME: WORK IN PROGRESS
     }
   }
-  
+
   outer <- OuterTree$new(mod=mod)  # recording outer events
   active <- outer$get.active()
   sampled <- outer$get.sampled()

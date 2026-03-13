@@ -10,12 +10,16 @@
 #'   source:  str, for transmission only, compartment of the infecting host
 #' 
 #' @param mod:  R6 object of class Model
-#' @param logfile:  str, path to write event log; if not specified, then 
-#'                  this function will return a data.frame
-#' @param max.attempts:  int, number of attempts to simulate trajectories
+#' @param logfile:  str, optional path to write event log (default: NULL)
+#' @param counted:  bool, if FALSE then do not record compartment sizes over 
+#'                  time to reduce memory consumption.  These counts can be 
+#'                  regenerated later from logged events by get.counts(). 
+#'                  (default: TRUE)
+#' @param max.attempts:  int, number of attempts to simulate trajectories 
+#'                       (default: 3)
 #' @param chunk.size:  int, number of rows to allocate to data.frame that 
-#'                     stores events
-#' @return data.frame if user does not specify logfile
+#'                     stores events (default: 1e4)
+#' @return data.frame
 #' @examples
 #' require(twt)
 #' settings <- yaml.load_file("examples/SIRS_serial.yaml")
@@ -23,8 +27,13 @@
 #' sim.dynamics(mod, logfile="eventlog.csv")
 #'
 #' @export
-sim.dynamics <- function(mod, logfile=NULL, max.attempts=3, 
+sim.dynamics <- function(mod, logfile=NA, counted=TRUE, max.attempts=3, 
                               chunk.size=1e4) {
+  # check that input is a Model object
+  if ( !is.R6(mod) | !is.element("Model", class(mod)) ) {
+    stop("Error: input `mod` must be an R6 object of class `Model`")
+  }
+  
   # unpack the Model object
   params <- mod$get.parameters()
   cnames <- mod$get.compartments()
@@ -32,13 +41,13 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
   sampling <- mod$get.sampling()
   
   # initialize model parameters in new environment
-  e <- .init.model(mod)
+  envir <- .init.model(mod)
   
   attempt <- 1
   while (attempt <= max.attempts) {
     
     # initialize Compartments and set rate matrices
-    rates <- .update.rates(mod, e, reset=TRUE)
+    rates <- .update.rates(mod, envir, reset=TRUE)
     
     # are there other stopping criteria?
     targets <- NULL
@@ -46,16 +55,21 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
       targets <- sampling$targets
     }
     
-    if (is.null(logfile)) {
-      # pre-allocate containers for logging events
-      events <- data.frame(
-        time=numeric(chunk.size), event=character(chunk.size),
-        from.comp=character(chunk.size), to.comp=character(chunk.size),
-        source=character(chunk.size),
-        stringsAsFactors=FALSE
-      )
-      row.num <- 1
-    } else {
+    # pre-allocate containers for logging events
+    events <- data.frame(
+      time=numeric(chunk.size), event=character(chunk.size),
+      from.comp=character(chunk.size), to.comp=character(chunk.size),
+      source=character(chunk.size),
+      stringsAsFactors=FALSE
+    )
+    # check if we are recording compartment sizes over time
+    if (counted) {
+      for (cn in cnames) { events[[cn]] <- integer(chunk.size) }
+    }
+    
+    row.num <- 1
+    
+    if (!is.na(logfile)) {
       # open file to write event log
       conn <- file(logfile, open='w')
       writeLines(text="time,event,from.comp,to.comp,source", con=conn)
@@ -84,17 +98,17 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
       source <- NA
       if (event == 'birth') {  
         from.comp <- sample(cnames, 1, prob=rates[['birth']])
-        .plus.one(from.comp, e)
+        .plus.one(from.comp, envir)
         
       } else if (event == 'death') {  
         from.comp <- sample(cnames, 1, prob=rates[['death']])
-        .minus.one(from.comp, e)
+        .minus.one(from.comp, envir)
         
       } else if (event == 'migration') { 
         from.comp <- sample(cnames, 1, prob=apply(rates[['migration']], 1, sum))
         to.comp <- sample(cnames, 1, prob=rates[['migration']][from.comp, ])
-        .minus.one(from.comp, e)
-        .plus.one(to.comp, e)
+        .minus.one(from.comp, envir)
+        .plus.one(to.comp, envir)
         
       } else if (event == 'transmission') {
         # from compartment
@@ -112,8 +126,8 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
         
         if (!mod$get.infected(from.comp)) {
           # recipient leaves source (uninfected) compartment
-          .minus.one(from.comp, e)
-          .plus.one(to.comp, e)  # enters destination (infected) compartment
+          .minus.one(from.comp, envir)
+          .plus.one(to.comp, envir)  # enters destination (infected) compartment
         }
         # otherwise it is superinfection and compartment sizes do not change!
       } else {
@@ -121,31 +135,40 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
       }
       
       # log event
-      if (is.null(logfile)) {
-        events[row.num, ] <- c(
-          params$simTime - cur.time, event, from.comp, to.comp, source)
-        
-        row.num <- row.num+1
-        if (row.num > nrow(events)) {
-          # allocate more space
-          events <- rbind(events, data.frame(
-            time=numeric(chunk.size), event=character(chunk.size), 
-            from.comp=character(chunk.size), to.comp=character(chunk.size), 
-            source=character(chunk.size),
-            stringsAsFactors = FALSE
-          ))
-        }        
-      } else {
-        writeLines(text=paste(
-          params$simTime-cur.time, event, from.comp, to.comp, source, 
-          sep=","), con=conn)
+      row <- list(time=params$simTime-cur.time, event=event, 
+                  from.comp=from.comp, to.comp=to.comp, source=source)
+      if (counted) {
+        counts <- sapply(cnames, function(cn) {
+          eval(parse(text=cn), envir=envir)
+        })
+        row <- c(row, counts)
+      }
+      events[row.num, ] <- row
+      
+      row.num <- row.num + 1
+      if (row.num > nrow(events)) {
+        # allocate more space
+        chunk <- data.frame(
+          time=numeric(chunk.size), event=character(chunk.size), 
+          from.comp=character(chunk.size), to.comp=character(chunk.size), 
+          source=character(chunk.size),
+          stringsAsFactors = FALSE
+        )
+        if (counted) {
+          for (cn in cnames) { chunk[[cn]] <- integer(chunk.size) }
+        }
+        events <- rbind(events, chunk)
+      }        
+      
+      if (!is.na(logfile)) {
+        writeLines(text=paste(event, sep=","), con=conn)
         flush(conn)
       }
       
-      # check stopping criteria
-      if (event=='migration') {
+      # check stopping criteria (serial sampling)
+      if (event=='migration' & sampling$mode == 'compartment') {
         sampled <- sapply(names(targets), function(cn) {
-          eval(parse(text=cn), envir=e)
+          eval(parse(text=cn), envir=envir)
         })
         if (all(sampled >= targets)) {
           break  # no need to simulate further
@@ -153,7 +176,7 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
       }
       
       # a change in compartment size could affect any of these rates
-      rates <- .update.rates(mod, e)
+      rates <- .update.rates(mod, envir)
     }
     # end while, cur.time exceeds limit
     
@@ -162,7 +185,7 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
       break
     } else {
       sampled <- sapply(names(targets), function(cn) {
-        eval(parse(text=cn), envir=e)
+        eval(parse(text=cn), envir=envir)
       })
       if (all(sampled >= targets)) { break }
     }
@@ -170,7 +193,8 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
     message("Failed sample size requirements (attempt ", attempt, "/", 
                 max.attempts, ")")
     attempt <- attempt + 1
-    if (!is.null(logfile)) { close(conn) }
+    
+    if (!is.na(logfile)) { close(conn) }
   }
   
   if (attempt > max.attempts) {
@@ -178,14 +202,15 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
             "need to increase simulation time (simTime), or the sampling ",
             "or transmission rates in the model.")
   }
-  
-  # discard unused rows and return
-  if (is.null(logfile)) {
-    return(events[events$event != '', ])
-  } else {
-    close(conn)
-    return(NULL)
-  }
+
+  # generate return value
+  dynamics <- list()
+  dynamics$events <- events[events$event != '', ]  # discard unused rows
+  dynamics$model <- mod
+  dynamics$logfile <- logfile
+  dynamics$is.counted <- counted
+  class(dynamics) <- c("dynamics")
+  return(dynamics)
 }
 
 
@@ -197,11 +222,11 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
 #' @noRd
 .init.model <- function(mod) {
   params <- mod$get.parameters()
-  e <- new.env()
+  envir <- new.env()
   for (key in names(params)) {
-    eval(parse(text=paste(key, "<-", params[[key]])), envir=e)
+    eval(parse(text=paste(key, "<-", params[[key]])), envir=envir)
   }
-  return(e)
+  return(envir)
 }
 
 
@@ -263,118 +288,112 @@ sim.dynamics <- function(mod, logfile=NULL, max.attempts=3,
 #' get.counts
 #' 
 #' Convert an event log into population size trajectories for every 
-#' compartment in the model.  We omit these to keep the event log compact.
-#' @param eventlog:  data.frame or character, result from sim.dynamics()
-#' @param mod:  R6 object of class Model
-#' @param chunk.size:  integer, used to allocate new rows for output data frame
-#' @return data.frame of compartment sizes over time
-#' @examples
-#' counts <- get.counts("eventlog.csv", mod)
-#' plot(counts)  # S3 method
+#' compartment in the model.  The user may choose to omit these counts to 
+#' reduce the size of the eventlog `data.frame`.
+#' 
+#' @param dynamics:  S3 object of class 'dynamics'
+#' @return dynamics updated with compartment sizes
 #' 
 #' @export
-get.counts <- function(eventlog, mod, chunk.size=100) {
-  # prepare output container
+get.counts <- function(dynamics) {
+  if (dynamics$is.counted) {
+    warning("dynamics object is already counted!")
+    return (dynamics)
+  }
+  eventlog <- dynamics$events
+  mod <- dynamics$model
+  
+  # prepare data frame to track compartment sizes
+  n <- nrow(eventlog) + 1
+  counts <- data.frame(time=numeric(n))
   cnames <- mod$get.compartments()
-  counts <- data.frame(
-    time = numeric(chunk.size)
-  )
-  for (cn in cnames) {
-    counts[[cn]] <- integer(chunk.size)
-  }
-  counts$time[1] <- 0
+  for (cn in cnames) { counts[[cn]] <- integer(n) }
+  counts$time <- 0
   counts[1, cnames] <- mod$get.init.sizes()
-  row.num <- 2
-  
-  if (is.character(eventlog)) {
-    # input is a CSV file
-    con <- file(eventlog, open='r')
-    while (length(line <- readLines(con, n=1, warn=FALSE)) > 0) {
-      items <- strsplit(line, ",")[[1]]
-      time <- suppressWarnings(as.numeric(items[1]))
-      if (is.na(time)) {
-        next  # probably header line
-      }
-      event <- items[2]
-      from.comp <- items[3]
-      to.comp <- items[4]
-      
-      counts[row.num, ] <- counts[row.num-1, ]
-      counts[row.num, 1] <- time
-      if (event=="birth") {
-        counts[row.num, from.comp] <- counts[row.num, from.comp] + 1
-        
-      } else if (event=="death") {
-        counts[row.num, from.comp] <- counts[row.num, from.comp] - 1
-        
-      } else if (
-        event=='migration' | 
-        (event=='transmission' & !mod$get.infected(from.comp))
-        ) {
-        # not a superinfection
-        counts[row.num, from.comp] <- counts[row.num, from.comp] - 1
-        counts[row.num, to.comp] <- counts[row.num, to.comp] + 1          
-      }
-      row.num <- row.num + 1
+
+  for (i in 1:nrow(eventlog)) {
+    event <- eventlog$event[i]
+    from.comp <- eventlog$from.comp[i]
+    to.comp <- eventlog$to.comp[i]
+    
+    counts[i+1, ] <- counts[i, ]
+    counts[i+1, 1] <- as.numeric(eventlog$time[i])
+    if (event=="birth") {
+      counts[i+1, from.comp] <- counts[i+1, from.comp] + 1
+    } else if (event=="death") {
+      counts[i+1, from.comp] <- counts[i+1, from.comp] - 1
+    } else if (
+      event=="migration" | 
+      (event=="transmission" & !mod$get.infected(from.comp))
+      ) {
+      counts[i+1, from.comp] <- counts[i+1, from.comp] - 1
+      counts[i+1, to.comp] <- counts[i+1, to.comp] + 1
     }
-    close(con)
-  } else if (is.data.frame(eventlog)) {
-    for (i in 1:nrow(eventlog)) {
-      event <- eventlog$event[i]
-      from.comp <- eventlog$from.comp[i]
-      to.comp <- eventlog$to.comp[i]
-      
-      counts[i+1, ] <- counts[i, ]
-      counts[i+1, 1] <- as.numeric(eventlog$time[i])
-      if (event=="birth") {
-        counts[i+1, from.comp] <- counts[i+1, from.comp] + 1
-      } else if (event=="death") {
-        counts[i+1, from.comp] <- counts[i+1, from.comp] - 1
-      } else if (
-        event=="migration" | 
-        (event=="transmission" & !mod$get.infected(from.comp))
-        ) {
-        counts[i+1, from.comp] <- counts[i+1, from.comp] - 1
-        counts[i+1, to.comp] <- counts[i+1, to.comp] + 1
-      }
-    }
-  } else {
-    stop("Unrecognized type for `eventlog`")
   }
   
-  # remove unused rows
-  idx <- (counts$time==0)
-  idx[1] <- FALSE
-  counts <- counts[!idx, ]
-  
-  class(counts) <- c('twt.counts', 'data.frame')
-  return(counts)
+  dynamics$events <- cbind(eventlog, counts[-1, -1])
+  dynamics$is.counted <- TRUE
+  return(dynamics)
 }
 
 
-#' plot.twt.counts
+#' Generic S3 print function for dynamics objects
+#' @export
+#' @noRd
+print.dynamics <- function(obj) {
+  cat("twt Dynamics object\n")
+  cat("  Counted: ", obj$is.counted, "\n")
+  cat(" ", nrow(obj$events), "events:")
+  print(table(obj$events$event))
+  t.range <- range(obj$events$time)
+  cat("  Time range: ", t.range[1], "->", t.range[2], "\n")
+}
+
+
+#' plot.dynamics
 #' 
 #' S3 method for visualizing the simulated population dynamics from 
-#' simulate.dynamics().
-#' @param counts:  S3 object of class twt.counts
+#' sim.dynamics().
+#' @param counts:  S3 object of class `dynamics`
 #' @param pal:  character, palette for drawing lines; defaults to Dark2
 #' @param xlab:  character, label for x-axis (default: 'Time')
 #' @param ylab:  character, label for y-axis (default: 'Frequency')
 #' @param lwd:  numeric, line width for plotting
+#' @param bty:  character, box type (default: 'n')
+#' @param ylim:  numeric, y-axis limits (defaults to whole range)
+#' @param mar:  numeric, plot margins (defaults to c(5,5,1,5))
 #' @param ...:  additional arguments passed to base plot() function
 #' 
 #' @export
-plot.twt.counts <- function(counts, pal=NA, xlab="Time", ylab="Frequency", 
-                            lwd=2, bty='n', ...) {
-  k <- ncol(counts)-1
-  cnames <- names(counts)[2:(k+1)]
-  
-  if (all(is.na(pal))) {
-    pal <- hcl.colors(n=k, palette="Dark2")
+plot.dynamics <- function(dynamics, pal=NA, xlab="Time", ylab="Frequency", 
+                            lwd=2, bty='n', ylim=NA, mar=c(5,5,1,5), ...) {
+  if (!dynamics$is.counted) {
+    warning("plot.dynamics requires counts, calling get.counts()")
+    dynamics <- get.counts(dynamics)
   }
   
-  par(mar=c(5,5,1,5))
-  plot(counts$time, counts[,2], ylim=range(counts[,2:(k+1)]), col=pal[1],
+  # unpack the input object
+  mod <- dynamics$model
+  events <- dynamics$events
+  
+  # extract compartment size trajectories
+  cnames <- mod$get.compartments()
+  counts <- events[c('time', cnames)]
+  row0 <- c(time=0, mod$get.init.sizes())
+  counts <- rbind(row0, counts)
+  counts$time <- as.numeric(counts$time)
+  
+  k <- length(cnames)
+  if (all(is.na(pal))) {
+    pal <- hcl.colors(n=k, palette="Dark2")  # generate colour palette
+  }
+  
+  if (any(is.na(ylim))) {
+    ylim <- range(counts[,2:(k+1)])  # default range
+  }
+  
+  par(mar=mar)  # plot margins
+  plot(counts$time, counts[,2], ylim=ylim, col=pal[1],
        type='s', xlab=xlab, ylab=ylab, lwd=lwd, bty=bty, ...)
   if (k > 1) {
     for (i in 2:(k+1)) {

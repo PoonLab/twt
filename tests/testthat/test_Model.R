@@ -64,6 +64,7 @@ test_that("Load SIR model", {
   expect_true(igraph::isomorphic(result, expected))
 })
 
+
 test_that("Reject misspecified model", {
   settings <- yaml.load_file("test_SIR.yaml")
   

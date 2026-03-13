@@ -21,6 +21,7 @@ test_that("Initialize OuterTree object", {
   expect_true(outer$get.nrow()==1)
 })
 
+
 test_that("Convert OuterTree to phylo", {
   # modify settings for smaller event log
   settings <- yaml.load_file("test_SIR.yaml")
@@ -32,9 +33,9 @@ test_that("Convert OuterTree to phylo", {
   # FIXME: This test is fragile - if the following simulation code is changed,
   #        then the expected values may be different.
   set.seed(13)
-  event.log <- sim.dynamics(mod)
+  dynamics <- sim.dynamics(mod)
   
-  outer <- sim.outer.tree(mod, event.log)
+  outer <- sim.outer.tree(dynamics)
   phy <- as.phylo(outer)
   expect_equal(Ntip(phy), 3)
   expect_true(is.rooted(phy))

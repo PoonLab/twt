@@ -4,16 +4,21 @@
 #' superinfection events that may involve sampled lineages.
 #' 
 #' @param outer:  R6 object of class `OuterTree`
-#' @param mod:  R6 object of class `Model`
 #' 
 #' @return R6 object of class `InnerTree`
 #' @export
-sim.inner.tree <- function(outer, mod) {
-  inner <- InnerTree$new(outer, mod)
+sim.inner.tree <- function(outer) {
+  if ( !is.R6(outer) | !is.element("OuterTree", class(outer)) ) {
+    stop("Input argument must be an R6 object of class `OuterTree`")
+  }
+  
+  inner <- InnerTree$new(outer)
+  mod <- inner$get.model()
   active <- inner$get.active()
   inactive <- inner$get.inactive()
   
   env <- new.env()  # to instantiate bottleneck/coalescence expressions
+  eval(parse(text="require(stats)"), envir=env)
   
   # iterate through events in outer tree in reverse time (most recent first)
   events <- outer$get.log()
@@ -34,7 +39,7 @@ sim.inner.tree <- function(outer, mod) {
       if ( !all(is.na(wait.time)) ) {
         if ( wait.time$dt < t.delta ) {
           t.delta <- t.delta - wait.time$dt 
-          .do.coalescent(wait.time$host, inner, e$time + t.delta)
+          .do.coalescent(wait.time$host, inner, e$time + t.delta, envir=env)
           next
         }
       } 
@@ -50,7 +55,7 @@ sim.inner.tree <- function(outer, mod) {
         .migrate.pathogens(e, inner)
       } 
     } else if (e$event == "transmission") {
-      .do.infection(e, inner)
+      .do.infection(e, inner, envir=env)
     }
     
     row <- row + 1  # go to next event
@@ -66,9 +71,11 @@ sim.inner.tree <- function(outer, mod) {
   } else {
     # finish coalescence in last host
     root <- active$get.hosts()[[1]]
+    cur.time <- e$time
     while (root$count.pathogens() > 1) {
       wait.time <- .rcoal(active, mod, envir=env)
-      .do.coalescent(root$get.name(), inner, e$time - wait.time$dt)
+      cur.time <- cur.time - wait.time$dt
+      .do.coalescent(root$get.name(), inner, cur.time)
     }
   }
   
@@ -215,7 +222,8 @@ sim.inner.tree <- function(outer, mod) {
     
     if (recipient$count.pathogens() > 1) {
       # bottleneck remaining Pathogen lineages
-      .do.coalescent(recipient$get.name(), inner, e$time, bottleneck=TRUE)
+      .do.coalescent(recipient$get.name(), inner, e$time, bottleneck=TRUE, 
+                     envir=envir)
     }
     
     # move remaining Pathogens from recipient to source

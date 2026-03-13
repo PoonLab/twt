@@ -100,6 +100,31 @@ Host <- R6Class(
       } else {
         return(NULL)
       }
+    },
+    
+    print = function() {
+      cat("twt Host", self$get.name(), "\n")
+      cat("  Compartment:", self$get.compartment(), "\n")
+      cat("  Infection time(s):", paste(self$get.transmission.time()), "\n")
+      cat("  Sampling time:", self$get.sampling.time(), "\n")
+      
+      sources <- self$get.source()
+      if (is.list(sources)) {
+        host.names <- sapply(sources, function(h) h$get.name())
+      } else if ("Host" %in% class(sources)) {
+        host.names <- sources$get.name()
+      } else {
+        host.names <- ""
+      }
+      cat("  Source(s):", host.names, "\n")
+      
+      pathogens <- self$get.pathogens()
+      if (is.list(pathogens)) {
+        p.names <- sapply(pathogens, function(p) p$get.name())
+      } else {
+        p.names <- pathogens$get.name()
+      }
+      cat("  Pathogen(s):", p.names, "\n")
     }
   ),
   
@@ -132,6 +157,14 @@ HostSet <- R6Class(
       private$hosts <- hosts
       private$index <- index  # unique IDs for members
     },
+    
+    print = function() {
+      my.name <- self$get.name()
+      cat("twt HostSet", ifelse(is.na(my.name), "", my.name), "\n")
+      cat(" ", self$count.type(), "Host objects\n")
+    },
+    
+    get.name = function() { private$name },
     
     get.names = function() {
       sapply(private$hosts, function(h) { h$get.name() })
@@ -273,3 +306,5 @@ HostSet <- R6Class(
     index = NULL
   )
 )
+
+

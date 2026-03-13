@@ -368,6 +368,29 @@ Model <- R6Class(
             stop(paste("Sampling:targets:", cn, "must be a positive integer"))
           }
         }
+        
+      } else if (mode == "fraction") {
+        # contemporaneous sampling occurs at end of simulation time from 
+        # compartments specified by user, to target size or probability
+        # if value is between 0 and 1, then interpret as a probability
+        if (is.null(private$sampling$targets)) {
+          stop("Sampling field must specify `targets` (compartments)")
+        }
+        
+        # check that targeted compartments have been defined by user
+        if (is.null(private$compartments)) {
+          load.compartments(settings)
+        }
+        for (cn in names(private$sampling$targets)) {
+          if (!is.element(cn, private$compartments)) {
+            stop(paste("In Sampling:targets compartment", cn, 
+                       "has not been declared in Compartments"))
+          }
+          count <- private$sampling$targets[[cn]]
+          if (!is.numeric(count) | count <= 0) {
+            stop(paste("Sampling:targets:", cn, "must be a positive integer"))
+          }
+        }
       } else {
         stop(paste("Sampling mode `", mode, "` not recognized"))
       }
@@ -379,15 +402,16 @@ Model <- R6Class(
 #' print.Model
 #' S3 class function to display contents of a Model object
 #' @export
+#' @noRd
 print.Model <- function(obj) {
-  cat("twt Model")
-  cat("Parameters:\n")
+  cat("twt Model\n")  # bold
+  cat("  Parameters:\n")
   params <- obj$get.parameters()
   for (key in names(params)) {
     value <- params[[key]]
-    cat("  ", key, ": ", value, "\n")
+    cat("    ", key, ": ", value, "\n")
   }
-  cat("Compartments: ")
+  cat("  Compartments: ")
   compartments <- obj$get.compartments()
   for (cn in compartments) {
     cat(cn, " ")
@@ -399,6 +423,7 @@ print.Model <- function(obj) {
 #' S3 class function to summarize a Model object - simply a wrapper 
 #' around print()
 #' @export
+#' @noRd
 summary.Model <- function(obj) {
   print(obj)
 }
@@ -406,8 +431,23 @@ summary.Model <- function(obj) {
 
 #' plot.Model
 #' Plot a graph summarizing compartments and rates
-#' TODO: label edges with rate expressions
+#' @param obj:  R6 object of class `Model`
+#' @param bg:  character, color for uninfected compartments
+#' @param bg2:  character, color for infected compartments
+#' @param mar:  numeric, margin size (default: 1)
+#' @param lwd:  numeric, line width for edges
 #' @export
-plot.Model <- function(obj) {
-  igraph::plot.igraph(obj$get.graph())
+plot.Model <- function(obj, bg='skyblue', bg2='pink2', mar=1, lwd=2) {
+  g <- obj$get.graph()
+  par(mar=rep(mar, 4))
+  igraph::plot.igraph(g, 
+    vertex.size=(nchar(names(V(g)))+2)*8, 
+    vertex.size2=20, 
+    vertex.shape='crectangle', 
+    vertex.color=ifelse(obj$get.infected(), bg2, bg), 
+    vertex.label.family='sans',
+    edge.arrow.size=0.8,
+    edge.arrow.width=1.2,
+    edge.width=lwd
+    )
 }

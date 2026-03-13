@@ -29,6 +29,8 @@ Compartments:
       I2: mig*I1  # moving between demes
       I3: mig*I1
       I_samp1: psi*I1
+    bottleneck.size: 1+rpois(1, 0.5)
+    coalescent.rate: 1  # (Ne g)^-1, g=generation time
   I2:
     infected: true
     size: 0
@@ -37,6 +39,8 @@ Compartments:
       I1: mig*I2
       I3: mig*I2
       I_samp2: psi*I2
+    bottleneck.size: 1+rpois(1, 0.5)
+    coalescent.rate: 1  # (Ne g)^-1, g=generation time
   I3:
     infected: true
     size: 0
@@ -45,6 +49,8 @@ Compartments:
       I1: mig*I3
       I2: mig*I3
       I_samp3: psi*I3
+    bottleneck.size: 1+rpois(1, 0.5)
+    coalescent.rate: 1  # (Ne g)^-1, g=generation time
   I_samp1:
     infected: true
     size: 0
@@ -61,6 +67,6 @@ Compartments:
 Sampling:
   mode: compartment
   targets:
-    I_samp1: 10
-    I_samp2: 10
-    I_samp3: 10
+    I_samp1: 5
+    I_samp2: 5
+    I_samp3: 5

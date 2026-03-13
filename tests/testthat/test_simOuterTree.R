@@ -143,19 +143,25 @@ test_that("full outer tree simulation", {
     to.comp = c('I', 'I_samp'), 
     source = c('I', NA)
   )
+  dynamics <- list(events=event.log, model=mod, is.counted=FALSE)
   
-  result <- get.counts(event.log, mod)
+  result <- get.counts(dynamics)$events
   expected <- data.frame(
-    time=c(0, 1.0, 1.1),
-    S=c(1000, 999, 999),
-    I=c(1, 2, 1),
-    I_samp=c(0, 0, 1),
-    R=c(0, 0, 0)
+    time=c(1.0, 1.1),
+    event = c('transmission', 'migration'), 
+    from.comp = c('S', 'I'), 
+    to.comp = c('I', 'I_samp'), 
+    source = c('I', NA),
+    S=c(999, 999),
+    I=c(2, 1),
+    I_samp=c(0, 1),
+    R=c(0, 0)
   )
-  class(expected) <- c('twt.counts', 'data.frame')
+  row.names(expected) <- NULL
+  row.names(result) <- NULL
   expect_equal(result, expected)
   
-  outer <- sim.outer.tree(mod, event.log)
+  expect_warning(outer <- sim.outer.tree(dynamics))  # is.counted = FALSE
   expect_equal(class(outer), c("OuterTree", "R6"))
   result <- outer$get.log()
   

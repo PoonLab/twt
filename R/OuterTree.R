@@ -9,6 +9,8 @@ OuterTree <- R6Class(
   "OuterTree",
   public = list(
     initialize = function(mod) {
+      private$model <- mod
+      
       private$outer.log <- data.frame(
         time=numeric(),  # time of event
         event=character(),  # type of event, e.g., migration
@@ -27,6 +29,7 @@ OuterTree <- R6Class(
     },
     
     # accessor functions
+    get.model = function() { private$model },
     get.targets = function() { private$targets }, 
     get.log = function() { private$outer.log },
     get.nrow = function() { nrow(private$outer.log) },
@@ -64,6 +67,7 @@ OuterTree <- R6Class(
   ),
   
   private = list(
+    model = NULL,
     outer.log = NULL,
     targets = NULL,
     sampled = NULL,
@@ -344,4 +348,18 @@ as.phylo.OuterTree <- function(obj) {
     }
   }
   events
+}
+
+
+#' Generic print function for R6 objects of class `OuterTree`
+#' @export
+#' @noRd
+print.OuterTree <- function(obj) {
+  cat("twt OuterTree\n")  # bold color!
+  cat(" ", obj$get.sampled()$count.type(), "sampled Hosts\n")
+  cat(" ", obj$get.active()$count.type(), "active Hosts\n")
+  cat(" ", obj$get.retired()$count.type(), "retired Hosts\n")
+  events <- obj$get.log()
+  cat(" ", nrow(events), "events in outer log:")
+  print(table(events$event))
 }

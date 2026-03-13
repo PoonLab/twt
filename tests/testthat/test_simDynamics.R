@@ -91,16 +91,23 @@ test_that("Calculate counts from event log", {
     to.comp=c('I', 'I', 'I_samp', 'R'),
     source=c('I', 'I', NA, NA)
   )
-  result <- get.counts(eventlog, mod, chunk.size=4)
+  dyn <- list(events=eventlog, is.counted=FALSE, model=mod)
+  class(dyn) <- 'dynamics'
+  result <- get.counts(dyn)
   expected <- data.frame(
-    time=c(0, 0.1, 0.2, 0.3, 0.4),
-    S=c(1000, 999, 998, 998, 998),
-    I=c(1, 2, 3, 2, 1),
-    I_samp=c(0, 0, 0, 1, 1),
-    R=c(0, 0, 0, 0, 1)
+    time=c(0.1, 0.2, 0.3, 0.4),
+    event=c('transmission', 'transmission', 'migration', 'migration'),
+    from.comp=c('S', 'S', 'I', 'I'),
+    to.comp=c('I', 'I', 'I_samp', 'R'),
+    source=c('I', 'I', NA, NA),
+    S=c(999, 998, 998, 998),
+    I=c(2, 3, 2, 1),
+    I_samp=c(0, 0, 1, 1),
+    R=c(0, 0, 0, 1)
   )
-  class(expected) <- c('twt.counts', 'data.frame')
-  expect_equal(result, expected)
+  row.names(expected) <- NULL
+  row.names(result$events) <- NULL
+  expect_equal(result$events, expected)
 })
 
 
@@ -114,12 +121,14 @@ test_that("Expected SI dynamics", {
   set.SI$Compartments$R <- NULL
   set.SI$Sampling$targets[['I_samp']] <- 3
   
-  SI.mod <- Model$new(set.SI)
-  event.log <- sim.dynamics(SI.mod)
+  mod <- Model$new(set.SI)
+  dynamics <- sim.dynamics(mod)
   
+  event.log <- dynamics$events
   expect_true(is.data.frame(event.log))
   result <- names(event.log)
-  expected <- c("time", "event", "from.comp", "to.comp", "source")
+  expected <- c("time", "event", "from.comp", "to.comp", "source", 
+                "S", "I", "I_samp")
   expect_equal(result, expected)
   
   # simulation should have full sample
@@ -128,7 +137,7 @@ test_that("Expected SI dynamics", {
   expect_equal(result, expected)
   
   # accumulation of infected hosts should be roughly exponential
-  counts <- get.counts(event.log, SI.mod)
+  counts <- dynamics$events
   y <- log(counts$I + counts$I_samp)
   x <- counts$time
   fit <- lm(y~x)

@@ -15,7 +15,7 @@
 InnerTree <- R6Class(
   "InnerTree",
   public = list(
-    initialize = function(outer, mod, prefix='P', p.index=1) {
+    initialize = function(outer, prefix='P', p.index=1) {
       private$inner.log <- data.frame(
         time=numeric(),  # time of event
         event=character(),  # type of event, e.g., coalescence
@@ -27,7 +27,7 @@ InnerTree <- R6Class(
         pathogen2=character()
       )
       
-      private$mod <- mod
+      private$mod <- outer$get.model()  # inherits model from OuterTree
       private$prefix <- prefix
       private$p.index <- p.index
       
@@ -40,7 +40,6 @@ InnerTree <- R6Class(
       
       # inactive Hosts are part of the transmission history
       private$inactive <- HostSet$new()
-      private$inactive$add.host(index.case$clone())
       private$sampled <- HostSet$new()
       
       # note there is overlap between `retired` and `sampled` HostSets
@@ -52,6 +51,13 @@ InnerTree <- R6Class(
         } else {
           private$inactive$add.host(host$clone())
         }
+      }
+      
+      # handle index case
+      if (index.case$get.name() %in% sampled$get.names()) {
+        private$sampled$add.host(index.case$clone())
+      } else {
+        private$inactive$add.host(index.case$clone())
       }
       
       # track Hosts with active Pathogen lineages
@@ -117,7 +123,7 @@ as.phylo.InnerTree <- function(obj) {
   events <- obj$get.log()
   events$time <- as.numeric(events$time)
   
-  active <- inner$get.active()
+  active <- obj$get.active()
   if (active$count.type() != 1) {
     stop("Error, expected only one Host in active HostSet")
   }
@@ -179,7 +185,8 @@ as.phylo.InnerTree <- function(obj) {
     Nnode=length(node.label), edge=edge, 
     edge.length=as.numeric(edge.list$length),
     event=events$event[match(nodes, events$pathogen2)],
-    compartment=edge.list$compartment
+    compartment=edge.list$compartment,
+    host=events$from.host[match(nodes, events$pathogen2)]
   )
   attr(phy, 'class') <- 'phylo'
   phy
@@ -236,7 +243,7 @@ as.phylo.InnerTree <- function(obj) {
 #' @param node:  character, Pathogen name
 #' @param order:  character, 'preorder' or 'postorder'
 #' @param result:  character, vector to append results by recursive calls
-#' @result character, Pathogen names ordered by tree traversal
+#' @return character, Pathogen names ordered by tree traversal
 #' 
 #' @keywords internal
 #' @noRd
@@ -253,3 +260,17 @@ as.phylo.InnerTree <- function(obj) {
   }
   return(result)
 }
+
+
+#' Generic print function for R6 objects of class `InnerTree`
+#' @export
+#' @noRd
+print.InnerTree <- function(obj) {
+  cat("twt InnerTree\n")  # bold color!
+  cat(" ", obj$get.sampled()$count.type(), "sampled Pathogens\n")
+  cat(" ", obj$get.active()$count.type(), "active Pathogens\n")
+  cat(" ", obj$get.inactive()$count.type(), "inactive Pathogens\n")
+  events <- obj$get.log()
+  cat(" ", nrow(events), "events in inner log: ")
+  print(table(events$event))
+} 
