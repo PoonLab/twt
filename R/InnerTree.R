@@ -123,7 +123,7 @@ as.phylo.InnerTree <- function(obj) {
   events <- obj$get.log()
   events$time <- as.numeric(events$time)
   
-  active <- inner$get.active()
+  active <- obj$get.active()
   if (active$count.type() != 1) {
     stop("Error, expected only one Host in active HostSet")
   }
@@ -185,7 +185,8 @@ as.phylo.InnerTree <- function(obj) {
     Nnode=length(node.label), edge=edge, 
     edge.length=as.numeric(edge.list$length),
     event=events$event[match(nodes, events$pathogen2)],
-    compartment=edge.list$compartment
+    compartment=edge.list$compartment,
+    host=events$from.host[match(nodes, events$pathogen2)]
   )
   attr(phy, 'class') <- 'phylo'
   phy

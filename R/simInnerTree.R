@@ -18,6 +18,7 @@ sim.inner.tree <- function(outer) {
   inactive <- inner$get.inactive()
   
   env <- new.env()  # to instantiate bottleneck/coalescence expressions
+  eval(parse(text="require(stats)"), envir=env)
   
   # iterate through events in outer tree in reverse time (most recent first)
   events <- outer$get.log()
@@ -38,7 +39,7 @@ sim.inner.tree <- function(outer) {
       if ( !all(is.na(wait.time)) ) {
         if ( wait.time$dt < t.delta ) {
           t.delta <- t.delta - wait.time$dt 
-          .do.coalescent(wait.time$host, inner, e$time + t.delta)
+          .do.coalescent(wait.time$host, inner, e$time + t.delta, envir=env)
           next
         }
       } 
@@ -54,7 +55,7 @@ sim.inner.tree <- function(outer) {
         .migrate.pathogens(e, inner)
       } 
     } else if (e$event == "transmission") {
-      .do.infection(e, inner)
+      .do.infection(e, inner, envir=env)
     }
     
     row <- row + 1  # go to next event
@@ -221,7 +222,8 @@ sim.inner.tree <- function(outer) {
     
     if (recipient$count.pathogens() > 1) {
       # bottleneck remaining Pathogen lineages
-      .do.coalescent(recipient$get.name(), inner, e$time, bottleneck=TRUE)
+      .do.coalescent(recipient$get.name(), inner, e$time, bottleneck=TRUE, 
+                     envir=envir)
     }
     
     # move remaining Pathogens from recipient to source
