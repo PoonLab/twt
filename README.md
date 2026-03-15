@@ -32,34 +32,50 @@ within that transmission history.
 
 ### Installation
 
-The recommended method to install this package is to download a release
-or clone the repository, navigate to that directory and then run the
-`INSTALL` command:
+If you have already installed the R package
+[`devtools`]((https://cran.r-project.org/web/packages/devtools/index.html)),
+then the easiest method for installing this package is:
+
+``` r
+require(devtools)
+devtools::install_github("ArtPoon/ggfree")
+devtools::install_github("PoonLab/twt")
+```
+
+If you do not have `devtools` and you don’t want to install it (because
+it has a large number of package dependencies), here is an alternative
+method:
+
+1.  `ape` and `igraph` are both CRAN-hosted packages that can be
+    installed within R:
+
+``` r
+install.packages('ape', 'igraph')
+```
+
+2.  `ggfree` is not hosted on CRAN so you need to download a release or
+    clone the repository with `git`.
+
+``` bash
+git clone https://github.com/ArtPoon/ggfree.git
+R CMD INSTALL ggfree
+```
+
+3.  Finally, install `twt` using the same method:
 
 ``` bash
 git clone https://github.com/PoonLab/twt.git
 R CMD INSTALL twt
 ```
 
-The last command can be run as `sudo` if you want the package to be
-available for all users.
-
-Alternatively, you may use the
-[devtools](https://cran.r-project.org/web/packages/devtools/index.html)
-package to automate some of the above:
-
-``` r
-require(devtools)
-devtools::install_github("PoonLab/twt")
-```
-
-However, `devtools` requires a large number of other packages to be
-installed.
+The `R CMD INSTALL` commands can be run as `sudo` if you want the
+package to be available for all users.
 
 ### Usage
 
-If you are in a hurry, you can use pipes to quickly generate a tree in
-one line:
+If you are in a hurry, you can use
+[pipes](https://stat.ethz.ch/R-manual/R-devel/library/base/html/pipeOp.html)
+to quickly generate a tree in one line:
 
 ``` r
 require(twt)
@@ -91,7 +107,7 @@ mod <- Model$new(settings)
 plot(mod)
 ```
 
-<img src="man/figures/README-unnamed-chunk-6-1.png" width="60%" style="display: block; margin: auto;" />
+<img src="man/figures/README-unnamed-chunk-7-1.png" alt="" width="60%" style="display: block; margin: auto;" />
 
 Next, we simulate the population dynamics from this model forward in
 time. The results can be visualized with a call to the generic `plot`
@@ -102,7 +118,7 @@ dynamics <- sim.dynamics(mod)
 plot(dynamics, ylim=c(0, 200))
 ```
 
-<img src="man/figures/README-unnamed-chunk-7-1.png" width="60%" style="display: block; margin: auto;" />
+<img src="man/figures/README-unnamed-chunk-8-1.png" alt="" width="60%" style="display: block; margin: auto;" />
 
 To simulate an “outer” transmission tree, we pass the `Dynamics` object
 to another function.
@@ -120,7 +136,7 @@ a transmission event:
 plot(outer)
 ```
 
-<img src="man/figures/README-unnamed-chunk-9-1.png" width="400" style="display: block; margin: auto;" />
+<img src="man/figures/README-unnamed-chunk-10-1.png" alt="" width="400" style="display: block; margin: auto;" />
 
 If you choose to stop at this point, you can convert the OuterTree
 object to a phylogeny compatible with the R package `ape`, and exported
@@ -131,7 +147,7 @@ phy <- as.phylo(outer)
 plot(phy)
 ```
 
-<img src="man/figures/README-unnamed-chunk-11-1.png" width="40%" style="display: block; margin: auto;" />
+<img src="man/figures/README-unnamed-chunk-12-1.png" alt="" width="40%" style="display: block; margin: auto;" />
 
 All simulated events are embedded in this `phylo` object, making it
 easier to annotate the tree. In this example, we are colouring the
@@ -145,7 +161,7 @@ plot(L, type='n', mar=c(3,1,1,5))
 lines(L, col=pal[L$edge$compartment], lwd=2)
 ```
 
-<img src="man/figures/README-unnamed-chunk-12-1.png" width="50%" style="display: block; margin: auto;" />
+<img src="man/figures/README-unnamed-chunk-13-1.png" alt="" width="50%" style="display: block; margin: auto;" />
 Note we can change colours mid-branch because we know exactly when the
 migrations occur.
 
@@ -161,7 +177,8 @@ plot(L, type='n', label='t')
 lines(L, col=pal[L$edge$compartment], lwd=2)
 ```
 
-<img src="man/figures/README-unnamed-chunk-13-1.png" width="50%" style="display: block; margin: auto;" />
+<img src="man/figures/README-unnamed-chunk-14-1.png" alt="" width="50%" style="display: block; margin: auto;" />
+
 Because this particular model (`migration.yaml`) has incomplete
 bottlenecks, we see some discordance between the inner and outer tree
 topologies.
