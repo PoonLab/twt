@@ -1,0 +1,38 @@
+InitialConditions:
+  originTime: 10.0
+  CompartmentTypes: I
+
+Parameters:
+  simTime: 10.0
+  beta: 1e-4    # S->I transmission rate
+  sigma: 1e-5   # I->I superinfection rate
+  gamma: 0.1    # clearance rate
+  psi: 0.05     # sampling rate
+
+Compartments:
+  S:
+    infected: false
+    transmission:
+      I: {I: beta*S*I}
+    size: 9999
+  I:
+    infected: true
+    transmission:
+      I: {I: sigma*I*I}   # superinfection: I infects I
+    migration:
+      R: gamma*I
+      I_samp: psi*I
+    size: 2
+    bottleneck.size: 1
+    coalescent.rate: 0.01
+  I_samp:
+    infected: true
+    size: 0
+  R:
+    infected: false
+    size: 0
+
+Sampling:
+  mode: compartment
+  targets:
+    I_samp: 10
