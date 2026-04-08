@@ -112,10 +112,44 @@ OuterTree <- R6Class(
 }
 
 
+#' .find.node.at
+#'
+#' Given an original (pre-relabeling) host name and a time point, return the
+#' y-position (row index in \code{nodes}) of that host's segment in the
+#' plotted outer tree.  The name of a host's segment changes whenever a
+#' migration event occurs; this function traces those name changes to find
+#' which relabeled segment is active at \code{time}.
+#'
+#' @param orig.name  character, original host name before relabeling
+#' @param time       numeric, the time point of interest
+#' @param rel.events data.frame, the relabeled filtered event log (output of
+#'                   \code{.relabel.nodes})
+#' @param nodes      character vector, ordered node names from
+#'                   \code{.reorder.events} (defines y-positions)
+#' @return integer y-position, or \code{NA} if not found
+#' @keywords internal
+#' @noRd
+.find.node.at <- function(orig.name, time, rel.events, nodes) {
+  current.name <- orig.name
+  # trace through migration events in time order to follow name changes
+  mig <- rel.events[rel.events$event == 'migration', , drop=FALSE]
+  mig <- mig[order(mig$time), , drop=FALSE]
+  for (i in seq_len(nrow(mig))) {
+    if (mig$from.host[i] == current.name && mig$time[i] <= time) {
+      current.name <- mig$to.host[i]
+    }
+  }
+  y <- which(nodes == current.name)
+  if (length(y) == 0L) NA_integer_ else y
+}
+
+
 #' plot.OuterTree
 #' S3 generic plot method for objects of class `OuterTree`.  This visualizes
-#' the collection of events sampled in the outer simulation as a transmission 
-#' tree.
+#' the collection of events sampled in the outer simulation as a transmission
+#' tree.  Primary transmissions are drawn as solid orangered arrows;
+#' superinfection events (secondary transmissions to an already-infected host)
+#' are drawn as dashed steelblue arrows.
 #' @param obj:  R6 object of class `OuterTree`
 #' @param pad:  numeric, controls padding around tree in plot region
 #' @export
@@ -136,19 +170,22 @@ plot.OuterTree <- function(obj, pad=1.05) {
   hosts <- obj$get.retired()
   host.names <- hosts$get.names()
   
-  # FIXME: what happens if there are multiple? i.e., superinfection
-  #inf.times <- setNames(hosts$get.transmission.times(), host.names)
-  sources <- setNames(
-    lapply(hosts$get.sources(), function(h) h$get.name()), host.names)
-  
-  # starting from tips, build edge list
+  # retrieve full event log before any filtering
   events <- obj$get.log()
   events <- events[!(events$event=='migration' & is.na(events$to.host)), ]
   events$time <- as.numeric(events$time)
+  
+  # identify superinfection events: any transmission to a host that already
+  # received a (first) transmission, sorted by time so duplicated() works
+  trans <- events[events$event == 'transmission', , drop=FALSE]
+  trans <- trans[order(trans$time), , drop=FALSE]
+  si.events <- trans[duplicated(trans$to.host), , drop=FALSE]
+  
+  # filter and relabel for primary-tree layout (unchanged logic)
   events <- .filter.firsts(events)
   events <- .relabel.nodes(events, obj$get.targets())
   
-  # sort nodes by post-order traversal (children before parents)
+  # sort nodes by preorder traversal (parents before children)
   nodes <- .reorder.events(events, root.name, order="preorder", decreasing=FALSE)
   
   # prepare plot region
@@ -156,6 +193,7 @@ plot.OuterTree <- function(obj, pad=1.05) {
   plot(NA, xlim=c(0, max(events$time)*pad), ylim=c(0.5, length(nodes)+0.5),
        xlab="Time", yaxt='n', ylab=NA, bty='n')
   
+  # primary transmission tree
   for (node in nodes) {
     is.sampled <- is.element(node, sampled)
     
@@ -171,18 +209,35 @@ plot.OuterTree <- function(obj, pad=1.05) {
     if (is.sampled) {
       samp.time <- samp.times[[node]]
     } else {
-      # unsampled host - set right limit at first transmission event
-      samp.time <- max(events$time[events$from.host==node])
+      # unsampled host - right limit is its first outgoing transmission
+      out.times <- events$time[events$from.host==node]
+      samp.time <- if (length(out.times) > 0) max(out.times) else inf.time
     }
     
     segments(x0=inf.time, x1=samp.time, y0=which(nodes==node),
              lwd=2, lend=2, col=ifelse(is.sampled, 'black', 'grey'))
-    text(x=max(samp.times)*pad, y=which(nodes==node), label=node, 
+    text(x=max(samp.times)*pad, y=which(nodes==node), label=node,
          xpd=NA, adj=0, cex=0.5)
     if (!is.na(source)) {
       arrows(x0=inf.time, y1=which(nodes==node), y0=which(nodes==source),
-             length=0.08, lwd=2, col='orangered')      
+             length=0.08, lwd=2, col='orangered')
     }
+  }
+  
+  # superinfection arrows (dashed steelblue)
+  if (nrow(si.events) > 0L) {
+    for (i in seq_len(nrow(si.events))) {
+      si <- si.events[i, ]
+      donor.y <- .find.node.at(si$from.host, si$time, events, nodes)
+      recip.y <- .find.node.at(si$to.host,   si$time, events, nodes)
+      if (!is.na(donor.y) && !is.na(recip.y)) {
+        arrows(x0=si$time, y0=donor.y, y1=recip.y,
+               length=0.08, lwd=2, lty=2, col='steelblue')
+      }
+    }
+    # legend only when superinfection events are present
+    legend('bottomright', legend=c('transmission', 'superinfection'),
+           col=c('orangered', 'steelblue'), lty=c(1, 2), lwd=2, bty='n', cex=0.8)
   }
 }
 
