@@ -1,14 +1,13 @@
+# test_Superinfection_inner.yaml  — high sigma for inner tree tests only
 InitialConditions:
   originTime: 10.0
   CompartmentTypes: I
-
 Parameters:
   simTime: 10.0
-  beta: 1e-4    # S->I transmission rate
-  sigma: 1e-5   # I->I superinfection rate
-  gamma: 0.1    # clearance rate
-  psi: 0.05     # sampling rate
-
+  beta: 1e-4
+  sigma: 1e-2    # much higher so superinfection actually happens
+  gamma: 0.1
+  psi: 0.05
 Compartments:
   S:
     infected: false
@@ -18,7 +17,7 @@ Compartments:
   I:
     infected: true
     transmission:
-      I: {I: sigma*I*I}   # superinfection: I infects I
+      I: {I: sigma*I*I}
     migration:
       R: gamma*I
       I_samp: psi*I
@@ -31,7 +30,6 @@ Compartments:
   R:
     infected: false
     size: 0
-
 Sampling:
   mode: compartment
   targets:
