@@ -39,9 +39,7 @@ sim.inner.tree <- function(outer) {
       if ( !all(is.na(wait.time)) ) {
         if ( wait.time$dt < t.delta ) {
           t.delta <- t.delta - wait.time$dt 
-          if (!is.null(active$get.host.by.name(wait.time$host))) {
-            .do.coalescent(wait.time$host, inner, e$time + t.delta, envir=env)
-          }
+          .do.coalescent(wait.time$host, inner, e$time + t.delta, envir=env)
           next
         }
       } 
@@ -77,9 +75,7 @@ sim.inner.tree <- function(outer) {
     while (root$count.pathogens() > 1) {
       wait.time <- .rcoal(active, mod, envir=env)
       cur.time <- cur.time - wait.time$dt
-      if (!is.null(active$get.host.by.name(root$get.name()))) {
-        .do.coalescent(root$get.name(), inner, cur.time)
-      }
+      .do.coalescent(root$get.name(), inner, cur.time)
     }
   }
   
@@ -173,18 +169,9 @@ sim.inner.tree <- function(outer) {
   active <- inner$get.active()
   inactive <- inner$get.inactive()
   
-  # we are going back in time, so a recipient must already be active.
-  # For superinfection events, the recipient's primary infection is later
-  # in forward time (earlier in reverse time), so the recipient may not
-  # be in `active` yet. Skip SI events in that case.
-  suppressWarnings(recipient <- active$get.host.by.name(e$to.host))
-  if (is.null(recipient) || !inherits(recipient, "Host")) {
-    # recipient not in active: either an SI event processed before the primary
-    # (reverse-time ordering), or an unsampled host with no tracked lineages.
-    # In both cases no pathogen transfer is needed -- skip.
-    return(invisible(NULL))
-  }
-
+  # we are going back in time, so a recipient must already be active
+  recipient <- active$get.host.by.name(e$to.host)
+  
   # source may or may not be an active Host
   source.is.active <- TRUE
   suppressWarnings({
