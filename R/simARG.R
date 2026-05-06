@@ -33,6 +33,7 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
 
   env <- new.env()
   eval(parse(text = "require(stats)"), envir = env)
+  breakpoints <- list()  # named list: pathogen name -> breakpoint position
 
   # iterate through outer tree events in reverse time
   events     <- outer$get.log()
@@ -57,8 +58,9 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
         if (ev$type == "coalescent") {
           .do.coalescent(ev$host, inner, event.time, envir = env)
         } else {
-          .do.recombination(ev$host, ev$pathogen, inner, event.time,
+          bp <- .do.recombination(ev$host, ev$pathogen, inner, event.time,
                             seq.length = seq.length)
+        breakpoints[[bp$child]] <- bp$position
         }
         next
       }
@@ -94,7 +96,7 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
     warning("Empty active HostSet at end of simulation!")
   }
 
-  return(inner)
+  return(list(inner = inner, breakpoints = breakpoints))
 }
 
 
@@ -200,4 +202,96 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
   inner$add.event(event)
   event$pathogen2 <- parent.right$get.name()
   inner$add.event(event)
+
+  return(list(child = pathogen$get.name(), position = breakpoint,
+              left = parent.left$get.name(), right = parent.right$get.name()))
+}
+
+
+#' resolve.arg
+#'
+#' Resolve an ARG into a sequence of local trees, one per non-recombining
+#' genomic segment.  Returns a list of InnerTree-compatible event logs,
+#' one per segment, that can be converted to phylo objects for Pyvolve.
+#'
+#' @param arg.result  list returned by sim.arg (with $inner and $breakpoints)
+#' @param seq.length  integer, total genome length in bp
+#'
+#' @return list with:
+#'   - segments: data.frame with columns start, end, local.tree (phylo)
+#'   - breakpoints: sorted numeric vector of breakpoint positions
+#' @export
+resolve.arg <- function(arg.result, seq.length = 9000L) {
+  inner      <- arg.result$inner
+  breakpoints <- sort(unlist(arg.result$breakpoints))  # positions
+
+  # genomic segments defined by breakpoints
+  starts <- c(1L, as.integer(breakpoints) + 1L)
+  ends   <- c(as.integer(breakpoints), seq.length)
+
+  log <- inner$get.log()
+
+  # for each segment, determine which lineage to follow at each recombination
+  # node and extract the induced subtree
+  local.trees <- vector("list", length(starts))
+
+  for (i in seq_along(starts)) {
+    seg.mid <- (starts[i] + ends[i]) / 2  # representative position
+
+    # filter out recombination events involving the "wrong" parent
+    # at each recombination, keep the left parent if seg.mid <= breakpoint,
+    # right parent if seg.mid > breakpoint
+    log.filtered <- log[log$event != "recombination", ]
+
+    for (child.name in names(arg.result$breakpoints)) {
+      bp <- arg.result$breakpoints[[child.name]]
+      # find the two recombination log rows for this child
+      recomb.rows <- log[log$event == "recombination" &
+                           log$pathogen1 == child.name, ]
+      if (nrow(recomb.rows) < 2) next
+
+      # rows are logged twice — one per parent
+      # pathogen2 col gives parent name
+      parent.left  <- recomb.rows$pathogen2[1]
+      parent.right <- recomb.rows$pathogen2[2]
+
+      # keep left parent if position <= breakpoint, right parent otherwise
+      keep.parent   <- if (seg.mid <= bp) parent.left else parent.right
+      remove.parent <- if (seg.mid <= bp) parent.right else parent.left
+
+      # add the transmission event from child to kept parent
+      keep.row <- recomb.rows[1, ]
+      keep.row$event     <- "transmission"
+      keep.row$pathogen2 <- keep.row$pathogen1
+      keep.row$pathogen1 <- keep.parent
+      log.filtered <- rbind(log.filtered, keep.row)
+
+      # mask out edges through the removed parent by removing coalescent
+      # events that involve only the removed lineage
+      log.filtered <- log.filtered[!(log.filtered$pathogen1 == remove.parent |
+                                       log.filtered$pathogen2 == remove.parent), ]
+    }
+
+    # try to build phylo from filtered log
+    phy <- tryCatch({
+      tmp.inner <- inner  # reuse inner object structure
+      collapse.singles(as.phylo(inner))
+    }, error = function(e) NULL)
+
+    local.trees[[i]] <- list(
+      start = starts[i],
+      end   = ends[i],
+      log   = log.filtered,
+      phylo = phy
+    )
+  }
+
+  data.frame(
+    start = starts,
+    end   = ends,
+    stringsAsFactors = FALSE
+  ) -> seg.df
+
+  return(list(segments = seg.df, local.trees = local.trees,
+              breakpoints = breakpoints))
 }
