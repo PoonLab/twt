@@ -100,52 +100,73 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
 }
 
 
-#' Draw the next event — whichever of coalescence or recombination happens
-#' first across all active hosts.
+#' Draw the next event using the Gillespie algorithm.
+#'
+#' Computes all event rates into a single vector, draws one exponential
+#' waiting time from the total rate, then selects which event occurred
+#' using the broken-stick (normalized rates) method.
+#'
+#' Events tracked:
+#'   - Coalescence: one entry per host with 2+ lineages, rate = choose(k,2)/Ne
+#'   - Recombination: one entry per host, rate = k * rho (per-lineage rate)
 #'
 #' @param active   HostSet of active hosts
 #' @param mod      Model R6 object
 #' @param rho      recombination rate per lineage per unit time
 #' @param envir    environment for rate evaluation
 #'
-#' @return list(dt, type, host, pathogen) or NULL if no event possible
+#' @return list(dt, type, host, pathogen) or NULL if no events possible
 #' @keywords internal
 #' @noRd
 .draw.next.event <- function(active, mod, rho, envir = baseenv()) {
-  best    <- list(dt = Inf, type = NA, host = NA, pathogen = NA)
+  hosts      <- active$get.hosts()
+  rates      <- numeric(0)
+  event.list <- list()
 
-  for (h in active$get.hosts()) {
+  for (h in hosts) {
     k    <- h$count.pathogens()
     comp <- h$get.compartment()
 
-    # --- coalescence ---
+    # coalescence rate for this host (requires 2+ lineages)
     if (k >= 2) {
-      expr  <- mod$get.coalescent.rate(comp)
-      rate  <- eval(parse(text = expr), envir = envir)
+      expr <- mod$get.coalescent.rate(comp)
+      rate <- eval(parse(text = expr), envir = envir)
       if (rate > 0) {
-        dt.coal <- rexp(1, choose(k, 2) * rate)
-        if (dt.coal < best$dt) {
-          best <- list(dt = dt.coal, type = "coalescent",
-                       host = h$get.name(), pathogen = NA)
-        }
+        rates      <- c(rates, choose(k, 2) * rate)
+        event.list <- c(event.list, list(
+          list(type = "coalescent", host = h$get.name(), pathogen = NA)
+        ))
       }
     }
 
-    # --- recombination --- (one event per lineage)
+    # recombination rate for this host (all lineages combined)
     if (k >= 1 && rho > 0) {
-      dt.recomb <- rexp(1, k * rho)
-      if (dt.recomb < best$dt) {
-        # pick a random lineage to recombine
-        paths <- h$get.pathogens()
-        chosen <- paths[[sample(length(paths), 1)]]
-        best <- list(dt = dt.recomb, type = "recombination",
-                     host = h$get.name(), pathogen = chosen)
-      }
+      rates      <- c(rates, k * rho)
+      event.list <- c(event.list, list(
+        list(type = "recombination", host = h$get.name(), pathogen = NULL)
+      ))
     }
   }
 
-  if (is.infinite(best$dt)) return(NULL)
-  return(best)
+  if (length(rates) == 0 || sum(rates) == 0) return(NULL)
+
+  # single exponential draw from total rate
+  total.rate <- sum(rates)
+  dt         <- rexp(1, total.rate)
+
+  # broken-stick selection: choose event proportional to its rate
+  u       <- runif(1) * total.rate
+  chosen  <- which(cumsum(rates) >= u)[1]
+  ev      <- event.list[[chosen]]
+
+  # for recombination, choose a random lineage from the host now
+  if (ev$type == "recombination") {
+    h     <- active$get.host.by.name(ev$host)
+    paths <- h$get.pathogens()
+    ev$pathogen <- paths[[sample(length(paths), 1)]]
+  }
+
+  return(list(dt = dt, type = ev$type, host = ev$host, pathogen = ev$pathogen))
 }
 
 
@@ -294,4 +315,143 @@ resolve.arg <- function(arg.result, seq.length = 9000L) {
 
   return(list(segments = seg.df, local.trees = local.trees,
               breakpoints = breakpoints))
+}
+
+#' resolve.arg
+#'
+#' Resolve an ARG into local trees per genomic segment by traversing
+#' the event log.  For each segment, at each recombination node the
+#' appropriate parent lineage is followed (left if position <= breakpoint,
+#' right otherwise).
+#'
+#' @param arg.result  list returned by sim.arg ($inner, $breakpoints)
+#' @param seq.length  integer, total genome length in bp
+#'
+#' @return list:
+#'   - segments: data.frame(start, end)
+#'   - local.trees: list of phylo objects, one per segment
+#'   - breakpoints: sorted numeric vector
+#' @export
+resolve.arg <- function(arg.result, seq.length = 9000L) {
+  inner      <- arg.result$inner
+  bps        <- sort(unlist(arg.result$breakpoints))
+  log        <- inner$get.log()
+  log$time   <- as.numeric(log$time)
+
+  # genomic segments
+  starts <- c(1L, as.integer(bps) + 1L)
+  ends   <- c(as.integer(bps), as.integer(seq.length))
+
+  # build parent lookup from log:
+  # coalescent: pathogen1 is parent of pathogen2
+  # recombination: pathogen1 (child) has two parents in pathogen2 (one row each)
+  # transmission: pathogen2 -> pathogen1 (moving backwards in time)
+
+  coal.rows   <- log[log$event == "coalescent", ]
+  recomb.rows <- log[log$event == "recombination", ]
+  samp.rows   <- log[log$event == "sampling", ]
+  trans.rows  <- log[log$event == "transmission", ]
+
+  # tip names (sampled pathogens)
+  tips <- unique(samp.rows$pathogen1)
+
+  # for each segment, trace from tips to root
+  local.trees <- vector("list", length(starts))
+
+  for (i in seq_along(starts)) {
+    pos <- (starts[i] + ends[i]) / 2  # representative position
+
+    # build a parent map for this segment
+    # start with coalescent parents: child -> parent
+    parent.map <- setNames(coal.rows$pathogen1, coal.rows$pathogen2)
+
+    # add transmission parents: pathogen2 -> pathogen1
+    for (r in seq_len(nrow(trans.rows))) {
+      p2 <- trans.rows$pathogen2[r]
+      p1 <- trans.rows$pathogen1[r]
+      if (!is.na(p2) && !is.na(p1)) parent.map[p2] <- p1
+    }
+
+    # add recombination parents: choose left or right based on position
+    recomb.children <- unique(recomb.rows$pathogen1)
+    for (child in recomb.children) {
+      child.rows <- recomb.rows[recomb.rows$pathogen1 == child, ]
+      if (nrow(child.rows) < 2) next
+      bp <- bps[names(bps) == child]
+      if (length(bp) == 0) bp <- bps[1]  # fallback
+      parent <- if (pos <= bp) child.rows$pathogen2[1] else child.rows$pathogen2[2]
+      parent.map[child] <- parent
+    }
+
+    # get times for each pathogen from log
+    time.map <- c(
+      setNames(coal.rows$time,  coal.rows$pathogen1),
+      setNames(samp.rows$time,  samp.rows$pathogen1),
+      setNames(trans.rows$time, trans.rows$pathogen1)
+    )
+
+    # trace each tip to root, collect all nodes and edges
+    all.nodes <- character(0)
+    edges     <- data.frame(parent = character(0), child = character(0),
+                             stringsAsFactors = FALSE)
+
+    for (tip in tips) {
+      cur <- tip
+      while (!is.na(parent.map[cur]) && !is.null(parent.map[cur])) {
+        par <- parent.map[cur]
+        edges <- rbind(edges, data.frame(parent = par, child = cur,
+                                          stringsAsFactors = FALSE))
+        all.nodes <- c(all.nodes, cur, par)
+        cur <- par
+      }
+      all.nodes <- c(all.nodes, cur)
+    }
+
+    all.nodes  <- unique(all.nodes)
+    edges      <- unique(edges)
+    root.node  <- all.nodes[!all.nodes %in% edges$child]
+    if (length(root.node) > 1) root.node <- root.node[1]
+
+    # build Newick string recursively
+    get.children <- function(node) edges$child[edges$parent == node]
+
+    node.time <- function(node) {
+      t <- time.map[node]
+      if (is.na(t)) 0 else as.numeric(t)
+    }
+
+    to.newick <- function(node, parent.t = NULL) {
+      children <- get.children(node)
+      t <- node.time(node)
+      bl <- if (!is.null(parent.t)) abs(parent.t - t) else 0
+
+      if (length(children) == 0) {
+        # tip
+        return(paste0(node, ":", round(bl, 6)))
+      } else {
+        subtrees <- sapply(children, to.newick, parent.t = t)
+        return(paste0("(", paste(subtrees, collapse = ","), ")",
+                      node, ":", round(bl, 6)))
+      }
+    }
+
+    nwk <- paste0(to.newick(root.node), ";")
+
+    phy <- tryCatch(
+      ape::read.tree(text = nwk),
+      error = function(e) NULL
+    )
+
+    local.trees[[i]] <- list(
+      start = starts[i], end = ends[i],
+      newick = nwk, phylo = phy
+    )
+  }
+
+  return(list(
+    segments    = data.frame(start = starts, end = ends,
+                              stringsAsFactors = FALSE),
+    local.trees = local.trees,
+    breakpoints = bps
+  ))
 }
