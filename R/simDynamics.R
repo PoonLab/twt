@@ -42,6 +42,7 @@ sim.dynamics <- function(mod, logfile=NA, counted=TRUE, max.attempts=3,
   
   # initialize model parameters in new environment
   envir <- .init.model(mod)
+  eval(parse(text="require(stats)"), envir=envir)
   
   attempt <- 1
   while (attempt <= max.attempts) {
@@ -76,7 +77,7 @@ sim.dynamics <- function(mod, logfile=NA, counted=TRUE, max.attempts=3,
     }
     
     ### MAIN SIMULATION LOOP ###
-    cur.time <- params$simTime
+    cur.time <- params$simTime  # time remaining (not elapsed)
     while (cur.time >= 0) {
       
       rate.sums <- sapply(rates, sum)
@@ -91,6 +92,9 @@ sim.dynamics <- function(mod, logfile=NA, counted=TRUE, max.attempts=3,
       if (cur.time <= 0) {
         break  # end simulation
       }
+      
+      # make simulation time available in environment
+      eval(parse(text=paste("t <- ", params$simTime, "-", cur.time)), envir=env)
       
       # which event?
       event <- sample(names(rates), 1, prob=rate.sums/total.rate)
