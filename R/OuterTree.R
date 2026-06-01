@@ -152,8 +152,10 @@ OuterTree <- R6Class(
 #' are drawn as dashed steelblue arrows.
 #' @param obj:  R6 object of class `OuterTree`
 #' @param pad:  numeric, controls padding around tree in plot region
+#' @param legend.pos:  char, legend position (default: 'bottomright')
+#'                     use 'none' to suppress legend
 #' @export
-plot.OuterTree <- function(obj, pad=1.05) {
+plot.OuterTree <- function(obj, pad=1.05, legend.pos='bottomright') {
   # retrieve sampling times
   sampled <- obj$get.sampled()
   stopifnot(sampled$count.type() > 0)
@@ -236,8 +238,11 @@ plot.OuterTree <- function(obj, pad=1.05) {
       }
     }
     # legend only when superinfection events are present
-    legend('bottomright', legend=c('transmission', 'superinfection'),
-           col=c('orangered', 'steelblue'), lty=c(1, 2), lwd=2, bty='n', cex=0.8)
+    if (legend.pos != 'none') {
+      legend(legend.pos, legend=c('transmission', 'superinfection'),
+             col=c('orangered', 'steelblue'), 
+             lty=c(1, 2), lwd=2, bty='n', cex=0.8)      
+    }
   }
 }
 

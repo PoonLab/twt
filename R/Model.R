@@ -328,7 +328,7 @@ Model <- R6Class(
                       function(x) any(x!="0"))
       adj <- (squash | private$migration.rates != "0")
       private$graph <- igraph::graph_from_adjacency_matrix(
-        adj, mode="directed", diag=F)
+        adj, mode="directed", diag=T)
       is.orphan <- (igraph::degree(private$graph)==0)
       if (any(is.orphan)) {
         stop("Isolated compartments detected:", private$compartments[is.orphan])
