@@ -1,0 +1,33 @@
+Parameters:
+  simTime: 10
+  beta: 0.01
+  gamma: 0.001
+  psi: 0.5
+
+Compartments:
+  S:
+    size: 1000
+    infected: false
+    transmission:
+      I: {I: beta*S*I}
+  I:
+    size: 1
+    infected: true
+    migration:
+      R: gamma*I
+      I_samp: psi*I
+    transmission:
+      I: {I: beta*I*I}
+    coalescent.rate: 1.0
+    pop.size: 1  # force superinfection
+  I_samp:
+    size: 0
+    infected: true
+  R:
+    size: 0
+    infected: false
+
+Sampling:
+  mode: compartment
+  targets:
+    I_samp: 5

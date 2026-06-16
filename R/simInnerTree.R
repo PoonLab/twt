@@ -169,8 +169,13 @@ sim.inner.tree <- function(outer) {
   active <- inner$get.active()
   inactive <- inner$get.inactive()
   
-  # we are going back in time, so a recipient must already be active
-  recipient <- active$get.host.by.name(e$to.host)
+  suppressWarnings(
+    recipient <- active$get.host.by.name(e$to.host)  
+  )
+  if (is.null(recipient)) {
+    # host was de-activated when last Pathogen was moved out by superinfection
+    return(FALSE)
+  }
   
   # source may or may not be an active Host
   source.is.active <- TRUE
@@ -243,6 +248,8 @@ sim.inner.tree <- function(outer) {
     host <- active$remove.host(recipient)
     inactive$add.host(host)
   }
+  
+  return(TRUE)
 }
 
 
