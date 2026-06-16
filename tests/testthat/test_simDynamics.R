@@ -193,14 +193,27 @@ test_that("time variable is available", {
   settings <- yaml.load_file("test_SIR.yaml")
   settings$Parameters$beta <- 0.01
   settings$Parameters$psi <- 0.5
+  settings$Compartments$I$size <- 5  # less stochastic
   
   mod1 <- Model$new(settings)
-  set.seed(12345)
+  set.seed(123)
   run1 <- sim.dynamics(mod1)
-  x <- run1$events$time
-  y <- run1$events$I
+  x1 <- run1$events$time
+  y1 <- run1$events$I
+  fit1 <- lm(log(y1)~x1)
+  rsq1 <- summary(fit1)$r.squared
   
-  settings$Compartments$S$transmission$I$I <- "beta*S*I*(sin(10*t)+1)"
+  settings$Compartments$S$transmission$I$I <- "beta*S*I*(sin(20*t)+1)"
   mod2 <- Model$new(settings)
   run2 <- sim.dynamics(mod2)
+  x2 <- run2$events$time
+  y2 <- run2$events$I
+  fit2 <- lm(log(y2)~x2)
+  rsq2 <- summary(fit2)$r.squared
+  
+  expect_true(rsq2 < rsq1)
+  expect_true(rsq1 - rsq2 > 0.05)  # observed 0.99 versus 0.91
+  
+  # plotting is better but I have not figured out an easy way to 
+  # demonstrate that the residuals of the second model are cleanly sinusoidal
 })

@@ -43,12 +43,14 @@ Model <- R6Class(
   "Model",
   public = list(
     initialize = function(settings=NA, time.var='t') {
+      private$time.var <- time.var
       private$load.parameters(settings)
       private$load.compartments(settings)
       private$load.sampling(settings)
     },
     
     # ACCESSOR FUNCTIONS (immutable object, no set methods)
+    get.timevar = function() { private$time.var }, 
     get.parameters = function() { private$parameters },
     get.compartments = function() { private$compartments },
     get.sampling = function() { private$sampling },
@@ -120,7 +122,7 @@ Model <- R6Class(
     compartments = NULL,  # character, compartment names
     sampling = NULL,
     
-    time.var
+    time.var = NULL,  # character, variable name for time
     
     init.sizes = NULL,  # numeric, initial sizes
     is.infected = NULL,  # boolean, does compartment carry pathogens?
@@ -197,6 +199,8 @@ Model <- R6Class(
       for (key in names(private$parameters)) {
         eval(parse(text=paste(key, "<-", private$parameters[[key]])), envir=env)
       }
+      eval(parse(text=paste(private$time.var, "<- 0")), envir=env)
+      
       private$compartments <- cnames <- names(settings$Compartments)
       k <- length(cnames)  # number of compartments
       for (cn in cnames) {

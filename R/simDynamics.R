@@ -30,7 +30,7 @@
 #'
 #' @export
 sim.dynamics <- function(mod, logfile=NA, counted=TRUE, max.attempts=3, 
-                         chunk.size=1e4, time.var='t') {
+                         chunk.size=1e4) {
   # check that input is a Model object
   if ( !is.R6(mod) | !is.element("Model", class(mod)) ) {
     stop("Error: input `mod` must be an R6 object of class `Model`")
@@ -41,10 +41,12 @@ sim.dynamics <- function(mod, logfile=NA, counted=TRUE, max.attempts=3,
   cnames <- mod$get.compartments()
   k <- length(cnames)
   sampling <- mod$get.sampling()
+  time.var <- mod$get.timevar()
   
   # initialize model parameters in new environment
   envir <- .init.model(mod)
   eval(parse(text="require(stats)"), envir=envir)
+  eval(parse(text=paste(time.var, "<- 0")), envir=envir)  # make time available
   
   attempt <- 1
   while (attempt <= max.attempts) {
