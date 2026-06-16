@@ -22,6 +22,8 @@
 #' 
 #' @param settings: a named list returned by `yaml.load_file()` that contains 
 #' user specifications of the simulation model.
+#' @param time.var: character, optionally specify time-heterogeneous rate
+#'                  expressions (default: 't', e.g., sin(t))
 #' 
 #' @field parameters  model parameters
 #' @field compartments  vector of Compartment objects
@@ -40,7 +42,7 @@
 Model <- R6Class(
   "Model",
   public = list(
-    initialize = function(settings=NA) {
+    initialize = function(settings=NA, time.var='t') {
       private$load.parameters(settings)
       private$load.compartments(settings)
       private$load.sampling(settings)
@@ -117,6 +119,8 @@ Model <- R6Class(
     parameters = NULL,
     compartments = NULL,  # character, compartment names
     sampling = NULL,
+    
+    time.var
     
     init.sizes = NULL,  # numeric, initial sizes
     is.infected = NULL,  # boolean, does compartment carry pathogens?

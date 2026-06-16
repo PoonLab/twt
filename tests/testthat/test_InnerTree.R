@@ -26,10 +26,24 @@ test_that("Relabel inner events", {
     from.host=c("I_1", "I_2", "I_1", "I_1", "I_1"),
     to.host=c(NA, NA, "I_2", NA, NA),
     pathogen1=c("P_1", "P_2", "P_2", "P_3", "P_3"),
-    pathogen2=c(NA, NA, NA, NA, NA)
+    pathogen2=c(NA, NA, NA, "P_1", "P_2")
   )
+  
   result <- .relabel.inner.events(events)
+  row.names(result) <- NULL
+  
   expected <- data.frame(
-    # FIXME: work in progress!
+    time=c(0, 0, 1, 2, 3),
+    event=factor(
+      c('coalescent', 'coalescent', 'transmission', 'sampling', 'sampling'),
+      levels=c("transmission", "coalescent", "migration", "sampling")),
+    from.comp=c("I", "I", "S", "I", "I"),
+    to.comp=c(NA, NA, "I", "I_samp", "I_samp"),
+    from.host=c("I_1", "I_1", "I_1", "I_2", "I_1"),
+    to.host=c(NA, NA, "I_2", NA, NA),
+    pathogen1=c("P_3", "P_3", "P_2", "P_2_1", "P_1"),
+    pathogen2=c("P_1", "P_2", "P_2_1", "P_2_sample", "P_1_sample"),
+    row.names=NULL
   )
+  expect_equal(result, expected)
 })

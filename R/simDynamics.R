@@ -19,6 +19,8 @@
 #'                       (default: 3)
 #' @param chunk.size:  int, number of rows to allocate to data.frame that 
 #'                     stores events (default: 1e4)
+#' @param time.var:  char, variable name for forward simulation time
+#'                   (default: 't')
 #' @return data.frame
 #' @examples
 #' require(twt)
@@ -28,7 +30,7 @@
 #'
 #' @export
 sim.dynamics <- function(mod, logfile=NA, counted=TRUE, max.attempts=3, 
-                              chunk.size=1e4) {
+                         chunk.size=1e4, time.var='t') {
   # check that input is a Model object
   if ( !is.R6(mod) | !is.element("Model", class(mod)) ) {
     stop("Error: input `mod` must be an R6 object of class `Model`")
@@ -94,7 +96,8 @@ sim.dynamics <- function(mod, logfile=NA, counted=TRUE, max.attempts=3,
       }
       
       # make simulation time available in environment
-      eval(parse(text=paste("t <- ", params$simTime, "-", cur.time)), envir=env)
+      eval(parse(text=paste(time.var, "<-", params$simTime, "-", cur.time)), 
+           envir=envir)
       
       # which event?
       event <- sample(names(rates), 1, prob=rate.sums/total.rate)

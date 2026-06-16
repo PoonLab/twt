@@ -144,6 +144,7 @@ test_that("full outer tree simulation", {
     source = c('I', NA)
   )
   dynamics <- list(events=event.log, model=mod, is.counted=FALSE)
+  class(dynamics) <- 'dynamics'
   
   result <- get.counts(dynamics)$events
   expected <- data.frame(

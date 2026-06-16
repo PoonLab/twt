@@ -187,3 +187,20 @@ test_that("More thorough test of SI dynamics", {
   # check median absolute error
   expect_lt(median(abs(result-expected)), 5)
 })
+
+
+test_that("time variable is available", {
+  settings <- yaml.load_file("test_SIR.yaml")
+  settings$Parameters$beta <- 0.01
+  settings$Parameters$psi <- 0.5
+  
+  mod1 <- Model$new(settings)
+  set.seed(12345)
+  run1 <- sim.dynamics(mod1)
+  x <- run1$events$time
+  y <- run1$events$I
+  
+  settings$Compartments$S$transmission$I$I <- "beta*S*I*(sin(10*t)+1)"
+  mod2 <- Model$new(settings)
+  run2 <- sim.dynamics(mod2)
+})

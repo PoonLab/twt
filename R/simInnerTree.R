@@ -174,7 +174,7 @@ sim.inner.tree <- function(outer) {
   )
   if (is.null(recipient)) {
     # host was de-activated when last Pathogen was moved out by superinfection
-    return()
+    return(FALSE)
   }
   
   # source may or may not be an active Host
@@ -248,6 +248,8 @@ sim.inner.tree <- function(outer) {
     host <- active$remove.host(recipient)
     inactive$add.host(host)
   }
+  
+  return(TRUE)
 }
 
 

@@ -106,3 +106,41 @@ test_that("Coalesce pathogen lineages", {
   expect_warning(.do.coalescent("I_1", inner, 8.))
   expect_equal(host$count.pathogens(), 1)  # no coalescence
 })
+
+
+test_that("Transfer lineage by superinfection", {
+  # make a very simple outer tree with three hosts
+  mod <- Model$new(yaml.load_file("test_super.yaml"))
+  set.seed(19)
+  dyn <- sim.dynamics(mod)
+  outer <- sim.outer.tree(dyn)
+  inner <- InnerTree$new(outer)
+  
+  # override outer event log
+  events <- data.frame(
+    time=c(0.5, 0.4, 0.3),
+    event=c('migration', 'transmission', 'transmission'),
+    from.comp=c('I', 'I', 'S'),
+    src.comp=c(NA, 'I', 'I'),
+    to.comp=c('I_samp', 'I', 'I'),
+    from.host=c('I_1', 'US_I_3', 'US_I_8'),
+    to.host=c(NA, 'I_1', 'I_1')
+  )
+  
+  active <- inner$get.active()
+  expect_equal(active$count.type(), 0)
+  .do.sampling(events[1,], inner)
+  expect_equal(active$count.type(), 1)
+  
+  host <- active$get.host.by.name("I_1")
+  expect_false(is.null(host))
+  expect_equal(host$count.pathogens(), 1)
+  
+  .do.infection(events[2,], inner)
+  expect_equal(host$count.pathogens(), 0)
+  expect_false(host$get.name() %in% active$get.names())
+  
+  result <- .do.infection(events[3,], inner)
+  expect_false(result)
+  expect_equal(active$get.names(), c("US_I_3"))
+})

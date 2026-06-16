@@ -217,7 +217,7 @@ HostSet <- R6Class(
     count.type = function(type=NA) {
       host.types <- self$get.types()
       if (is.na(type)) {
-        length(host.types)
+        length(host.types)  # return number of Hosts of any type
       } else {
         sum(host.types == type)
       }
