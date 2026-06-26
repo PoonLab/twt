@@ -6,7 +6,7 @@ library(ape)
 
 N.TIPS  <- 10L
 SEQ.LEN <- 9000L
-RHO     <- 0.3  # rho=0.3 consistently produces breakpoints at this seq length
+RHO     <- 0.3
 
 # search over seeds -- stochastic outer trees sometimes fail InnerTree$new()
 .make.outer <- function() {
