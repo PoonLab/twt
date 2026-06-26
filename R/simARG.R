@@ -45,24 +45,28 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
 
   while (row <= nrow(events)) {
     e       <- events[row, ]
-    t.delta <- ifelse(row == 1, NA, time.delta[row - 1])
+    remaining <- ifelse(row == 1, NA, time.delta[row - 1])
 
     # draw competing coalescence and recombination waiting times
     if (row > 1 && inner$n.active() > 0) {
-      ev <- .draw.next.event(active, mod, rho, env)
+      repeat {
+        if (inner$n.active() > 500) {
+          warning("Active lineage count exceeded 500 -- aborting inner simulation")
+          break
+        }
+        ev <- .draw.next.event(active, mod, rho, env)
+        if (is.null(ev) || is.na(ev$dt) || ev$dt >= remaining) break
 
-      if (!is.null(ev) && !is.na(ev$dt) && ev$dt < t.delta) {
-        t.delta <- t.delta - ev$dt
-        event.time <- e$time + t.delta
+        remaining  <- remaining - ev$dt
+        event.time <- e$time + remaining
 
         if (ev$type == "coalescent") {
           .do.coalescent(ev$host, inner, event.time, envir = env)
         } else {
           bp <- .do.recombination(ev$host, ev$pathogen, inner, event.time,
-                            seq.length = seq.length)
-        breakpoints[[bp$child]] <- bp$position
+                                  seq.length = seq.length)
+          breakpoints[[bp$child]] <- bp$position
         }
-        next
       }
     }
 
