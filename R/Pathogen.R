@@ -9,8 +9,8 @@
 #'        terminates the parent and starts two child lineages.
 #' @param end.time:   numeric, end time of lineage; associated with a 
 #'        coalescent event (if parent) or sampling event.
-#' @param parents:  list, parent Pathogen objects (length 1 for standard
-#'        transmission, length 2 for recombination)
+#' @param parents:  list, parent Pathogen objects; length 1 for transmission,
+#'        length 2 for recombination
 #' @param children:  list, child Pathogen objects (NOTE: avoid cloning 
 #'        Pathogen objects or there will be a circular reference problem!)
 #' @export
@@ -30,10 +30,8 @@ Pathogen <- R6Class(
       cat("twt Pathogen", self$get.name(), "\n")
       cat("  Start time:", self$get.start.time(), "\n")
       cat("  End time:", self$get.end.time(), "\n")
-      parent.names <- sapply(self$get.parents(), function(p) p$get.name())
-      cat("  Parents:", parent.names, "\n")
-      children <- sapply(self$get.children(), function(child) child$get.name())
-      cat("  Children:", children, "\n")
+      cat("  Parents:", sapply(self$get.parents(), function(p) p$get.name()), "\n")
+      cat("  Children:", sapply(self$get.children(), function(c) c$get.name()), "\n")
     },
     
     # immutable attributes
@@ -44,8 +42,8 @@ Pathogen <- R6Class(
     get.start.time = function() { private$start.time },
     set.start.time = function(time) { private$start.time <- time },
     get.parents = function() { private$parents },
-    get.parent = function() { private$parents[[1]] },  # backwards compat
-    set.parent = function(parent) { private$parents <- list(parent) },  # backwards compat
+    get.parent = function() { private$parents[[1]] },
+    set.parent = function(parent) { private$parents <- list(parent) },
     add.parent = function(parent) {
       private$parents[[length(private$parents)+1]] <- parent
     },

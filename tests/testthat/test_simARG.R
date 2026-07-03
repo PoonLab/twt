@@ -59,7 +59,6 @@ test_that("sim.arg log contains exactly N.TIPS sampling events", {
   expect_equal(sum(log$event == "sampling"), N.TIPS)
 })
 
-
 test_that("rho=0 produces no recombination events", {
   log <- result.rho0$inner$get.log()
   expect_equal(sum(log$event == "recombination"), 0)
@@ -95,6 +94,42 @@ test_that("breakpoint positions are unique", {
   skip_if(!has.breakpoints, "no breakpoints generated at this seed")
   bps <- unlist(result.rho03$breakpoints)
   expect_equal(length(bps), length(unique(bps)))
+})
+
+test_that("recombinant pathogens have exactly two parents", {
+  skip_if(!has.breakpoints, "no breakpoints generated at this seed")
+  log <- result.rho03$inner$get.log()
+  recomb.children <- unique(log$pathogen1[log$event == "recombination"])
+  all.paths <- result.rho03$inner$get.all.pathogens()
+  n.parents <- sapply(recomb.children, function(n) {
+    p <- all.paths[[n]]
+    if (is.null(p)) return(NA)
+    length(p$get.parents())
+  })
+  expect_true(all(n.parents == 2, na.rm=TRUE))
+})
+
+test_that("non-recombinant pathogens have at most one parent", {
+  log <- result.rho03$inner$get.log()
+  recomb.children <- unique(log$pathogen1[log$event == "recombination"])
+  all.paths <- result.rho03$inner$get.all.pathogens()
+  other.names <- setdiff(names(all.paths), recomb.children)
+  n.parents <- sapply(other.names, function(n) length(all.paths[[n]]$get.parents()))
+  expect_true(all(n.parents <= 1))
+})
+
+test_that("each breakpoint is named by its recombinant child pathogen", {
+  skip_if(!has.breakpoints, "no breakpoints generated at this seed")
+  log <- result.rho03$inner$get.log()
+  recomb.children <- unique(log$pathogen1[log$event == "recombination"])
+  expect_true(all(names(result.rho03$breakpoints) %in% recomb.children))
+})
+
+test_that("every recombination event has a corresponding breakpoint", {
+  skip_if(!has.breakpoints, "no breakpoints generated at this seed")
+  log <- result.rho03$inner$get.log()
+  recomb.children <- unique(log$pathogen1[log$event == "recombination"])
+  expect_true(all(recomb.children %in% names(result.rho03$breakpoints)))
 })
 
 # --- resolve.arg ---
@@ -135,10 +170,7 @@ test_that("rho=0 local tree is a valid phylo with tips", {
 
 test_that("all local trees are valid phylo objects with tips", {
   skip_if(!has.breakpoints, "no breakpoints generated at this seed")
-  for (i in seq_along(resolved.rho03$local.trees)) {
-    lt <- resolved.rho03$local.trees[[i]]
-    expect_false(is.null(lt$phylo), label=paste("segment", i, "non-NULL"))
-    expect_true(inherits(lt$phylo, "phylo"), label=paste("segment", i, "is phylo"))
-    expect_gt(length(lt$phylo$tip.label), 0, label=paste("segment", i, "has tips"))
-  }
+  segs <- resolved.rho03$local.trees
+  valid <- sapply(segs, function(lt) !is.null(lt$phylo) && inherits(lt$phylo, "phylo") && length(lt$phylo$tip.label) > 0)
+  expect_true(all(valid))
 })

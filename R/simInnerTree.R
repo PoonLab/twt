@@ -83,39 +83,34 @@ sim.inner.tree <- function(outer) {
 }
 
 
-#' Draw exponential waiting times to coalescence in all active Hosts and 
-#' return the shortest time.
-#' @param active:  R6 object of class `HostSet`, containing Hosts carrying 
-#'                 Pathogens that may coalesce
+#' Draw waiting time to next coalescent event using the Gillespie direct method.
+#' @param active:  R6 object of class `HostSet`
 #' @param mod:  R6 object of class `Model`
-#' @return list containing:
-#'         - dt: numeric, minimum waiting time to coalescence
-#'         - host name
+#' @param envir:  environment for rate evaluation
+#' @return list(dt, host) or NA if no coalescence possible
 #' @keywords internal
 #' @noRd
 .rcoal <- function(active, mod, envir=baseenv()) {
-  wait.times <- sapply(active$get.hosts(), function(h) {
+  hosts <- active$get.hosts()
+  rates <- sapply(hosts, function(h) {
     k <- h$count.pathogens()
-    if (k < 2) { return(NA) } else {
-      # only Hosts with multiple Pathogen lineages can have coalescent events
-      comp <- h$get.compartment()
-      expr <- mod$get.coalescent.rate(comp)
-      
-      # TODO: compute time since infection for time-varying rates
-      rate <- eval(parse(text=expr), envir=envir)
-      if (rate == 0) { return(NA) } else {
-        return(rexp(1, choose(k, 2)*rate))
-      }
-    }
+    if (k < 2) return(0)
+    comp <- h$get.compartment()
+    expr <- mod$get.coalescent.rate(comp)
+    rate <- eval(parse(text=expr), envir=envir)
+    if (rate == 0) return(0)
+    choose(k, 2) * rate
   })
-  wait.times <- setNames(wait.times, active$get.names())
+  names(rates) <- active$get.names()
   
-  if ( all(is.na(wait.times)) ) { return(NA) } else {
-    return(list(
-      dt=min(wait.times, na.rm=TRUE),
-      host=names(wait.times)[which.min(wait.times)]
-      ))
-  }
+  total.rate <- sum(rates)
+  if (total.rate == 0) return(NA)
+  
+  dt     <- rexp(1, total.rate)
+  u      <- runif(1) * total.rate
+  chosen <- which(cumsum(rates) >= u)[1]
+  
+  return(list(dt=dt, host=names(rates)[chosen]))
 }
 
 
