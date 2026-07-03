@@ -67,6 +67,7 @@ InnerTree <- R6Class(
     
     # accessor functions
     get.log = function() { private$inner.log },
+    set.log = function(new.log) { private$inner.log <- new.log },
     get.model = function() { private$mod },
     get.prefix = function() { private$prefix },
     get.pindex = function() { private$p.index },

@@ -9,19 +9,20 @@
 #'        terminates the parent and starts two child lineages.
 #' @param end.time:   numeric, end time of lineage; associated with a 
 #'        coalescent event (if parent) or sampling event.
-#' @param parent:  character, parent Pathogen object
+#' @param parents:  list, parent Pathogen objects (length 1 for standard
+#'        transmission, length 2 for recombination)
 #' @param children:  list, child Pathogen objects (NOTE: avoid cloning 
 #'        Pathogen objects or there will be a circular reference problem!)
 #' @export
 Pathogen <- R6Class(
   "Pathogen",
   public = list(
-    initialize = function(name=NA, start.time=NA, end.time=NA, parent=NA,
+    initialize = function(name=NA, start.time=NA, end.time=NA, parents=list(),
                           children=list()) {
       private$name <- name
       private$start.time <- start.time
       private$end.time <- end.time
-      private$parent <- parent
+      private$parents <- parents
       private$children <- children
     },
     
@@ -29,7 +30,8 @@ Pathogen <- R6Class(
       cat("twt Pathogen", self$get.name(), "\n")
       cat("  Start time:", self$get.start.time(), "\n")
       cat("  End time:", self$get.end.time(), "\n")
-      cat("  Parent:", self$get.parent()$get.name(), "\n")
+      parent.names <- sapply(self$get.parents(), function(p) p$get.name())
+      cat("  Parents:", parent.names, "\n")
       children <- sapply(self$get.children(), function(child) child$get.name())
       cat("  Children:", children, "\n")
     },
@@ -41,8 +43,12 @@ Pathogen <- R6Class(
     # mutables
     get.start.time = function() { private$start.time },
     set.start.time = function(time) { private$start.time <- time },
-    get.parent = function() { private$parent },
-    set.parent = function(parent) { private$parent <- parent },
+    get.parents = function() { private$parents },
+    get.parent = function() { private$parents[[1]] },  # backwards compat
+    set.parent = function(parent) { private$parents <- list(parent) },  # backwards compat
+    add.parent = function(parent) {
+      private$parents[[length(private$parents)+1]] <- parent
+    },
     get.children = function() { private$children },
     add.child = function(child) { 
       private$children[[length(private$children)+1]] <- child 
@@ -53,7 +59,7 @@ Pathogen <- R6Class(
     name = NULL,
     start.time = NULL,
     end.time = NULL,
-    parent = NULL,
+    parents = NULL,
     children = NULL
   )
 )

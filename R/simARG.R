@@ -204,10 +204,11 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
   parent.left  <- inner$new.pathogen(time)
   parent.right <- inner$new.pathogen(time)
 
-  # record parent-child relationships
+  # record parent-child relationships (recombination has two parents)
   parent.left$add.child(pathogen)
   parent.right$add.child(pathogen)
-  pathogen$set.parent(parent.left)
+  pathogen$add.parent(parent.left)
+  pathogen$add.parent(parent.right)
 
   # remove original pathogen by finding its index
   paths <- host$get.pathogens()
@@ -430,7 +431,6 @@ resolve.arg <- function(arg.result, seq.length = 9000L) {
       bl <- if (!is.null(parent.t)) abs(parent.t - t) else 0
 
       if (length(children) == 0) {
-        # tip
         return(paste0(node, ":", round(bl, 6)))
       } else {
         subtrees <- sapply(children, to.newick, parent.t = t)
