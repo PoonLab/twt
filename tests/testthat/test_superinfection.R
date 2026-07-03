@@ -4,47 +4,7 @@
 ## Assumes test_Superinfection.yaml is in the same directory.
 ## Override with: SUPERINF_YAML=/path/to/file.yaml Rscript test_superinfection.R
 
-library(testthat)
 library(twt)
-library(yaml)
-library(ape)
-
-# these aren't exported so copy them here for testing
-.filter.firsts <- function(events) {
-  idx <- which(events$event == 'transmission')
-  first.idx <- sapply(split(idx, events$to.host[idx]), function(i) {
-    i[which.min(events$time[i])]
-  })
-  remove <- idx[!is.element(idx, first.idx)]
-  if (length(remove) > 0) events[-remove, ] else events
-}
-
-.relabel.nodes <- function(events, targets) {
-  n.inf <- table(events$to.host)
-  if (any(n.inf > 1)) {
-    stop("ERROR: .relabel.nodes assumes events have been filtered of superinfection events.")
-  }
-  events <- events[order(events$time), ]
-  nodes <- na.omit(unique(c(events$from.host, events$to.host)))
-  for (node in nodes) {
-    idx <- which(events$from.host == node | events$to.host == node)
-    new.node <- node
-    label <- 1
-    for (i in idx) {
-      if (events$from.host[i] == node) events$from.host[i] <- new.node
-      if (events$event[i] == 'migration') {
-        if (events$to.comp[i] %in% names(targets)) {
-          new.node <- paste(node, "sample", sep="_")
-        } else {
-          new.node <- paste(node, label, sep="_")
-          label <- label + 1
-        }
-        events$to.host[i] <- new.node
-      }
-    }
-  }
-  events
-}
 
 SUPERINF_PATH <- Sys.getenv("SUPERINF_YAML", unset = "")
 if (!nzchar(SUPERINF_PATH)) {
@@ -627,6 +587,9 @@ test_that("sim.inner.tree (20 replicates): at least one produces transmission ev
   expect_true(n_with_tx > 0)
 })
 
+# when a host is superinfected, incoming lineages can coalesce with either the
+# original or the superinfecting lineage — so inner tree replicates on the same
+# outer tree should vary in topology
 test_that("sim.inner.tree: replicates on SI outer tree show topological variation", {
   mod <- try_model(SUPERINF_INNER_PATH)
   result <- .get_outer_with_superinfection(mod)
