@@ -13,17 +13,20 @@
 #'        length 2 for recombination
 #' @param children:  list, child Pathogen objects (NOTE: avoid cloning 
 #'        Pathogen objects or there will be a circular reference problem!)
+#' @param breakpoint:  integer, genomic position of recombination breakpoint;
+#'        NA for non-recombinant lineages
 #' @export
 Pathogen <- R6Class(
   "Pathogen",
   public = list(
     initialize = function(name=NA, start.time=NA, end.time=NA, parents=list(),
-                          children=list()) {
+                          children=list(), breakpoint=NA) {
       private$name <- name
       private$start.time <- start.time
       private$end.time <- end.time
       private$parents <- parents
       private$children <- children
+      private$breakpoint <- breakpoint
     },
     
     print = function() {
@@ -32,6 +35,7 @@ Pathogen <- R6Class(
       cat("  End time:", self$get.end.time(), "\n")
       cat("  Parents:", sapply(self$get.parents(), function(p) p$get.name()), "\n")
       cat("  Children:", sapply(self$get.children(), function(c) c$get.name()), "\n")
+      cat("  Breakpoint:", self$get.breakpoint(), "\n")
     },
     
     # immutable attributes
@@ -50,7 +54,9 @@ Pathogen <- R6Class(
     get.children = function() { private$children },
     add.child = function(child) { 
       private$children[[length(private$children)+1]] <- child 
-    }
+    },
+    get.breakpoint = function() { private$breakpoint },
+    set.breakpoint = function(bp) { private$breakpoint <- bp }
     
   ),
   private = list(
@@ -58,6 +64,7 @@ Pathogen <- R6Class(
     start.time = NULL,
     end.time = NULL,
     parents = NULL,
-    children = NULL
+    children = NULL,
+    breakpoint = NULL
   )
 )

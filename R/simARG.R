@@ -196,6 +196,7 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
 
   # sample breakpoint uniformly across genome
   breakpoint <- sample.int(seq.length - 1L, 1L)
+  pathogen$set.breakpoint(breakpoint)  # store on pathogen 
 
   # end the current lineage at this recombination event
   pathogen$set.start.time(time)
