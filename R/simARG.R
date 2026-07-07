@@ -196,7 +196,7 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
 
   # sample breakpoint uniformly across genome
   breakpoint <- sample.int(seq.length - 1L, 1L)
-  pathogen$set.breakpoint(breakpoint)  # store on pathogen 
+  pathogen$set.breakpoint(breakpoint)
 
   # end the current lineage at this recombination event
   pathogen$set.start.time(time)
@@ -237,94 +237,6 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
 
 #' resolve.arg
 #'
-#' Resolve an ARG into a sequence of local trees, one per non-recombining
-#' genomic segment.  Returns a list of InnerTree-compatible event logs,
-#' one per segment, that can be converted to phylo objects for Pyvolve.
-#'
-#' @param arg.result  list returned by sim.arg (with $inner and $breakpoints)
-#' @param seq.length  integer, total genome length in bp
-#'
-#' @return list with:
-#'   - segments: data.frame with columns start, end, local.tree (phylo)
-#'   - breakpoints: sorted numeric vector of breakpoint positions
-#' @export
-resolve.arg <- function(arg.result, seq.length = 9000L) {
-  inner      <- arg.result$inner
-  breakpoints <- sort(unlist(arg.result$breakpoints))  # positions
-
-  # genomic segments defined by breakpoints
-  starts <- c(1L, as.integer(breakpoints) + 1L)
-  ends   <- c(as.integer(breakpoints), seq.length)
-
-  log <- inner$get.log()
-
-  # for each segment, determine which lineage to follow at each recombination
-  # node and extract the induced subtree
-  local.trees <- vector("list", length(starts))
-
-  for (i in seq_along(starts)) {
-    seg.mid <- (starts[i] + ends[i]) / 2  # representative position
-
-    # filter out recombination events involving the "wrong" parent
-    # at each recombination, keep the left parent if seg.mid <= breakpoint,
-    # right parent if seg.mid > breakpoint
-    log.filtered <- log[log$event != "recombination", ]
-
-    for (child.name in names(arg.result$breakpoints)) {
-      bp <- arg.result$breakpoints[[child.name]]
-      # find the two recombination log rows for this child
-      recomb.rows <- log[log$event == "recombination" &
-                           log$pathogen1 == child.name, ]
-      if (nrow(recomb.rows) < 2) next
-
-      # rows are logged twice — one per parent
-      # pathogen2 col gives parent name
-      parent.left  <- recomb.rows$pathogen2[1]
-      parent.right <- recomb.rows$pathogen2[2]
-
-      # keep left parent if position <= breakpoint, right parent otherwise
-      keep.parent   <- if (seg.mid <= bp) parent.left else parent.right
-      remove.parent <- if (seg.mid <= bp) parent.right else parent.left
-
-      # add the transmission event from child to kept parent
-      keep.row <- recomb.rows[1, ]
-      keep.row$event     <- "transmission"
-      keep.row$pathogen2 <- keep.row$pathogen1
-      keep.row$pathogen1 <- keep.parent
-      log.filtered <- rbind(log.filtered, keep.row)
-
-      # mask out edges through the removed parent by removing coalescent
-      # events that involve only the removed lineage
-      log.filtered <- log.filtered[!(log.filtered$pathogen1 == remove.parent |
-                                       log.filtered$pathogen2 == remove.parent), ]
-    }
-
-    # try to build phylo from filtered log
-    phy <- tryCatch({
-      tmp.inner <- inner  # reuse inner object structure
-      collapse.singles(as.phylo(inner))
-    }, error = function(e) NULL)
-
-    local.trees[[i]] <- list(
-      start = starts[i],
-      end   = ends[i],
-      log   = log.filtered,
-      phylo = phy
-    )
-  }
-
-  data.frame(
-    start = starts,
-    end   = ends,
-    stringsAsFactors = FALSE
-  ) -> seg.df
-
-  return(list(segments = seg.df, local.trees = local.trees,
-              breakpoints = breakpoints))
-}
-
-#' resolve.arg
-#'
 #' Resolve an ARG into local trees per genomic segment by traversing
 #' the event log.  For each segment, at each recombination node the
 #' appropriate parent lineage is followed (left if position <= breakpoint,
@@ -347,11 +259,6 @@ resolve.arg <- function(arg.result, seq.length = 9000L) {
   # genomic segments
   starts <- c(1L, as.integer(bps) + 1L)
   ends   <- c(as.integer(bps), as.integer(seq.length))
-
-  # build parent lookup from log:
-  # coalescent: pathogen1 is parent of pathogen2
-  # recombination: pathogen1 (child) has two parents in pathogen2 (one row each)
-  # transmission: pathogen2 -> pathogen1 (moving backwards in time)
 
   coal.rows   <- log[log$event == "coalescent", ]
   recomb.rows <- log[log$event == "recombination", ]

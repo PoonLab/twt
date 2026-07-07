@@ -228,11 +228,13 @@ sim.inner.tree <- function(outer) {
     
     # move remaining Pathogens from recipient to source
     count <- recipient$count.pathogens()
-    for (i in 1:count) {
-      path <- recipient$remove.pathogen(1)
-      source$add.pathogen(path)
-      event$pathogen1 <- path$get.name()  # copy-on-modify
-      inner$add.event(event)
+    if (count > 0) {
+      for (i in 1:count) {
+        path <- recipient$remove.pathogen(1)
+        source$add.pathogen(path)
+        event$pathogen1 <- path$get.name()  # copy-on-modify
+        inner$add.event(event)
+      }
     }
     
     if (!source.is.active) { active$add.host(source) }
