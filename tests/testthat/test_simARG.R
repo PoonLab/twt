@@ -1,26 +1,15 @@
 ## tests for sim.arg and resolve.arg
 
-library(testthat)
-library(yaml)
-library(ape)
-
 N.TIPS  <- 10L
 SEQ.LEN <- 9000L
 RHO     <- 0.3
 
-# search over seeds -- stochastic outer trees sometimes fail InnerTree$new()
+# seed 31 verified to produce a valid outer tree for sim.arg
 .make.outer <- function() {
   mod <- Model$new(read_yaml("test_Superinfection.yaml"))
-  for (s in seq(13, 613, by=3)) {
-    set.seed(s)
-    dyn <- sim.dynamics(mod)
-    out <- tryCatch(suppressWarnings(sim.outer.tree(dyn)), error=function(e) NULL)
-    if (is.null(out)) next
-    ok <- tryCatch({ suppressWarnings(sim.arg(out, rho=0, seq.length=SEQ.LEN)); TRUE },
-                   error=function(e) FALSE)
-    if (ok) return(out)
-  }
-  stop("no valid outer tree found")
+  set.seed(31)
+  dyn <- sim.dynamics(mod)
+  suppressWarnings(sim.outer.tree(dyn))
 }
 
 outer.tree     <- .make.outer()
@@ -130,6 +119,29 @@ test_that("every recombination event has a corresponding breakpoint", {
   log <- result.rho03$inner$get.log()
   recomb.children <- unique(log$pathogen1[log$event == "recombination"])
   expect_true(all(recomb.children %in% names(result.rho03$breakpoints)))
+})
+
+test_that("recombinant pathogens have breakpoint position stored", {
+  skip_if(!has.breakpoints, "no breakpoints generated at this seed")
+  log <- result.rho03$inner$get.log()
+  recomb.children <- unique(log$pathogen1[log$event == "recombination"])
+  all.paths <- result.rho03$inner$get.all.pathogens()
+  bps <- sapply(recomb.children, function(n) {
+    p <- all.paths[[n]]
+    if (is.null(p)) return(NA)
+    p$get.breakpoint()
+  })
+  expect_true(all(!is.na(bps)))
+  expect_true(all(bps >= 1L & bps <= SEQ.LEN - 1L, na.rm=TRUE))
+})
+
+test_that("non-recombinant pathogens have NA breakpoint", {
+  log <- result.rho03$inner$get.log()
+  recomb.children <- unique(log$pathogen1[log$event == "recombination"])
+  all.paths <- result.rho03$inner$get.all.pathogens()
+  other.names <- setdiff(names(all.paths), recomb.children)
+  bps <- sapply(other.names, function(n) all.paths[[n]]$get.breakpoint())
+  expect_true(all(is.na(bps)))
 })
 
 # --- resolve.arg ---
