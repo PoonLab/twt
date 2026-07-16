@@ -47,7 +47,10 @@ Pathogen <- R6Class(
     set.start.time = function(time) { private$start.time <- time },
     get.parents = function() { private$parents },
     get.parent = function() { private$parents[[1]] },
-    set.parent = function(parent) { private$parents <- list(parent) },
+    set.parent = function(parent) {
+      if (is.list(parent)) private$parents <- parent
+      else private$parents <- list(parent)
+    },
     add.parent = function(parent) {
       private$parents[[length(private$parents)+1]] <- parent
     },
