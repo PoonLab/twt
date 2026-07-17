@@ -268,101 +268,87 @@ resolve.arg <- function(arg.result, seq.length = 9000L) {
   # tip names (sampled pathogens)
   tips <- unique(samp.rows$pathogen1)
 
+  # node creation time from pathogen registry
+  all.paths <- inner$get.all.pathogens()
+  node.created <- setNames(
+    sapply(all.paths, function(p) p$get.end.time()),
+    names(all.paths)
+  )
+
   # for each segment, trace from tips to root
   local.trees <- vector("list", length(starts))
-
   for (i in seq_along(starts)) {
-    pos <- (starts[i] + ends[i]) / 2  # representative position
-
-    # build a parent map for this segment
-    # start with coalescent parents: child -> parent
+    pos <- (starts[i] + ends[i]) / 2
+    # parent map for this segment
     parent.map <- setNames(coal.rows$pathogen1, coal.rows$pathogen2)
-
-    # add transmission parents: pathogen2 -> pathogen1
     for (r in seq_len(nrow(trans.rows))) {
       p2 <- trans.rows$pathogen2[r]
       p1 <- trans.rows$pathogen1[r]
       if (!is.na(p2) && !is.na(p1)) parent.map[p2] <- p1
     }
-
-    # add recombination parents: choose left or right based on position
     recomb.children <- unique(recomb.rows$pathogen1)
     for (child in recomb.children) {
       child.rows <- recomb.rows[recomb.rows$pathogen1 == child, ]
       if (nrow(child.rows) < 2) next
       bp <- bps[names(bps) == child]
-      if (length(bp) == 0) bp <- bps[1]  # fallback
+      if (length(bp) == 0) bp <- bps[1]
       parent <- if (pos <= bp) child.rows$pathogen2[1] else child.rows$pathogen2[2]
       parent.map[child] <- parent
     }
 
-    # get times for each pathogen from log
-    time.map <- c(
-      setNames(coal.rows$time,  coal.rows$pathogen1),
-      setNames(samp.rows$time,  samp.rows$pathogen1),
-      setNames(trans.rows$time, trans.rows$pathogen1)
-    )
-
-    # trace each tip to root, collect all nodes and edges
+    # trace tips to root
     all.nodes <- character(0)
-    edges     <- data.frame(parent = character(0), child = character(0),
-                             stringsAsFactors = FALSE)
-
+    edges     <- data.frame(parent=character(0), child=character(0),
+                             stringsAsFactors=FALSE)
     for (tip in tips) {
       cur <- tip
       while (!is.na(parent.map[cur]) && !is.null(parent.map[cur])) {
         par <- parent.map[cur]
-        edges <- rbind(edges, data.frame(parent = par, child = cur,
-                                          stringsAsFactors = FALSE))
+        edges <- rbind(edges, data.frame(parent=par, child=cur,
+                                          stringsAsFactors=FALSE))
         all.nodes <- c(all.nodes, cur, par)
         cur <- par
       }
       all.nodes <- c(all.nodes, cur)
     }
 
-    all.nodes  <- unique(all.nodes)
-    edges      <- unique(edges)
-    root.node  <- all.nodes[!all.nodes %in% edges$child]
+    all.nodes <- unique(all.nodes)
+    edges     <- unique(edges)
+    root.node <- all.nodes[!all.nodes %in% edges$child]
     if (length(root.node) > 1) root.node <- root.node[1]
 
-    # build Newick string recursively
     get.children <- function(node) edges$child[edges$parent == node]
 
-    node.time <- function(node) {
-      t <- time.map[node]
-      if (is.na(t)) 0 else as.numeric(t)
+    get.time <- function(node) {
+      t <- node.created[node]
+      if (is.na(t) || is.null(t)) return(0)
+      as.numeric(t)
     }
 
     to.newick <- function(node, parent.t = NULL) {
       children <- get.children(node)
-      t <- node.time(node)
-      bl <- if (!is.null(parent.t)) abs(parent.t - t) else 0
-
+      t <- get.time(node)
+      bl <- if (!is.null(parent.t)) max(0, t - parent.t) else 0
       if (length(children) == 0) {
         return(paste0(node, ":", round(bl, 6)))
       } else {
         subtrees <- sapply(children, to.newick, parent.t = t)
-        return(paste0("(", paste(subtrees, collapse = ","), ")",
+        return(paste0("(", paste(subtrees, collapse=","), ")",
                       node, ":", round(bl, 6)))
       }
     }
 
     nwk <- paste0(to.newick(root.node), ";")
-
-    phy <- tryCatch(
-      ape::read.tree(text = nwk),
-      error = function(e) NULL
-    )
+    phy <- tryCatch(ape::read.tree(text=nwk), error=function(e) NULL)
 
     local.trees[[i]] <- list(
-      start = starts[i], end = ends[i],
-      newick = nwk, phylo = phy
+      start=starts[i], end=ends[i],
+      newick=nwk, phylo=phy
     )
   }
 
   return(list(
-    segments    = data.frame(start = starts, end = ends,
-                              stringsAsFactors = FALSE),
+    segments    = data.frame(start=starts, end=ends, stringsAsFactors=FALSE),
     local.trees = local.trees,
     breakpoints = bps
   ))
