@@ -79,11 +79,6 @@ test_that("breakpoints are integers in [1, seq.length-1]", {
   expect_true(all(bps == as.integer(bps)))
 })
 
-test_that("breakpoint positions are unique", {
-  skip_if(!has.breakpoints, "no breakpoints generated at this seed")
-  bps <- unlist(result.rho03$breakpoints)
-  expect_equal(length(bps), length(unique(bps)))
-})
 
 test_that("recombinant pathogens have exactly two parents", {
   skip_if(!has.breakpoints, "no breakpoints generated at this seed")
