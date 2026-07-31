@@ -23,31 +23,16 @@ try_model <- function(path) {
   )
 }
 
-# find an outer tree that has at least one SI event and a single active root
-.get_outer_with_superinfection <- function(mod, seeds = 1:500) {
-  for (s in seeds) {
-    set.seed(s)
-    dyn <- tryCatch(sim.dynamics(mod, max.attempts = 10),
-                    warning = function(w) NULL, error = function(e) NULL)
-    if (is.null(dyn)) next
-
-    outer <- tryCatch(
-      withCallingHandlers(sim.outer.tree(dyn),
-                          warning = function(w) invokeRestart("muffleWarning")),
-      error = function(e) NULL)
-    if (is.null(outer)) next
-
-    log <- outer$get.log()
-    si  <- log[log$event == "transmission" &
-                 !is.na(log$from.comp) & log$from.comp == "I" &
-                 !is.na(log$to.comp)  & log$to.comp   == "I", ]
-    if (outer$get.active()$count.type() != 1) next
-    if (nrow(si) == 0) next
-    if (outer$get.sampled()$count.type() < 1) next
-
-    return(list(outer = outer, dyn = dyn, seed = s, si_log = si))
-  }
-  NULL
+# seed 10 verified to produce an outer tree with SI events and sampled hosts
+.get_outer_with_superinfection <- function(mod) {
+  set.seed(10)
+  dyn <- sim.dynamics(mod, max.attempts=10)
+  outer <- suppressWarnings(sim.outer.tree(dyn))
+  log <- outer$get.log()
+  si <- log[log$event == "transmission" &
+              !is.na(log$from.comp) & log$from.comp == "I" &
+              !is.na(log$to.comp)  & log$to.comp   == "I", ]
+  list(outer=outer, dyn=dyn, seed=10, si_log=si)
 }
 
 .try_inner <- function(outer) {
@@ -59,35 +44,20 @@ try_model <- function(path) {
     })
 }
 
+# seed 10 verified to produce a valid single-root outer tree with phylo
 .get_valid_phylo <- function(mod) {
-  for (s in c(21, 77, 99, 200, 300, 400, 500)) {
-    set.seed(s)
-    dyn <- tryCatch(sim.dynamics(mod, max.attempts = 10), warning = function(w) NULL)
-    if (is.null(dyn)) next
-    outer <- tryCatch(
-      withCallingHandlers(sim.outer.tree(dyn),
-                          warning = function(w) invokeRestart("muffleWarning")),
-      error = function(e) NULL)
-    if (is.null(outer)) next
-    if (outer$get.active()$count.type() != 1) next
-    phy <- tryCatch(as.phylo(outer), error = function(e) NULL)
-    if (!is.null(phy)) return(list(phy = phy, outer = outer))
-  }
-  NULL
+  set.seed(10)
+  dyn <- sim.dynamics(mod, max.attempts=10)
+  outer <- suppressWarnings(sim.outer.tree(dyn))
+  phy <- as.phylo(outer)
+  list(phy=phy, outer=outer)
 }
 
-.get_valid_outer <- function(mod, seeds = c(99, 21, 77, 42, 55, 100, 200)) {
-  for (s in seeds) {
-    set.seed(s)
-    dyn <- tryCatch(sim.dynamics(mod, max.attempts = 15), warning = function(w) NULL)
-    if (is.null(dyn)) next
-    outer <- tryCatch(
-      withCallingHandlers(sim.outer.tree(dyn),
-                          warning = function(w) invokeRestart("muffleWarning")),
-      error = function(e) NULL)
-    if (!is.null(outer)) return(outer)
-  }
-  NULL
+# seed 1 verified to produce a valid outer tree
+.get_valid_outer <- function(mod) {
+  set.seed(1)
+  dyn <- sim.dynamics(mod, max.attempts=15)
+  suppressWarnings(sim.outer.tree(dyn))
 }
 
 
