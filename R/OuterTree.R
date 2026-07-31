@@ -147,7 +147,10 @@ OuterTree <- R6Class(
 #'
 #' Plot the outer transmission tree. If \code{dynamics} is provided, plots
 #' the tree alongside the epidemic trajectory I(t) in a two-panel layout,
-#' with superinfection event times marked on both panels.
+#' with superinfection event times marked on both panels. Primary
+#' transmissions are drawn as solid orangered arrows; superinfection events
+#' (secondary transmissions to an already-infected host) are drawn as
+#' dashed steelblue arrows.
 #'
 #' @param obj:  R6 object of class `OuterTree`
 #' @param pad:  numeric, controls padding around tree in plot region

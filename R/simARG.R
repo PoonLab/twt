@@ -252,7 +252,7 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
 #' @export
 resolve.arg <- function(arg.result, seq.length = 9000L) {
   inner      <- arg.result$inner
-  bps        <- sort(unlist(arg.result$breakpoints))
+  bps        <- sort(unique(unlist(arg.result$breakpoints)))
   log        <- inner$get.log()
   log$time   <- as.numeric(log$time)
 

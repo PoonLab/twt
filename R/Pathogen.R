@@ -48,8 +48,18 @@ Pathogen <- R6Class(
     get.parents = function() { private$parents },
     get.parent = function() { private$parents[[1]] },
     set.parent = function(parent) {
-      if (is.list(parent)) private$parents <- parent
-      else private$parents <- list(parent)
+      if (is.list(parent)) {
+        if (!all(sapply(parent, function(p) is.R6(p) && is.element("Pathogen", class(p))))) {
+          stop("set.parent: all elements of `parent` list must be Pathogen objects")
+        }
+        private$parents <- parent
+      } else if (is.R6(parent) && is.element("Pathogen", class(parent))) {
+        private$parents <- list(parent)
+      } else {
+        stop("set.parent: `parent` must be a Pathogen object or list of Pathogen objects, ",
+             "not ", class(parent)[1], ". To set a parent by name, look up the Pathogen ",
+             "object first (e.g. via InnerTree$get.pathogen()).")
+      }
     },
     add.parent = function(parent) {
       private$parents[[length(private$parents)+1]] <- parent
