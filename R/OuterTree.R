@@ -245,6 +245,10 @@ plot.OuterTree <- function(obj, pad=1.05, legend.pos='bottomright',
   trans <- trans[order(trans$time), , drop=FALSE]
   si.events <- trans[duplicated(trans$to.host), , drop=FALSE]
 
+  # keep an unfiltered copy: .filter.firsts strips a host's own donor row
+  # whenever that row happens to be a superinfection (duplicate to.host),
+  # which otherwise makes the donor's plotted segment collapse to a point
+  events.raw <- events
   events <- .filter.firsts(events)
   events <- .relabel.nodes(events, obj$get.targets())
 
@@ -269,7 +273,9 @@ plot.OuterTree <- function(obj, pad=1.05, legend.pos='bottomright',
     if (is.sampled) {
       samp.time <- samp.times[[node]]
     } else {
-      out.times <- events$time[events$from.host==node]
+      out.times <- c(events$time[events$from.host==node],
+                     events.raw$time[events.raw$event=='transmission' &
+                                      events.raw$from.host==node])
       samp.time <- if (length(out.times) > 0) max(out.times) else inf.time
     }
 
