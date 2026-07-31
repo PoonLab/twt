@@ -9,29 +9,33 @@
 #'        terminates the parent and starts two child lineages.
 #' @param end.time:   numeric, end time of lineage; associated with a 
 #'        coalescent event (if parent) or sampling event.
-#' @param parent:  character, parent Pathogen object
+#' @param parents:  list, parent Pathogen objects; length 1 for transmission,
+#'        length 2 for recombination
 #' @param children:  list, child Pathogen objects (NOTE: avoid cloning 
 #'        Pathogen objects or there will be a circular reference problem!)
+#' @param breakpoint:  integer, genomic position of recombination breakpoint;
+#'        NA for non-recombinant lineages
 #' @export
 Pathogen <- R6Class(
   "Pathogen",
   public = list(
-    initialize = function(name=NA, start.time=NA, end.time=NA, parent=NA,
-                          children=list()) {
+    initialize = function(name=NA, start.time=NA, end.time=NA, parents=list(),
+                          children=list(), breakpoint=NA) {
       private$name <- name
       private$start.time <- start.time
       private$end.time <- end.time
-      private$parent <- parent
+      private$parents <- parents
       private$children <- children
+      private$breakpoint <- breakpoint
     },
     
     print = function() {
       cat("twt Pathogen", self$get.name(), "\n")
       cat("  Start time:", self$get.start.time(), "\n")
       cat("  End time:", self$get.end.time(), "\n")
-      cat("  Parent:", self$get.parent()$get.name(), "\n")
-      children <- sapply(self$get.children(), function(child) child$get.name())
-      cat("  Children:", children, "\n")
+      cat("  Parents:", sapply(self$get.parents(), function(p) p$get.name()), "\n")
+      cat("  Children:", sapply(self$get.children(), function(c) c$get.name()), "\n")
+      cat("  Breakpoint:", self$get.breakpoint(), "\n")
     },
     
     # immutable attributes
@@ -41,19 +45,39 @@ Pathogen <- R6Class(
     # mutables
     get.start.time = function() { private$start.time },
     set.start.time = function(time) { private$start.time <- time },
-    get.parent = function() { private$parent },
-    set.parent = function(parent) { private$parent <- parent },
+    get.parents = function() { private$parents },
+    get.parent = function() { private$parents[[1]] },
+    set.parent = function(parent) {
+      if (is.list(parent)) {
+        if (!all(sapply(parent, function(p) is.R6(p) && is.element("Pathogen", class(p))))) {
+          stop("set.parent: all elements of `parent` list must be Pathogen objects")
+        }
+        private$parents <- parent
+      } else if (is.R6(parent) && is.element("Pathogen", class(parent))) {
+        private$parents <- list(parent)
+      } else {
+        stop("set.parent: `parent` must be a Pathogen object or list of Pathogen objects, ",
+             "not ", class(parent)[1], ". To set a parent by name, look up the Pathogen ",
+             "object first (e.g. via InnerTree$get.pathogen()).")
+      }
+    },
+    add.parent = function(parent) {
+      private$parents[[length(private$parents)+1]] <- parent
+    },
     get.children = function() { private$children },
     add.child = function(child) { 
       private$children[[length(private$children)+1]] <- child 
-    }
+    },
+    get.breakpoint = function() { private$breakpoint },
+    set.breakpoint = function(bp) { private$breakpoint <- bp }
     
   ),
   private = list(
     name = NULL,
     start.time = NULL,
     end.time = NULL,
-    parent = NULL,
-    children = NULL
+    parents = NULL,
+    children = NULL,
+    breakpoint = NULL
   )
 )

@@ -143,62 +143,124 @@ OuterTree <- R6Class(
   if (length(y) == 0L) NA_integer_ else y
 }
 
-
 #' plot.OuterTree
-#' S3 generic plot method for objects of class `OuterTree`.  This visualizes
-#' the collection of events sampled in the outer simulation as a transmission
-#' tree.  Primary transmissions are drawn as solid orangered arrows;
-#' superinfection events (secondary transmissions to an already-infected host)
-#' are drawn as dashed steelblue arrows.
+#'
+#' Plot the outer transmission tree. If \code{dynamics} is provided, plots
+#' the tree alongside the epidemic trajectory I(t) in a two-panel layout,
+#' with superinfection event times marked on both panels. Primary
+#' transmissions are drawn as solid orangered arrows; superinfection events
+#' (secondary transmissions to an already-infected host) are drawn as
+#' dashed steelblue arrows.
+#'
 #' @param obj:  R6 object of class `OuterTree`
 #' @param pad:  numeric, controls padding around tree in plot region
 #' @param legend.pos:  char, legend position (default: 'bottomright')
 #'                     use 'none' to suppress legend
+#' @param dynamics:  optional S3 object returned by sim.dynamics; if provided,
+#'                   adds epidemic trajectory panel (default: NULL)
+#' @param i.comp:  character, infected compartment to plot when dynamics
+#'                 is provided (default: 'I')
 #' @export
-plot.OuterTree <- function(obj, pad=1.05, legend.pos='bottomright') {
-  # retrieve sampling times
+plot.OuterTree <- function(obj, pad=1.05, legend.pos='bottomright',
+                           dynamics=NULL, i.comp="I") {
+  if (!is.null(dynamics)) {
+    # two-panel layout: tree left, I(t) right
+    op <- par(no.readonly=TRUE)
+    on.exit(par(op))
+    layout(matrix(c(1,2), nrow=1), widths=c(3,2))
+
+    # extract superinfection event times
+    events <- obj$get.log()
+    events$time <- as.numeric(events$time)
+    trans <- events[events$event == "transmission", ]
+    trans <- trans[order(trans$time), ]
+    si.times <- trans$time[duplicated(trans$to.host)]
+
+    # left panel: tree
+    par(mar=c(5,1,2,1))
+    withCallingHandlers(
+      plot.OuterTree(obj, pad=pad, legend.pos=legend.pos),
+      warning = function(w) {
+        if (grepl("no non-missing arguments to max", conditionMessage(w)))
+          invokeRestart("muffleWarning")
+      }
+    )
+    title(main="Transmission tree", cex.main=0.9)
+    if (length(si.times) > 0)
+      abline(v=si.times, col=adjustcolor("steelblue", alpha.f=0.4), lty=2, lwd=1)
+
+    # right panel: I(t)
+    ev <- dynamics$events
+    if (!i.comp %in% names(ev))
+      stop("Compartment '", i.comp, "' not found in dynamics$events.")
+    ev$time <- as.numeric(ev$time)
+    mod <- dynamics$model
+    init <- mod$get.init.sizes()
+    t0 <- as.numeric(mod$get.parameters()$simTime)
+    row0 <- as.list(setNames(rep(0, ncol(ev)), names(ev)))
+    row0$time <- t0
+    for (cn in names(init)) if (cn %in% names(ev)) row0[[cn]] <- init[[cn]]
+    ev <- rbind(as.data.frame(row0), ev)
+
+    par(mar=c(5,4,2,1))
+    xlim <- range(ev$time)
+    ylim <- c(0, max(ev[[i.comp]], na.rm=TRUE) * 1.1)
+    plot(ev$time, ev[[i.comp]], type="s",
+         xlim=rev(xlim),
+         ylim=ylim,
+         xlab="Time", ylab=paste0("N(", i.comp, ")"),
+         col="black", lwd=1.5, bty="l",
+         main="Epidemic trajectory", cex.main=0.9)
+    if (length(si.times) > 0) {
+      abline(v=si.times, col=adjustcolor("steelblue", alpha.f=0.5), lty=2, lwd=1.2)
+      rug(si.times, col="steelblue", lwd=1.5, ticksize=0.04)
+    }
+    legend("topleft", bty="n", cex=0.8,
+           legend=c(sprintf("I(t)  [%s]", i.comp),
+                    sprintf("SI events (n=%d)", length(si.times))),
+           col=c("black", "steelblue"), lty=c(1,2), lwd=c(1.5,1.2))
+    return(invisible(list(si.times=si.times, n.si=length(si.times))))
+  }
+
+  # single panel: tree only
   sampled <- obj$get.sampled()
   stopifnot(sampled$count.type() > 0)
   samp.times <- setNames(
     as.numeric(sampled$get.sampling.times()), sampled$get.names())
   sampled <- sampled$get.names()
-  
-  # there should be only one Host in `active`
+
   active <- obj$get.active()
   stopifnot(active$count.type()==1)
   root <- active$sample.host()
   root.name <- root$get.name()
-  
+
   hosts <- obj$get.retired()
   host.names <- hosts$get.names()
-  
-  # retrieve full event log before any filtering
+
   events <- obj$get.log()
   events <- events[!(events$event=='migration' & is.na(events$to.host)), ]
   events$time <- as.numeric(events$time)
-  
-  # identify superinfection events: any transmission to a host that already
-  # received a (first) transmission, sorted by time so duplicated() works
+
   trans <- events[events$event == 'transmission', , drop=FALSE]
   trans <- trans[order(trans$time), , drop=FALSE]
   si.events <- trans[duplicated(trans$to.host), , drop=FALSE]
-  
-  # filter and relabel for primary-tree layout (unchanged logic)
+
+  # keep an unfiltered copy: .filter.firsts strips a host's own donor row
+  # whenever that row happens to be a superinfection (duplicate to.host),
+  # which otherwise makes the donor's plotted segment collapse to a point
+  events.raw <- events
   events <- .filter.firsts(events)
   events <- .relabel.nodes(events, obj$get.targets())
-  
-  # sort nodes by preorder traversal (parents before children)
+
   nodes <- .reorder.events(events, root.name, order="preorder", decreasing=FALSE)
-  
-  # prepare plot region
+
   par(mar=c(5,1,1,5), mfrow=c(1,1))
   plot(NA, xlim=c(0, max(events$time)*pad), ylim=c(0.5, length(nodes)+0.5),
        xlab="Time", yaxt='n', ylab=NA, bty='n')
-  
-  # primary transmission tree
+
   for (node in nodes) {
     is.sampled <- is.element(node, sampled)
-    
+
     if (node == root.name) {
       inf.time <- 0
       source <- NA
@@ -206,16 +268,17 @@ plot.OuterTree <- function(obj, pad=1.05, legend.pos='bottomright') {
       inf.time <- events$time[events$to.host==node]
       source <- events$from.host[events$to.host==node]
     }
-    
+
     samp.time <- 0
     if (is.sampled) {
       samp.time <- samp.times[[node]]
     } else {
-      # unsampled host - right limit is its first outgoing transmission
-      out.times <- events$time[events$from.host==node]
+      out.times <- c(events$time[events$from.host==node],
+                     events.raw$time[events.raw$event=='transmission' &
+                                      events.raw$from.host==node])
       samp.time <- if (length(out.times) > 0) max(out.times) else inf.time
     }
-    
+
     segments(x0=inf.time, x1=samp.time, y0=which(nodes==node),
              lwd=2, lend=2, col=ifelse(is.sampled, 'black', 'grey'))
     text(x=max(samp.times)*pad, y=which(nodes==node), label=node,
@@ -225,8 +288,7 @@ plot.OuterTree <- function(obj, pad=1.05, legend.pos='bottomright') {
              length=0.08, lwd=2, col='orangered')
     }
   }
-  
-  # superinfection arrows (dashed steelblue)
+
   if (nrow(si.events) > 0L) {
     for (i in seq_len(nrow(si.events))) {
       si <- si.events[i, ]
@@ -237,11 +299,10 @@ plot.OuterTree <- function(obj, pad=1.05, legend.pos='bottomright') {
                length=0.08, lwd=2, lty=2, col='steelblue')
       }
     }
-    # legend only when superinfection events are present
     if (legend.pos != 'none') {
       legend(legend.pos, legend=c('transmission', 'superinfection'),
-             col=c('orangered', 'steelblue'), 
-             lty=c(1, 2), lwd=2, bty='n', cex=0.8)      
+             col=c('orangered', 'steelblue'),
+             lty=c(1, 2), lwd=2, bty='n', cex=0.8)
     }
   }
 }

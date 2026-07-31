@@ -421,9 +421,9 @@ test_that("sim.dynamics: I count unchanged after each SI event", {
   evts <- dyn$events
   si_idx <- which(evts$event == "transmission" & evts$from.comp == "I" & evts$to.comp == "I")
   if (length(si_idx) == 0) skip("No SI events at seed 13")
-  for (i in si_idx[si_idx > 1]) {
-    expect_equal(evts$I[i], evts$I[i - 1], info = paste("row", i))
-  }
+  i_vals <- si_idx[si_idx > 1]
+  if (length(i_vals) > 0)
+    expect_true(all(evts$I[i_vals] == evts$I[i_vals - 1]))
 })
 
 

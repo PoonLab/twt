@@ -38,15 +38,15 @@ InnerTree <- R6Class(
       }
       index.case <- root$sample.host()
       
-      # inactive Hosts are part of the transmission history
       private$inactive <- HostSet$new()
       private$sampled <- HostSet$new()
       
-      # note there is overlap between `retired` and `sampled` HostSets
       hosts <- outer$get.retired()
       sampled <- outer$get.sampled()
       for (host in hosts$get.hosts()) {
+        # inactive Hosts are part of the transmission history
         if (host$get.name() %in% sampled$get.names()) { 
+          # note there is overlap between `retired` and `sampled` HostSets
           private$sampled$add.host(host$clone()) 
         } else {
           private$inactive$add.host(host$clone())
@@ -62,11 +62,11 @@ InnerTree <- R6Class(
       
       # track Hosts with active Pathogen lineages
       private$active <- HostSet$new()
-      
     },
     
     # accessor functions
     get.log = function() { private$inner.log },
+    set.log = function(new.log) { private$inner.log <- new.log },  # for testing purposes only
     get.model = function() { private$mod },
     get.prefix = function() { private$prefix },
     get.pindex = function() { private$p.index },
@@ -75,6 +75,8 @@ InnerTree <- R6Class(
     get.active = function() { private$active },
     n.active = function() { length(private$active) },
     get.sampled = function() { private$sampled },
+    get.pathogen = function(name) { private$pathogens[[name]] },
+    get.all.pathogens = function() { private$pathogens },
     
     has.target = function(cname) { 
       is.element(cname, names(private$mod$get.sampling()$targets))
@@ -86,6 +88,7 @@ InnerTree <- R6Class(
         end.time=time,
       )
       private$p.index <- private$p.index + 1  # increment counter
+      private$pathogens[[path$get.name()]] <- path
       return(path)
     },
     
@@ -105,7 +108,8 @@ InnerTree <- R6Class(
     p.index = NULL,
     inactive = NULL,
     active = NULL,
-    sampled = NULL
+    sampled = NULL,
+    pathogens = list()
   )
 )
 
@@ -204,10 +208,10 @@ as.phylo.InnerTree <- function(obj) {
 #' @keywords internal
 #' @noRd
 .relabel.inner.events <- function(events) {
-  # re-order events in forward time
   events$event <- factor(
     events$event, 
     levels=c("transmission", "coalescent", "migration", "sampling"))
+  # re-order events in forward time
   events <- events[order(events$time, events$event), ]
   
   nodes <- na.omit(unique(c(events$pathogen1, events$pathogen2)))
@@ -266,11 +270,11 @@ as.phylo.InnerTree <- function(obj) {
 #' @export
 #' @noRd
 print.InnerTree <- function(obj) {
-  cat("twt InnerTree\n")  # bold color!
+  cat("twt InnerTree\n")
   cat(" ", obj$get.sampled()$count.type(), "sampled Pathogens\n")
   cat(" ", obj$get.active()$count.type(), "active Pathogens\n")
   cat(" ", obj$get.inactive()$count.type(), "inactive Pathogens\n")
   events <- obj$get.log()
   cat(" ", nrow(events), "events in inner log: ")
   print(table(events$event))
-} 
+}
