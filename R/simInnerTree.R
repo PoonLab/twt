@@ -213,8 +213,10 @@ sim.inner.tree <- function(outer) {
       if (!source.is.active) { active$add.host(source) }
       
     } else {
-      # no Pathogens transferred to source, restore to inactive HostSet
-      inactive$add.host(source)
+      # no Pathogens transferred: only restore to inactive HostSet if
+      # source was pulled from inactive in the first place -- if it was
+      # already active (e.g. still infecting others), it must stay active
+      if (!source.is.active) { inactive$add.host(source) }
     }
     
   } else {

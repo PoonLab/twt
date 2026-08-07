@@ -101,7 +101,26 @@ test_that("Filter out superinfection events", {
     to.host=c('D', 'B', 'E'),
     row.names=as.integer(c(1, 2, 4))
   )
-  expect_equal(result, expected)
+  removed <- attr(result, "removed")
+  result.no.attr <- result
+  attr(result.no.attr, "removed") <- NULL
+  expect_equal(result.no.attr, expected)
+
+  expect_equal(nrow(removed), 2)
+  expect_setequal(removed$from.host, c("B", "B"))
+  expect_setequal(removed$to.host, c("E", "E"))
+})
+
+test_that(".filter.firsts attaches empty 'removed' when nothing is filtered", {
+  events <- data.frame(
+    time=c(0.1, 0.2),
+    event=rep('transmission', 2),
+    from.host=c('A', 'B'),
+    to.host=c('B', 'C')
+  )
+  result <- .filter.firsts(events)
+  removed <- attr(result, "removed")
+  expect_equal(nrow(removed), 0)
 })
 
 

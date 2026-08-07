@@ -245,11 +245,13 @@ plot.OuterTree <- function(obj, pad=1.05, legend.pos='bottomright',
   trans <- trans[order(trans$time), , drop=FALSE]
   si.events <- trans[duplicated(trans$to.host), , drop=FALSE]
 
-  # keep an unfiltered copy: .filter.firsts strips a host's own donor row
-  # whenever that row happens to be a superinfection (duplicate to.host),
-  # which otherwise makes the donor's plotted segment collapse to a point
-  events.raw <- events
   events <- .filter.firsts(events)
+  # .filter.firsts strips a host's own donor row whenever that row happens
+  # to be a superinfection (duplicate to.host) -- keep those removed rows
+  # (attached by .filter.firsts itself) so a donor's plotted segment can
+  # still reach its true transmission time, without maintaining a second
+  # separately-tracked copy of the event log.
+  removed <- attr(events, "removed")
   events <- .relabel.nodes(events, obj$get.targets())
 
   nodes <- .reorder.events(events, root.name, order="preorder", decreasing=FALSE)
@@ -274,8 +276,7 @@ plot.OuterTree <- function(obj, pad=1.05, legend.pos='bottomright',
       samp.time <- samp.times[[node]]
     } else {
       out.times <- c(events$time[events$from.host==node],
-                     events.raw$time[events.raw$event=='transmission' &
-                                      events.raw$from.host==node])
+                     removed$time[removed$from.host==node])
       samp.time <- if (length(out.times) > 0) max(out.times) else inf.time
     }
 
@@ -415,10 +416,18 @@ as.phylo.OuterTree <- function(obj) {
   })
   remove <- idx[!is.element(idx, first.idx)]
   if (length(remove) > 0) {
-    events[-remove, ]
+    result <- events[-remove, ]
+    # keep the removed (superinfection) rows attached rather than
+    # discarding them -- callers that only need the acyclic primary-tree
+    # structure can ignore this; callers that need a host's full donor
+    # history (e.g. for plotting) can retrieve it via attr(., "removed")
+    # instead of maintaining a separate unfiltered copy themselves.
+    attr(result, "removed") <- events[remove, ]
   } else {
-    events
+    result <- events
+    attr(result, "removed") <- events[0, ]
   }
+  result
 }
 
 

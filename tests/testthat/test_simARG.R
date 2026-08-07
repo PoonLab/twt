@@ -181,3 +181,29 @@ test_that("all local trees are valid phylo objects with tips", {
   valid <- sapply(segs, function(lt) !is.null(lt$phylo) && inherits(lt$phylo, "phylo") && length(lt$phylo$tip.label) > 0)
   expect_true(all(valid))
 })
+test_that("resolve.arg produces genuinely divergent topology (hand-built positive control)", {
+  times <- c(A=10, B=10, C=10, L=8, R=8, BL=5, CR=5, ROOT=1)
+  paths <- lapply(names(times), function(n) Pathogen$new(name=n, end.time=times[[n]]))
+  names(paths) <- names(times)
+  log <- data.frame(
+    time      = c(10,10,10,  8,8,  5,5,  5,5,  1,1),
+    event     = c(rep("sampling", 3),
+                  rep("recombination", 2),
+                  rep("coalescent", 2),
+                  rep("coalescent", 2),
+                  rep("coalescent", 2)),
+    pathogen1 = c("A","B","C", "A","A", "BL","BL", "CR","CR", "ROOT","ROOT"),
+    pathogen2 = c(NA,NA,NA, "L","R", "L","B", "R","C", "BL","CR"),
+    stringsAsFactors=FALSE
+  )
+  fake.inner <- list(get.log=function() log, get.all.pathogens=function() paths)
+  arg.result <- list(inner=fake.inner, breakpoints=list(A=500L))
+  res <- resolve.arg(arg.result, seq.length=1000L)
+
+  phy1 <- res$local.trees[[1]]$phylo
+  phy2 <- res$local.trees[[2]]$phylo
+  expect_true(is.monophyletic(phy1, c("A","B")))
+  expect_false(is.monophyletic(phy1, c("A","C")))
+  expect_true(is.monophyletic(phy2, c("A","C")))
+  expect_false(is.monophyletic(phy2, c("A","B")))
+})
