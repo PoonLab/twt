@@ -615,3 +615,18 @@ test_that("sim.inner.tree: replicates on SI outer tree show topological variatio
   }
   expect_true(any(rf_vals > 0, na.rm = TRUE))
 })
+test_that("sim.inner.tree: no 'already in this HostSet' warning (issue #173 follow-up)", {
+  mod <- try_model(SUPERINF_INNER_PATH)
+  result <- .get_outer_with_superinfection(mod)
+  if (is.null(result)) skip("No outer tree with SI found")
+  warnings.seen <- c()
+  withCallingHandlers(
+    .try_inner(result$outer),
+    warning = function(w) {
+      warnings.seen <<- c(warnings.seen, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+  already.in.set <- grep("already in this HostSet", warnings.seen, value=TRUE)
+  expect_length(already.in.set, 0)
+})
