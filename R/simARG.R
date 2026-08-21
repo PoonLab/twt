@@ -205,14 +205,6 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
   parent.left  <- inner$new.pathogen(time)
   parent.right <- inner$new.pathogen(time)
 
-  # both new lineages are still the SAME physical genome as `pathogen` --
-  # recombination splits which genomic interval each lineage tracks, not
-  # which individual carries it. Propagate carrier.id so downstream code
-  # (e.g. the superinfection bottleneck draw) counts physical individuals
-  # rather than tracked lineages.
-  parent.left$set.carrier.id(pathogen$get.carrier.id())
-  parent.right$set.carrier.id(pathogen$get.carrier.id())
-
   # record parent-child relationships (recombination has two parents)
   parent.left$add.child(pathogen)
   parent.right$add.child(pathogen)

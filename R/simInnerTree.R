@@ -194,15 +194,7 @@ sim.inner.tree <- function(outer) {
   
   if (is.infected[[e$from.comp]]) {
     # superinfection
-    # count PHYSICAL INDIVIDUALS (unique carrier.id), not tracked lineages --
-    # recombination can split one individual's genome into two Pathogen
-    # objects sharing the same carrier.id, which would otherwise inflate
-    # this count past the real population size and break the rhyper() draw
-    # below (see carrier.id design note on Pathogen)
-    paths.in.recipient <- recipient$get.pathogens()
-    carrier.ids <- sapply(paths.in.recipient, function(p) p$get.carrier.id())
-    unique.carriers <- unique(carrier.ids)
-    count <- length(unique.carriers)
+    count <- recipient$count.pathogens()
     
     # determine bottleneck and population sizes
     expr <- inner$get.model()$get.bottleneck.size(e$to.comp)
@@ -210,30 +202,13 @@ sim.inner.tree <- function(outer) {
     expr <- inner$get.model()$get.pop.size(e$to.comp)
     p.size <- eval(parse(text=expr), envir=envir)
     
-    # count is now the number of genuinely distinct physical individuals
-    # (carrier.id-deduped), but it can still legitimately exceed p.size if
-    # more distinct lineages have converged on this host than its nominal
-    # population size anticipates. rhyper() can't accept a negative second
-    # argument, so fall back to sampling from the nominal population size
-    # in that case rather than crashing.
-    count.for.draw <- min(count, p.size)
-    n.transfer <- rhyper(1, count.for.draw, p.size-count.for.draw, b.size)
+    n.transfer <- rhyper(1, count, p.size-count, b.size)
     if (n.transfer > 0) {
-      # transfer whole individuals: every Pathogen sharing a selected
-      # carrier.id moves together, since they represent one physical genome
-      selected.carriers <- sample(unique.carriers, n.transfer)
-      for (cid in selected.carriers) {
-        moving.names <- sapply(paths.in.recipient[carrier.ids == cid],
-                                function(p) p$get.name())
-        for (pname in moving.names) {
-          current <- recipient$get.pathogens()
-          idx <- which(sapply(current, function(p) p$get.name()) == pname)
-          if (length(idx) != 1) next
-          path <- recipient$remove.pathogen(idx)
-          source$add.pathogen(path)
-          event$pathogen1 <- path$get.name()
-          inner$add.event(event)
-        }
+      for (i in 1:n.transfer) {
+        path <- recipient$remove.pathogen(1)
+        source$add.pathogen(path)
+        event$pathogen1 <- path$get.name()
+        inner$add.event(event)
       }
       if (!source.is.active) { active$add.host(source) }
       
@@ -346,13 +321,6 @@ sim.inner.tree <- function(outer) {
     p2$set.start.time(time)
     
     anc <- inner$new.pathogen(time)  # sets end.time
-    # anc is not a new physical individual -- it's the merged ancestor of
-    # p1 and p2, so it must inherit an existing carrier.id rather than
-    # default to a fresh one, or every coalescent event would spuriously
-    # inflate the carrier count. p1/p2 may originally have had different
-    # carrier.ids (two lineages that happen to share an ancestor without
-    # being the same individual); arbitrarily keep p1's.
-    anc$set.carrier.id(p1$get.carrier.id())
     host$add.pathogen(anc)
     
     # assign ancestral/descendant relations
