@@ -202,6 +202,29 @@ sim.inner.tree <- function(outer) {
     expr <- inner$get.model()$get.pop.size(e$to.comp)
     p.size <- eval(parse(text=expr), envir=envir)
     
+    if (count > p.size) {
+      # count (n.active.lineages) is tracked ancestral segment/lineage
+      # objects, not necessarily distinct physical genomes -- once
+      # recombination is active, lineage count can legitimately exceed
+      # the population's census size, and the correct relationship
+      # between the two is not yet resolved (see issue tracker: rhyper()
+      # here implicitly assumes count occupies count distinct slots
+      # among p.size exchangeable individuals, which breaks once one
+      # genome can carry several ancestral segments). Fail loudly with
+      # a clear diagnostic rather than silently capping or crashing on
+      # an opaque NA, until the bottleneck/occupancy model is revisited.
+      stop(sprintf(
+        "Tracked lineage count (%d) exceeds pathogen population size (%d) ",
+        count, p.size),
+        "in host ", recipient$get.name(), " at time ", e$time, ". ",
+        "This means more ancestral lineages/segments are being tracked ",
+        "than the model's nominal population size anticipates (likely ",
+        "from recombination). The bottleneck sampling here assumes ",
+        "count occupies count distinct slots among p.size individuals, ",
+        "which is not valid once lineage count and physical individual ",
+        "count can diverge -- needs a proper occupancy/carrier model, ",
+        "not a silent cap.")
+    }
     n.transfer <- rhyper(1, count, p.size-count, b.size)
     if (n.transfer > 0) {
       for (i in 1:n.transfer) {
