@@ -3,6 +3,7 @@ require(twt)
 # generate test fixtures
 settings <- yaml.load_file("test_SIR.yaml")
 settings$Compartments$I$coalescent.rate <- 1.0
+settings$Compartments$I$pop.size <- 100  # was silently defaulting to this
 mod <- Model$new(settings)
 set.seed(276)
 dynamics <- sim.dynamics(mod)

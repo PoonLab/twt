@@ -24,6 +24,7 @@ Compartments:
     size: 2
     bottleneck.size: 1
     coalescent.rate: 0.01
+    pop.size: 100    # was silently defaulting to this
   I_samp:
     infected: true
     size: 0

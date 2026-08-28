@@ -82,6 +82,35 @@ Host <- R6Class(
       private$pathogens[[length(private$pathogens)+1]] <- new.pathogen
     },
     
+    # --- fixed-size lineage pool (for recombination parent sampling) ---
+    # Fixes exponential lineage growth under recombination: instead of
+    # always creating a brand-new ancestral lineage, recombination should
+    # sample a parent from a FIXED pool of n (= population size) possible
+    # lineages, only "activating" a previously-inactive one when chosen.
+    # Total pool size never changes; only how many slots are active does.
+    init.pool = function(n) {
+      if (is.null(private$pool.size)) {
+        private$pool.size <- n
+        private$lineage.pool <- vector("list", n)
+      }
+    },
+    get.pool.size = function() { private$pool.size },
+    is.pool.initialized = function() { !is.null(private$pool.size) },
+    is.slot.active = function(slot.id) { !is.null(private$lineage.pool[[slot.id]]) },
+    get.slot.occupant = function(slot.id) { private$lineage.pool[[slot.id]] },
+    activate.slot = function(slot.id, pathogen) {
+      private$lineage.pool[[slot.id]] <- pathogen
+    },
+    deactivate.slot = function(slot.id) {
+      private$lineage.pool[slot.id] <- list(NULL)  # preserves pool length
+    },
+    get.active.slots = function() {
+      which(!sapply(private$lineage.pool, is.null))
+    },
+    get.inactive.slots = function() {
+      which(sapply(private$lineage.pool, is.null))
+    },
+    
     remove.pathogen = function(idx) {
       path <- private$pathogens[[idx]]
       private$pathogens[[idx]] <- NULL
@@ -136,7 +165,9 @@ Host <- R6Class(
     sampling.time = NULL,
     sampling.comp = NULL,
     unsampled = NULL,
-    pathogens = NULL
+    pathogens = NULL,
+    lineage.pool = NULL,
+    pool.size = NULL
   )
 )
 

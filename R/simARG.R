@@ -63,8 +63,11 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
         if (ev$type == "coalescent") {
           .do.coalescent(ev$host, inner, event.time, envir = env)
         } else {
+          host.obj <- active$get.host.by.name(ev$host)
+          p.size.expr <- mod$get.pop.size(host.obj$get.compartment())
+          p.size.val <- eval(parse(text = p.size.expr), envir = env)
           bp <- .do.recombination(ev$host, ev$pathogen, inner, event.time,
-                                  seq.length = seq.length)
+                                  seq.length = seq.length, p.size = p.size.val)
           breakpoints[[bp$child]] <- bp$position
         }
       }
@@ -133,6 +136,7 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
 
     # coalescence rate for this host (requires 2+ lineages)
     if (k >= 2) {
+
       expr <- mod$get.coalescent.rate(comp)
       rate <- eval(parse(text = expr), envir = envir)
       if (rate > 0) {
@@ -190,20 +194,58 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
 #' @keywords internal
 #' @noRd
 .do.recombination <- function(host.name, pathogen, inner, time,
-                              seq.length = 9000L) {
+                              seq.length = 9000L, p.size = NULL) {
   active <- inner$get.active()
   host   <- active$get.host.by.name(host.name)
+
+  # initialize this host's FIXED lineage pool (sample
+  # recombination parents from a fixed pool of p.size lineages, only
+  # activating a previously-inactive one when chosen, instead of always
+  # creating a brand-new lineage de novo. Total pool size never changes.)
+  if (!host$is.pool.initialized()) {
+    if (is.null(p.size)) {
+      stop(".do.recombination: p.size must be provided to initialize ",
+           "host's lineage pool on first use")
+    }
+    host$init.pool(p.size)
+  }
+
+  # ensure the recombining pathogen already occupies a pool slot -- if
+  # this is the first pool-tracked event involving it, assign one now
+  if (is.na(pathogen$get.slot.id())) {
+    free <- host$get.inactive.slots()
+    slot <- if (length(free) > 0) free[1] else 1
+    pathogen$set.slot.id(slot)
+    host$activate.slot(slot, pathogen)
+  }
+  own.slot <- pathogen$get.slot.id()
 
   # sample breakpoint uniformly across genome
   breakpoint <- sample.int(seq.length - 1L, 1L)
   pathogen$set.breakpoint(breakpoint)
-
-  # end the current lineage at this recombination event
   pathogen$set.start.time(time)
 
-  # create two parental lineages — left and right of breakpoint
-  parent.left  <- inner$new.pathogen(time)
-  parent.right <- inner$new.pathogen(time)
+  # LEFT parent: continues in the SAME slot as the child
+  parent.left <- inner$new.pathogen(time)
+  parent.left$set.slot.id(own.slot)
+  host$activate.slot(own.slot, parent.left)
+
+  # RIGHT parent: sample a slot from the fixed pool (excluding own slot)
+  pool.size <- host$get.pool.size()
+  other.slots <- setdiff(seq_len(pool.size), own.slot)
+
+  if (length(other.slots) == 0) {
+    parent.right <- parent.left
+  } else {
+    sampled.slot <- if (length(other.slots) == 1) other.slots else sample(other.slots, 1)
+    if (host$is.slot.active(sampled.slot)) {
+      parent.right <- host$get.slot.occupant(sampled.slot)
+    } else {
+      parent.right <- inner$new.pathogen(time)
+      parent.right$set.slot.id(sampled.slot)
+      host$activate.slot(sampled.slot, parent.right)
+    }
+  }
 
   # record parent-child relationships (recombination has two parents)
   parent.left$add.child(pathogen)
@@ -216,9 +258,12 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
   idx <- which(sapply(paths, function(p) p$get.name()) == pathogen$get.name())
   if (length(idx) == 1) host$remove.pathogen(idx)
   host$add.pathogen(parent.left)
-  host$add.pathogen(parent.right)
+  already.present <- any(sapply(host$get.pathogens(), function(p) {
+    p$get.name() == parent.right$get.name()
+  }))
+  if (!already.present) host$add.pathogen(parent.right)
 
-  # log the recombination event (breakpoint not stored in log — fixed schema)
+  # log the recombination event (breakpoint not stored in log -- fixed schema)
   event <- list(
     time = time, event = "recombination",
     from.comp = host$get.compartment(), to.comp = NA,

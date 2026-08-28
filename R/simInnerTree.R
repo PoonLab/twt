@@ -202,6 +202,29 @@ sim.inner.tree <- function(outer) {
     expr <- inner$get.model()$get.pop.size(e$to.comp)
     p.size <- eval(parse(text=expr), envir=envir)
     
+    if (count > p.size) {
+      # count (n.active.lineages) is tracked ancestral segment/lineage
+      # objects, not necessarily distinct physical genomes -- once
+      # recombination is active, lineage count can legitimately exceed
+      # the population's census size, and the correct relationship
+      # between the two is not yet resolved (see issue tracker: rhyper()
+      # here implicitly assumes count occupies count distinct slots
+      # among p.size exchangeable individuals, which breaks once one
+      # genome can carry several ancestral segments). Fail loudly with
+      # a clear diagnostic rather than silently capping or crashing on
+      # an opaque NA, until the bottleneck/occupancy model is revisited.
+      stop(sprintf(
+        "Tracked lineage count (%d) exceeds pathogen population size (%d) ",
+        count, p.size),
+        "in host ", recipient$get.name(), " at time ", e$time, ". ",
+        "This means more ancestral lineages/segments are being tracked ",
+        "than the model's nominal population size anticipates (likely ",
+        "from recombination). The bottleneck sampling here assumes ",
+        "count occupies count distinct slots among p.size individuals, ",
+        "which is not valid once lineage count and physical individual ",
+        "count can diverge -- needs a proper occupancy/carrier model, ",
+        "not a silent cap.")
+    }
     n.transfer <- rhyper(1, count, p.size-count, b.size)
     if (n.transfer > 0) {
       for (i in 1:n.transfer) {
@@ -321,6 +344,27 @@ sim.inner.tree <- function(outer) {
     p2$set.start.time(time)
     
     anc <- inner$new.pathogen(time)  # sets end.time
+
+    # reconcile the lineage pool: the ancestor represents the same
+    # physical individual as whichever of p1/p2 already occupied a pool
+    # slot (from a prior recombination event). If both occupied slots,
+    # keep one for the ancestor and free the other -- two active
+    # lineages coalescing means one fewer active individual going
+    # forward. If neither occupied a slot, this coalescence never
+    # touched the pool, so the ancestor stays unassigned too.
+    p1.slot <- p1$get.slot.id()
+    p2.slot <- p2$get.slot.id()
+    if (!is.na(p1.slot)) {
+      anc$set.slot.id(p1.slot)
+      host$activate.slot(p1.slot, anc)
+      if (!is.na(p2.slot) && p2.slot != p1.slot) {
+        host$deactivate.slot(p2.slot)
+      }
+    } else if (!is.na(p2.slot)) {
+      anc$set.slot.id(p2.slot)
+      host$activate.slot(p2.slot, anc)
+    }
+
     host$add.pathogen(anc)
     
     # assign ancestral/descendant relations
