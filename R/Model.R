@@ -316,21 +316,7 @@ Model <- R6Class(
             stop(src, "`coalescent.rate` should be a number or R expression,",
                  "not an associative array.")
           }
-          # coalescent.rate is allowed to reference `k` (current active
-          # lineage count) and `p.size` (compartment population size) at
-          # runtime -- these are simulation-state variables that don't
-          # exist at model-construction time, so validate against a copy
-          # of `env` with placeholder values instead of the real `env`.
-          # k=2 matches the minimum lineage count coalescent.rate is ever
-          # evaluated for; p.size uses the compartment's real declared
-          # pop.size when available, falling back to a placeholder.
-          coal.env <- list2env(as.list(env), parent = parent.env(env))
-          assign("k", 2, envir = coal.env)
-          p.size.placeholder <- tryCatch(
-            eval(parse(text = params$pop.size), envir = env),
-            error = function(e) 1)
-          assign("p.size", p.size.placeholder, envir = coal.env)
-          private$check.expression(params$coalescent.rate, coal.env)
+          private$check.expression(params$coalescent.rate, env)
           private$coalescent.rates[[src]] <- params$coalescent.rate
         }
         

@@ -136,18 +136,6 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
 
     # coalescence rate for this host (requires 2+ lineages)
     if (k >= 2) {
-      # expose current lineage count (k) and the compartment's nominal
-      # population size (p.size) to the coalescent.rate expression, so a
-      # yaml can write a population-size-scaled rate (e.g. "2/p.size")
-      # instead of only a flat constant. Needed so coalescence can
-      # naturally pull lineage count back toward p.size as it grows,
-      # rather than assuming it independently -- see rhyper() bottleneck
-      # crash / carrier.id discussion.
-      assign("k", k, envir = envir)
-      size.expr <- mod$get.pop.size(comp)
-      p.size.local <- tryCatch(eval(parse(text = size.expr), envir = envir),
-                                error = function(e) NA)
-      assign("p.size", p.size.local, envir = envir)
 
       expr <- mod$get.coalescent.rate(comp)
       rate <- eval(parse(text = expr), envir = envir)
