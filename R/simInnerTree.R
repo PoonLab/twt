@@ -344,6 +344,27 @@ sim.inner.tree <- function(outer) {
     p2$set.start.time(time)
     
     anc <- inner$new.pathogen(time)  # sets end.time
+
+    # reconcile the lineage pool: the ancestor represents the same
+    # physical individual as whichever of p1/p2 already occupied a pool
+    # slot (from a prior recombination event). If both occupied slots,
+    # keep one for the ancestor and free the other -- two active
+    # lineages coalescing means one fewer active individual going
+    # forward. If neither occupied a slot, this coalescence never
+    # touched the pool, so the ancestor stays unassigned too.
+    p1.slot <- p1$get.slot.id()
+    p2.slot <- p2$get.slot.id()
+    if (!is.na(p1.slot)) {
+      anc$set.slot.id(p1.slot)
+      host$activate.slot(p1.slot, anc)
+      if (!is.na(p2.slot) && p2.slot != p1.slot) {
+        host$deactivate.slot(p2.slot)
+      }
+    } else if (!is.na(p2.slot)) {
+      anc$set.slot.id(p2.slot)
+      host$activate.slot(p2.slot, anc)
+    }
+
     host$add.pathogen(anc)
     
     # assign ancestral/descendant relations

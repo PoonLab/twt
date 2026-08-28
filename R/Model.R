@@ -316,7 +316,21 @@ Model <- R6Class(
             stop(src, "`coalescent.rate` should be a number or R expression,",
                  "not an associative array.")
           }
-          private$check.expression(params$coalescent.rate, env)
+          # coalescent.rate is allowed to reference `k` (current active
+          # lineage count) and `p.size` (compartment population size) at
+          # runtime -- these are simulation-state variables that don't
+          # exist at model-construction time, so validate against a copy
+          # of `env` with placeholder values instead of the real `env`.
+          # k=2 matches the minimum lineage count coalescent.rate is ever
+          # evaluated for; p.size uses the compartment's real declared
+          # pop.size when available, falling back to a placeholder.
+          coal.env <- list2env(as.list(env), parent = parent.env(env))
+          assign("k", 2, envir = coal.env)
+          p.size.placeholder <- tryCatch(
+            eval(parse(text = params$pop.size), envir = env),
+            error = function(e) 1)
+          assign("p.size", p.size.placeholder, envir = coal.env)
+          private$check.expression(params$coalescent.rate, coal.env)
           private$coalescent.rates[[src]] <- params$coalescent.rate
         }
         
@@ -328,6 +342,19 @@ Model <- R6Class(
           }
           private$check.expression(params$pop.size, env)
           private$pop.sizes[[src]] <- params$pop.size
+        } else if (!is.null(params$coalescent.rate) &&
+                   params$coalescent.rate != "Inf") {
+          # coalescence is enabled for this compartment (finite rate) but
+          # pop.size was never explicitly set, so it's silently using the
+          # unconfigured default (100) baked into this package -- this
+          # default has no connection to the compartment's own `size:`
+          # field or any other yaml value, and coalescent.rate expressions
+          # that reference population size (or were chosen assuming a
+          # particular population size) may be silently mismatched with it.
+          warning(src, ": coalescent.rate is set but pop.size is not -- ",
+                  "using unconfigured default pop.size=100. If ",
+                  "coalescent.rate was chosen with a particular population ",
+                  "size in mind, set pop.size explicitly in the yaml.")
         }
       }  # end loop
       

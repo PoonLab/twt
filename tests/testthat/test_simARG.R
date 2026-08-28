@@ -207,3 +207,82 @@ test_that("resolve.arg produces genuinely divergent topology (hand-built positiv
   expect_true(is.monophyletic(phy2, c("A","C")))
   expect_false(is.monophyletic(phy2, c("A","B")))
 })
+test_that("Host lineage pool: basic activate/deactivate/query", {
+  h <- Host$new(name="H1", compartment="I")
+  expect_false(h$is.pool.initialized())
+  h$init.pool(5)
+  expect_true(h$is.pool.initialized())
+  expect_equal(h$get.pool.size(), 5)
+  expect_equal(length(h$get.inactive.slots()), 5)
+  expect_equal(length(h$get.active.slots()), 0)
+
+  p <- Pathogen$new(name="P1", end.time=1)
+  h$activate.slot(2, p)
+  expect_true(h$is.slot.active(2))
+  expect_equal(h$get.slot.occupant(2)$get.name(), "P1")
+  expect_equal(length(h$get.active.slots()), 1)
+  expect_equal(length(h$get.inactive.slots()), 4)
+
+  h$deactivate.slot(2)
+  expect_false(h$is.slot.active(2))
+  expect_equal(length(h$get.active.slots()), 0)
+  # pool size must not shrink after deactivation
+  expect_equal(h$get.pool.size(), 5)
+})
+
+test_that("Host lineage pool: init.pool is idempotent", {
+  h <- Host$new(name="H1", compartment="I")
+  h$init.pool(10)
+  h$init.pool(999)  # should be ignored, pool already initialized
+  expect_equal(h$get.pool.size(), 10)
+})
+
+test_that("sim.arg does not exceed pop.size at high rho (fixed lineage pool)", {
+  settings <- read_yaml("test_Superinfection.yaml")
+  settings$Parameters$sigma <- 0.05
+  mod <- Model$new(settings)
+  set.seed(33)
+  dyn <- tryCatch(sim.dynamics(mod, max.attempts=10), error=function(e) NULL)
+  if (is.null(dyn)) skip("could not build dynamics for this seed")
+  outer <- tryCatch(
+    withCallingHandlers(sim.outer.tree(dyn), warning=function(w) invokeRestart("muffleWarning")),
+    error=function(e) NULL)
+  if (is.null(outer)) skip("could not build outer tree for this seed")
+
+  # rho=5,7,10 previously exceeded pop.size and crashed/errored before
+  # the fixed lineage pool (Art's design: sample recombination parents
+  # from a fixed pool of p.size lineages instead of always creating a
+  # new lineage de novo). Now they should all succeed.
+  for (rho in c(5, 7, 10)) {
+    arg <- tryCatch(sim.arg(outer, rho=rho, seq.length=9000), error=function(e) e)
+    expect_false(inherits(arg, "error"),
+                 info=paste("rho =", rho, "should not error with fixed lineage pool"))
+  }
+})
+
+test_that("resolve.arg produces valid trees on top of the fixed lineage pool", {
+  settings <- read_yaml("test_Superinfection.yaml")
+  settings$Parameters$sigma <- 0.05
+  mod <- Model$new(settings)
+  set.seed(33)
+  dyn <- tryCatch(sim.dynamics(mod, max.attempts=10), error=function(e) NULL)
+  if (is.null(dyn)) skip("could not build dynamics for this seed")
+  outer <- tryCatch(
+    withCallingHandlers(sim.outer.tree(dyn), warning=function(w) invokeRestart("muffleWarning")),
+    error=function(e) NULL)
+  if (is.null(outer)) skip("could not build outer tree for this seed")
+
+  n.sampled <- outer$get.sampled()$count.type()
+  arg <- sim.arg(outer, rho=2, seq.length=9000)
+  res <- resolve.arg(arg, seq.length=9000)
+
+  valid <- sapply(res$local.trees, function(lt) {
+    phy <- lt$phylo
+    inherits(phy, "phylo") &&
+      length(phy$tip.label) == n.sampled &&
+      sum(duplicated(phy$tip.label)) == 0 &&
+      !any(is.na(phy$edge.length)) &&
+      !any(phy$edge.length < 0, na.rm=TRUE)
+  })
+  expect_true(all(valid))
+})
