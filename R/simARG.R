@@ -291,7 +291,11 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
 #' @export
 resolve.arg <- function(arg.result, seq.length = 9000L) {
   inner      <- arg.result$inner
-  bps        <- sort(unique(unlist(arg.result$breakpoints)))
+  # bp.by.child keeps names (per-child lookup); bps is deduped positions
+  # only, for segment boundaries -- unique() strips names, so don't use
+  # bps for per-child lookup
+  bp.by.child <- unlist(arg.result$breakpoints)
+  bps        <- sort(unique(bp.by.child))
   log        <- inner$get.log()
   log$time   <- as.numeric(log$time)
 
@@ -315,48 +319,81 @@ resolve.arg <- function(arg.result, seq.length = 9000L) {
   )
 
   # for each segment, trace from tips to root
+  # precompute everything that does NOT depend on segment position --
+  # these were being recomputed fresh inside the per-segment loop below
+  # (unvectorized trans.rows loop, re-filtering recomb.rows per child per
+  # segment) even though none of it references pos. With thousands of
+  # segments this was the dominant cost (confirmed via Rprof: [.data.frame
+  # subsetting was ~66% of total resolve.arg time). Only the recombination
+  # parent CHOICE (left vs right) genuinely depends on pos.
+  base.parent.map <- setNames(coal.rows$pathogen1, coal.rows$pathogen2)
+  trans.p1 <- trans.rows$pathogen1
+  trans.p2 <- trans.rows$pathogen2
+  trans.valid <- !is.na(trans.p1) & !is.na(trans.p2)
+  base.parent.map[trans.p2[trans.valid]] <- trans.p1[trans.valid]
+
+  recomb.by.child <- split(recomb.rows, recomb.rows$pathogen1)
+  recomb.children <- names(recomb.by.child)
+
   local.trees <- vector("list", length(starts))
   for (i in seq_along(starts)) {
     pos <- (starts[i] + ends[i]) / 2
-    # parent map for this segment
-    parent.map <- setNames(coal.rows$pathogen1, coal.rows$pathogen2)
-    for (r in seq_len(nrow(trans.rows))) {
-      p2 <- trans.rows$pathogen2[r]
-      p1 <- trans.rows$pathogen1[r]
-      if (!is.na(p2) && !is.na(p1)) parent.map[p2] <- p1
-    }
-    recomb.children <- unique(recomb.rows$pathogen1)
+    parent.map <- base.parent.map
     for (child in recomb.children) {
-      child.rows <- recomb.rows[recomb.rows$pathogen1 == child, ]
+      child.rows <- recomb.by.child[[child]]
       if (nrow(child.rows) < 2) next
-      bp <- bps[names(bps) == child]
-      if (length(bp) == 0) bp <- bps[1]
+      bp <- bp.by.child[child]
+      if (length(bp) == 0 || is.na(bp)) bp <- bps[1]
       parent <- if (pos <= bp) child.rows$pathogen2[1] else child.rows$pathogen2[2]
       parent.map[child] <- parent
     }
 
-    # trace tips to root
-    all.nodes <- character(0)
-    edges     <- data.frame(parent=character(0), child=character(0),
-                             stringsAsFactors=FALSE)
+    # trace tips to root -- preallocate buffers and fill by index rather
+    # than growing vectors with c() (still O(n^2) even without rbind/
+    # data.frame -- each c() call still copies the whole vector so far).
+    # A chain from any tip can't revisit a node (monotonic trace upward),
+    # so length(all.paths) is a safe upper bound on any single chain's
+    # length; multiply by n.tips for a safe total upper bound, then
+    # truncate to what was actually used.
+    max.steps <- length(all.paths) * length(tips)
+    edge.parents  <- character(max.steps)
+    edge.children <- character(max.steps)
+    all.nodes.buf <- character(max.steps * 2L + length(tips))
+    n.edges <- 0L
+    n.nodes <- 0L
     for (tip in tips) {
       cur <- tip
       while (!is.na(parent.map[cur]) && !is.null(parent.map[cur])) {
         par <- parent.map[cur]
-        edges <- rbind(edges, data.frame(parent=par, child=cur,
-                                          stringsAsFactors=FALSE))
-        all.nodes <- c(all.nodes, cur, par)
+        n.edges <- n.edges + 1L
+        edge.parents[n.edges]  <- par
+        edge.children[n.edges] <- cur
+        n.nodes <- n.nodes + 1L; all.nodes.buf[n.nodes] <- cur
+        n.nodes <- n.nodes + 1L; all.nodes.buf[n.nodes] <- par
         cur <- par
       }
-      all.nodes <- c(all.nodes, cur)
+      n.nodes <- n.nodes + 1L
+      all.nodes.buf[n.nodes] <- cur
     }
+    edges <- data.frame(parent=edge.parents[seq_len(n.edges)],
+                         child=edge.children[seq_len(n.edges)],
+                         stringsAsFactors=FALSE)
+    all.nodes <- all.nodes.buf[seq_len(n.nodes)]
 
     all.nodes <- unique(all.nodes)
     edges     <- unique(edges)
     root.node <- all.nodes[!all.nodes %in% edges$child]
     if (length(root.node) > 1) root.node <- root.node[1]
 
-    get.children <- function(node) edges$child[edges$parent == node]
+    # O(1) child lookup via precomputed split, instead of scanning the
+    # full edges data.frame on every call -- to.newick() below calls
+    # this once per node in the tree, so the previous O(n) scan made
+    # the whole traversal O(n^2) (confirmed dominant cost via Rprof).
+    children.map <- split(edges$child, edges$parent)
+    get.children <- function(node) {
+      ch <- children.map[[node]]
+      if (is.null(ch)) character(0) else ch
+    }
 
     get.time <- function(node) {
       t <- node.created[node]

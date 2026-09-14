@@ -287,3 +287,36 @@ test_that("resolve.arg produces valid trees on top of the fixed lineage pool", {
   })
   expect_true(all(valid))
 })
+test_that("resolve.arg: per-child breakpoint lookup is correct with multiple distinct breakpoints", {
+  # A and C recombine independently at different breakpoints (300, 700)
+  times <- c(A=10,B=10,C=10,D=10, L1=8,R1=8, L2=7,R2=7,
+             AB=5,CD=5, RR=4, ABCD=2, ROOT=1)
+  paths <- lapply(names(times), function(n) Pathogen$new(name=n, end.time=times[[n]]))
+  names(paths) <- names(times)
+  log <- data.frame(
+    time      = c(10,10,10,10, 8,8, 7,7, 5,5, 5,5, 4,4, 2,2, 1,1),
+    event     = c(rep("sampling",4), rep("recombination",2), rep("recombination",2),
+                  rep("coalescent",2), rep("coalescent",2), rep("coalescent",2),
+                  rep("coalescent",2), rep("coalescent",2)),
+    pathogen1 = c("A","B","C","D", "A","A", "C","C", "AB","AB", "CD","CD",
+                  "RR","RR", "ABCD","ABCD", "ROOT","ROOT"),
+    pathogen2 = c(NA,NA,NA,NA, "L1","R1", "L2","R2", "L1","B", "L2","D",
+                  "R1","R2", "AB","CD", "ABCD","RR"),
+    stringsAsFactors=FALSE
+  )
+  fake.inner <- list(get.log=function() log, get.all.pathogens=function() paths)
+  arg.result <- list(inner=fake.inner, breakpoints=list(A=300L, C=700L))
+  res <- resolve.arg(arg.result, seq.length=1000L)
+
+  expect_equal(length(res$local.trees), 3)
+
+  phy1 <- collapse.singles(res$local.trees[[1]]$phylo)
+  phy2 <- collapse.singles(res$local.trees[[2]]$phylo)
+  phy3 <- collapse.singles(res$local.trees[[3]]$phylo)
+
+  expect_true(is.monophyletic(phy1, c("C","D")))
+  expect_true(is.monophyletic(phy2, c("C","D")))
+  expect_false(is.monophyletic(phy2, c("A","C")))
+  expect_true(is.monophyletic(phy3, c("A","C")))
+  expect_false(is.monophyletic(phy3, c("C","D")))
+})
