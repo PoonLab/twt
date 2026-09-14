@@ -198,7 +198,7 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
   active <- inner$get.active()
   host   <- active$get.host.by.name(host.name)
 
-  # lazily initialize this host's FIXED lineage pool (Art's fix: sample
+  # initialize this host's FIXED lineage pool (sample
   # recombination parents from a fixed pool of p.size lineages, only
   # activating a previously-inactive one when chosen, instead of always
   # creating a brand-new lineage de novo. Total pool size never changes.)
