@@ -207,3 +207,116 @@ test_that("resolve.arg produces genuinely divergent topology (hand-built positiv
   expect_true(is.monophyletic(phy2, c("A","C")))
   expect_false(is.monophyletic(phy2, c("A","B")))
 })
+test_that("Host lineage pool: basic activate/deactivate/query", {
+  h <- Host$new(name="H1", compartment="I")
+  expect_false(h$is.pool.initialized())
+  h$init.pool(5)
+  expect_true(h$is.pool.initialized())
+  expect_equal(h$get.pool.size(), 5)
+  expect_equal(h$count.inactive.slots(), 5)
+  expect_equal(h$count.active.slots(), 0)
+
+  p <- Pathogen$new(name="P1", end.time=1)
+  new.id <- h$activate.new.slot(p)
+  expect_equal(p$get.slot.id(), new.id)
+  expect_true(h$is.slot.active(new.id))
+  expect_equal(h$get.slot.occupant(new.id)$get.name(), "P1")
+  expect_equal(h$count.active.slots(), 1)
+  expect_equal(h$count.inactive.slots(), 4)
+
+  h$deactivate.slot(new.id)
+  expect_false(h$is.slot.active(new.id))
+  expect_equal(h$count.active.slots(), 0)
+  # pool size must not shrink after deactivation
+  expect_equal(h$get.pool.size(), 5)
+})
+
+test_that("Host lineage pool: init.pool is idempotent", {
+  h <- Host$new(name="H1", compartment="I")
+  h$init.pool(10)
+  h$init.pool(999)  # should be ignored, pool already initialized
+  expect_equal(h$get.pool.size(), 10)
+})
+
+test_that("sim.arg does not exceed pop.size at high rho (fixed lineage pool)", {
+  settings <- read_yaml("test_Superinfection.yaml")
+  settings$Parameters$sigma <- 0.05
+  mod <- Model$new(settings)
+  set.seed(33)
+  dyn <- tryCatch(sim.dynamics(mod, max.attempts=10), error=function(e) NULL)
+  if (is.null(dyn)) skip("could not build dynamics for this seed")
+  outer <- tryCatch(
+    withCallingHandlers(sim.outer.tree(dyn), warning=function(w) invokeRestart("muffleWarning")),
+    error=function(e) NULL)
+  if (is.null(outer)) skip("could not build outer tree for this seed")
+
+  # rho=5,7,10 previously exceeded pop.size and crashed/errored before
+  # the fixed lineage pool (Art's design: sample recombination parents
+  # from a fixed pool of p.size lineages instead of always creating a
+  # new lineage de novo). Now they should all succeed.
+  for (rho in c(5, 7, 10)) {
+    arg <- tryCatch(sim.arg(outer, rho=rho, seq.length=9000), error=function(e) e)
+    expect_false(inherits(arg, "error"),
+                 info=paste("rho =", rho, "should not error with fixed lineage pool"))
+  }
+})
+
+test_that("resolve.arg produces valid trees on top of the fixed lineage pool", {
+  settings <- read_yaml("test_Superinfection.yaml")
+  settings$Parameters$sigma <- 0.05
+  mod <- Model$new(settings)
+  set.seed(33)
+  dyn <- tryCatch(sim.dynamics(mod, max.attempts=10), error=function(e) NULL)
+  if (is.null(dyn)) skip("could not build dynamics for this seed")
+  outer <- tryCatch(
+    withCallingHandlers(sim.outer.tree(dyn), warning=function(w) invokeRestart("muffleWarning")),
+    error=function(e) NULL)
+  if (is.null(outer)) skip("could not build outer tree for this seed")
+
+  n.sampled <- outer$get.sampled()$count.type()
+  arg <- sim.arg(outer, rho=2, seq.length=9000)
+  res <- resolve.arg(arg, seq.length=9000)
+
+  valid <- sapply(res$local.trees, function(lt) {
+    phy <- lt$phylo
+    inherits(phy, "phylo") &&
+      length(phy$tip.label) == n.sampled &&
+      sum(duplicated(phy$tip.label)) == 0 &&
+      !any(is.na(phy$edge.length)) &&
+      !any(phy$edge.length < 0, na.rm=TRUE)
+  })
+  expect_true(all(valid))
+})
+test_that("resolve.arg: per-child breakpoint lookup is correct with multiple distinct breakpoints", {
+  # A and C recombine independently at different breakpoints (300, 700)
+  times <- c(A=10,B=10,C=10,D=10, L1=8,R1=8, L2=7,R2=7,
+             AB=5,CD=5, RR=4, ABCD=2, ROOT=1)
+  paths <- lapply(names(times), function(n) Pathogen$new(name=n, end.time=times[[n]]))
+  names(paths) <- names(times)
+  log <- data.frame(
+    time      = c(10,10,10,10, 8,8, 7,7, 5,5, 5,5, 4,4, 2,2, 1,1),
+    event     = c(rep("sampling",4), rep("recombination",2), rep("recombination",2),
+                  rep("coalescent",2), rep("coalescent",2), rep("coalescent",2),
+                  rep("coalescent",2), rep("coalescent",2)),
+    pathogen1 = c("A","B","C","D", "A","A", "C","C", "AB","AB", "CD","CD",
+                  "RR","RR", "ABCD","ABCD", "ROOT","ROOT"),
+    pathogen2 = c(NA,NA,NA,NA, "L1","R1", "L2","R2", "L1","B", "L2","D",
+                  "R1","R2", "AB","CD", "ABCD","RR"),
+    stringsAsFactors=FALSE
+  )
+  fake.inner <- list(get.log=function() log, get.all.pathogens=function() paths)
+  arg.result <- list(inner=fake.inner, breakpoints=list(A=300L, C=700L))
+  res <- resolve.arg(arg.result, seq.length=1000L)
+
+  expect_equal(length(res$local.trees), 3)
+
+  phy1 <- collapse.singles(res$local.trees[[1]]$phylo)
+  phy2 <- collapse.singles(res$local.trees[[2]]$phylo)
+  phy3 <- collapse.singles(res$local.trees[[3]]$phylo)
+
+  expect_true(is.monophyletic(phy1, c("C","D")))
+  expect_true(is.monophyletic(phy2, c("C","D")))
+  expect_false(is.monophyletic(phy2, c("A","C")))
+  expect_true(is.monophyletic(phy3, c("A","C")))
+  expect_false(is.monophyletic(phy3, c("C","D")))
+})

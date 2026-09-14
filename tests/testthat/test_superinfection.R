@@ -393,7 +393,7 @@ test_that("model: compartment I flagged infected=TRUE", {
   expect_true(mod$get.infected("I"))
 })
 
-test_that("model YAML: compartment I has pop.size=2 and bottleneck.size=1", {
+test_that("model YAML: compartment I has size=2 and bottleneck.size=1", {
   try_model(SUPERINF_INNER_PATH)
   cfg <- read_yaml(SUPERINF_INNER_PATH)
   expect_equal(cfg$Compartments$I$size, 2)

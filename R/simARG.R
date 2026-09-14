@@ -63,8 +63,11 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
         if (ev$type == "coalescent") {
           .do.coalescent(ev$host, inner, event.time, envir = env)
         } else {
+          host.obj <- active$get.host.by.name(ev$host)
+          p.size.expr <- mod$get.pop.size(host.obj$get.compartment())
+          p.size.val <- eval(parse(text = p.size.expr), envir = env)
           bp <- .do.recombination(ev$host, ev$pathogen, inner, event.time,
-                                  seq.length = seq.length)
+                                  seq.length = seq.length, p.size = p.size.val)
           breakpoints[[bp$child]] <- bp$position
         }
       }
@@ -133,6 +136,7 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
 
     # coalescence rate for this host (requires 2+ lineages)
     if (k >= 2) {
+
       expr <- mod$get.coalescent.rate(comp)
       rate <- eval(parse(text = expr), envir = envir)
       if (rate > 0) {
@@ -190,20 +194,52 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
 #' @keywords internal
 #' @noRd
 .do.recombination <- function(host.name, pathogen, inner, time,
-                              seq.length = 9000L) {
+                              seq.length = 9000L, p.size = NULL) {
   active <- inner$get.active()
   host   <- active$get.host.by.name(host.name)
+
+  # initialize this host's FIXED lineage pool (sample
+  # recombination parents from a fixed pool of p.size lineages, only
+  # activating a previously-inactive one when chosen, instead of always
+  # creating a brand-new lineage de novo. Total pool size never changes.)
+  if (!host$is.pool.initialized()) {
+    if (is.null(p.size)) {
+      stop(".do.recombination: p.size must be provided to initialize ",
+           "host's lineage pool on first use")
+    }
+    host$init.pool(p.size)
+  }
+
+  # ensure the recombining pathogen already occupies a pool slot -- if
+  # this is the first pool-tracked event involving it, assign one now
+  if (is.na(pathogen$get.slot.id())) {
+    host$activate.new.slot(pathogen)
+  }
+  own.slot <- pathogen$get.slot.id()
 
   # sample breakpoint uniformly across genome
   breakpoint <- sample.int(seq.length - 1L, 1L)
   pathogen$set.breakpoint(breakpoint)
-
-  # end the current lineage at this recombination event
   pathogen$set.start.time(time)
 
-  # create two parental lineages — left and right of breakpoint
-  parent.left  <- inner$new.pathogen(time)
-  parent.right <- inner$new.pathogen(time)
+  # LEFT parent: continues in the SAME slot as the child
+  parent.left <- inner$new.pathogen(time)
+  parent.left$set.slot.id(own.slot)
+  host$activate.slot(own.slot, parent.left)
+
+  # RIGHT parent: sample from the fixed pool (excluding own slot)
+  if (host$get.pool.size() <= 1) {
+    # degenerate case: pool size 1, nothing else to sample from
+    parent.right <- parent.left
+  } else {
+    draw <- host$sample.other.slot(exclude.slot.id = own.slot)
+    if (draw$active) {
+      parent.right <- draw$pathogen
+    } else {
+      parent.right <- inner$new.pathogen(time)
+      host$activate.new.slot(parent.right)
+    }
+  }
 
   # record parent-child relationships (recombination has two parents)
   parent.left$add.child(pathogen)
@@ -216,9 +252,12 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
   idx <- which(sapply(paths, function(p) p$get.name()) == pathogen$get.name())
   if (length(idx) == 1) host$remove.pathogen(idx)
   host$add.pathogen(parent.left)
-  host$add.pathogen(parent.right)
+  already.present <- any(sapply(host$get.pathogens(), function(p) {
+    p$get.name() == parent.right$get.name()
+  }))
+  if (!already.present) host$add.pathogen(parent.right)
 
-  # log the recombination event (breakpoint not stored in log — fixed schema)
+  # log the recombination event (breakpoint not stored in log -- fixed schema)
   event <- list(
     time = time, event = "recombination",
     from.comp = host$get.compartment(), to.comp = NA,
@@ -252,7 +291,11 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
 #' @export
 resolve.arg <- function(arg.result, seq.length = 9000L) {
   inner      <- arg.result$inner
-  bps        <- sort(unique(unlist(arg.result$breakpoints)))
+  # bp.by.child keeps names (per-child lookup); bps is deduped positions
+  # only, for segment boundaries -- unique() strips names, so don't use
+  # bps for per-child lookup
+  bp.by.child <- unlist(arg.result$breakpoints)
+  bps        <- sort(unique(bp.by.child))
   log        <- inner$get.log()
   log$time   <- as.numeric(log$time)
 
@@ -276,48 +319,110 @@ resolve.arg <- function(arg.result, seq.length = 9000L) {
   )
 
   # for each segment, trace from tips to root
+  # precompute everything that does NOT depend on segment position --
+  # these were being recomputed fresh inside the per-segment loop below
+  # (unvectorized trans.rows loop, re-filtering recomb.rows per child per
+  # segment) even though none of it references pos. With thousands of
+  # segments this was the dominant cost (confirmed via Rprof: [.data.frame
+  # subsetting was ~66% of total resolve.arg time). Only the recombination
+  # parent CHOICE (left vs right) genuinely depends on pos.
+  base.parent.map <- setNames(coal.rows$pathogen1, coal.rows$pathogen2)
+  trans.p1 <- trans.rows$pathogen1
+  trans.p2 <- trans.rows$pathogen2
+  trans.valid <- !is.na(trans.p1) & !is.na(trans.p2)
+  base.parent.map[trans.p2[trans.valid]] <- trans.p1[trans.valid]
+
+  recomb.by.child <- split(recomb.rows, recomb.rows$pathogen1)
+  recomb.children <- names(recomb.by.child)
+
+  # Collapse single-child intermediate nodes in the edges structure
+  # before building the (expensive, recursive) newick string -- this is
+  # exactly what ape::collapse.singles() does on the final tree, just
+  # done earlier on the cheaper edge-list representation, so those
+  # nodes are never visited by the recursive traversal at all. Verified
+  # against hand-built cases: matches ape::collapse.singles() applied
+  # afterward exactly (or converges to it after one more pass, when the
+  # root itself has a single child -- root's own branch is intentionally
+  # kept here rather than discarded, consistent with resolve.arg's
+  # existing uncollapsed output convention).
+  simplify.edges <- function(edges, root.node) {
+    repeat {
+      tab <- table(edges$parent)
+      collapsible <- names(tab)[tab == 1]
+      collapsible <- collapsible[collapsible != root.node]
+      collapsible <- collapsible[collapsible %in% edges$child]
+      if (length(collapsible) == 0) break
+      x <- collapsible[1]
+      child.idx  <- which(edges$child == x)
+      parent.idx <- which(edges$parent == x)
+      p <- edges$parent[child.idx]
+      y <- edges$child[parent.idx]
+      edges$parent[edges$child == y] <- p
+      edges <- edges[edges$child != x, ]
+    }
+    edges
+  }
+
   local.trees <- vector("list", length(starts))
   for (i in seq_along(starts)) {
     pos <- (starts[i] + ends[i]) / 2
-    # parent map for this segment
-    parent.map <- setNames(coal.rows$pathogen1, coal.rows$pathogen2)
-    for (r in seq_len(nrow(trans.rows))) {
-      p2 <- trans.rows$pathogen2[r]
-      p1 <- trans.rows$pathogen1[r]
-      if (!is.na(p2) && !is.na(p1)) parent.map[p2] <- p1
-    }
-    recomb.children <- unique(recomb.rows$pathogen1)
+    parent.map <- base.parent.map
     for (child in recomb.children) {
-      child.rows <- recomb.rows[recomb.rows$pathogen1 == child, ]
+      child.rows <- recomb.by.child[[child]]
       if (nrow(child.rows) < 2) next
-      bp <- bps[names(bps) == child]
-      if (length(bp) == 0) bp <- bps[1]
+      bp <- bp.by.child[child]
+      if (length(bp) == 0 || is.na(bp)) bp <- bps[1]
       parent <- if (pos <= bp) child.rows$pathogen2[1] else child.rows$pathogen2[2]
       parent.map[child] <- parent
     }
 
-    # trace tips to root
-    all.nodes <- character(0)
-    edges     <- data.frame(parent=character(0), child=character(0),
-                             stringsAsFactors=FALSE)
+    # trace tips to root -- preallocate buffers and fill by index rather
+    # than growing vectors with c() (still O(n^2) even without rbind/
+    # data.frame -- each c() call still copies the whole vector so far).
+    # A chain from any tip can't revisit a node (monotonic trace upward),
+    # so length(all.paths) is a safe upper bound on any single chain's
+    # length; multiply by n.tips for a safe total upper bound, then
+    # truncate to what was actually used.
+    max.steps <- length(all.paths) * length(tips)
+    edge.parents  <- character(max.steps)
+    edge.children <- character(max.steps)
+    all.nodes.buf <- character(max.steps * 2L + length(tips))
+    n.edges <- 0L
+    n.nodes <- 0L
     for (tip in tips) {
       cur <- tip
       while (!is.na(parent.map[cur]) && !is.null(parent.map[cur])) {
         par <- parent.map[cur]
-        edges <- rbind(edges, data.frame(parent=par, child=cur,
-                                          stringsAsFactors=FALSE))
-        all.nodes <- c(all.nodes, cur, par)
+        n.edges <- n.edges + 1L
+        edge.parents[n.edges]  <- par
+        edge.children[n.edges] <- cur
+        n.nodes <- n.nodes + 1L; all.nodes.buf[n.nodes] <- cur
+        n.nodes <- n.nodes + 1L; all.nodes.buf[n.nodes] <- par
         cur <- par
       }
-      all.nodes <- c(all.nodes, cur)
+      n.nodes <- n.nodes + 1L
+      all.nodes.buf[n.nodes] <- cur
     }
+    edges <- data.frame(parent=edge.parents[seq_len(n.edges)],
+                         child=edge.children[seq_len(n.edges)],
+                         stringsAsFactors=FALSE)
+    all.nodes <- all.nodes.buf[seq_len(n.nodes)]
 
     all.nodes <- unique(all.nodes)
     edges     <- unique(edges)
     root.node <- all.nodes[!all.nodes %in% edges$child]
     if (length(root.node) > 1) root.node <- root.node[1]
+    edges <- simplify.edges(edges, root.node)
 
-    get.children <- function(node) edges$child[edges$parent == node]
+    # O(1) child lookup via precomputed split, instead of scanning the
+    # full edges data.frame on every call -- to.newick() below calls
+    # this once per node in the tree, so the previous O(n) scan made
+    # the whole traversal O(n^2) (confirmed dominant cost via Rprof).
+    children.map <- split(edges$child, edges$parent)
+    get.children <- function(node) {
+      ch <- children.map[[node]]
+      if (is.null(ch)) character(0) else ch
+    }
 
     get.time <- function(node) {
       t <- node.created[node]
