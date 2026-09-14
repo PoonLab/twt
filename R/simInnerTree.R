@@ -229,6 +229,10 @@ sim.inner.tree <- function(outer) {
     if (n.transfer > 0) {
       for (i in 1:n.transfer) {
         path <- recipient$remove.pathogen(1)
+        if (!is.na(path$get.slot.id()) && recipient$is.pool.initialized()) {
+          recipient$deactivate.slot(path$get.slot.id())
+        }
+        path$set.slot.id(NA)
         source$add.pathogen(path)
         event$pathogen1 <- path$get.name()
         inner$add.event(event)
@@ -256,6 +260,18 @@ sim.inner.tree <- function(outer) {
     if (count > 0) {
       for (i in 1:count) {
         path <- recipient$remove.pathogen(1)
+        # backward in time, this pathogen's old slot in recipient
+        # must be freed -- otherwise repeated superinfection transfers
+        # leave the pool bookkeeping stale (slots marked active forever
+        # even though their occupant left), eventually starving future
+        # recombination events of any slot that correctly registers as
+        # free. Reset the pathogen's own slot.id too, since slot ids are
+        # host-local -- it gets a fresh one lazily if/when it's ever
+        # involved in a recombination event in its NEW host.
+        if (!is.na(path$get.slot.id()) && recipient$is.pool.initialized()) {
+          recipient$deactivate.slot(path$get.slot.id())
+        }
+        path$set.slot.id(NA)
         source$add.pathogen(path)
         event$pathogen1 <- path$get.name()  # copy-on-modify
         inner$add.event(event)

@@ -88,27 +88,67 @@ Host <- R6Class(
     # sample a parent from a FIXED pool of n (= population size) possible
     # lineages, only "activating" a previously-inactive one when chosen.
     # Total pool size never changes; only how many slots are active does.
+    #
+    # Only ACTIVE slots are stored explicitly (a small, variable-size
+    # collection). Inactive slots are all interchangeable/anonymous until
+    # touched, so they're never materialized -- just counted as
+    # pool.size - n.active. New slot ids are generated on demand rather
+    # than pre-numbered 1..n.
     init.pool = function(n) {
       if (is.null(private$pool.size)) {
         private$pool.size <- n
-        private$lineage.pool <- vector("list", n)
+        private$active.occupants <- list()
+        private$next.slot.id <- 0L
       }
     },
     get.pool.size = function() { private$pool.size },
     is.pool.initialized = function() { !is.null(private$pool.size) },
-    is.slot.active = function(slot.id) { !is.null(private$lineage.pool[[slot.id]]) },
-    get.slot.occupant = function(slot.id) { private$lineage.pool[[slot.id]] },
+    count.active.slots = function() { length(private$active.occupants) },
+    count.inactive.slots = function() {
+      private$pool.size - length(private$active.occupants)
+    },
+    is.slot.active = function(slot.id) {
+      as.character(slot.id) %in% names(private$active.occupants)
+    },
+    get.slot.occupant = function(slot.id) {
+      private$active.occupants[[as.character(slot.id)]]
+    },
+    get.active.slot.ids = function() {
+      as.integer(names(private$active.occupants))
+    },
+    # activate a genuinely NEW (never-before-used) slot with a fresh id
+    activate.new.slot = function(pathogen) {
+      private$next.slot.id <- private$next.slot.id + 1L
+      new.id <- private$next.slot.id
+      pathogen$set.slot.id(new.id)
+      private$active.occupants[[as.character(new.id)]] <- pathogen
+      new.id
+    },
+    # re-activate an EXISTING slot id with a (possibly different) occupant
+    # -- used when a slot's occupant changes (e.g. after coalescence)
     activate.slot = function(slot.id, pathogen) {
-      private$lineage.pool[[slot.id]] <- pathogen
+      private$active.occupants[[as.character(slot.id)]] <- pathogen
     },
     deactivate.slot = function(slot.id) {
-      private$lineage.pool[slot.id] <- list(NULL)  # preserves pool length
+      private$active.occupants[[as.character(slot.id)]] <- NULL
     },
-    get.active.slots = function() {
-      which(!sapply(private$lineage.pool, is.null))
-    },
-    get.inactive.slots = function() {
-      which(sapply(private$lineage.pool, is.null))
+    # sample a recombination "other parent" from the fixed pool, uniformly
+    # over all pool.size slots (optionally excluding one, e.g. the child's
+    # own slot). Returns a list(active=TRUE/FALSE, pathogen=<occupant or
+    # NULL>) -- caller creates+activates a new lineage when active=FALSE.
+    sample.other.slot = function(exclude.slot.id=NA) {
+      active.ids <- names(private$active.occupants)
+      if (!is.na(exclude.slot.id)) {
+        active.ids <- setdiff(active.ids, as.character(exclude.slot.id))
+      }
+      n.total <- private$pool.size - (if (is.na(exclude.slot.id)) 0L else 1L)
+      if (n.total <= 0) return(list(active=FALSE, pathogen=NULL))
+      n.active <- length(active.ids)
+      if (runif(1) < n.active / n.total) {
+        chosen.id <- if (n.active == 1) active.ids else sample(active.ids, 1)
+        return(list(active=TRUE, pathogen=private$active.occupants[[chosen.id]]))
+      }
+      list(active=FALSE, pathogen=NULL)
     },
     
     remove.pathogen = function(idx) {
@@ -166,8 +206,9 @@ Host <- R6Class(
     sampling.comp = NULL,
     unsampled = NULL,
     pathogens = NULL,
-    lineage.pool = NULL,
-    pool.size = NULL
+    active.occupants = NULL,
+    pool.size = NULL,
+    next.slot.id = NULL
   )
 )
 

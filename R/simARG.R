@@ -213,10 +213,7 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
   # ensure the recombining pathogen already occupies a pool slot -- if
   # this is the first pool-tracked event involving it, assign one now
   if (is.na(pathogen$get.slot.id())) {
-    free <- host$get.inactive.slots()
-    slot <- if (length(free) > 0) free[1] else 1
-    pathogen$set.slot.id(slot)
-    host$activate.slot(slot, pathogen)
+    host$activate.new.slot(pathogen)
   }
   own.slot <- pathogen$get.slot.id()
 
@@ -230,20 +227,17 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
   parent.left$set.slot.id(own.slot)
   host$activate.slot(own.slot, parent.left)
 
-  # RIGHT parent: sample a slot from the fixed pool (excluding own slot)
-  pool.size <- host$get.pool.size()
-  other.slots <- setdiff(seq_len(pool.size), own.slot)
-
-  if (length(other.slots) == 0) {
+  # RIGHT parent: sample from the fixed pool (excluding own slot)
+  if (host$get.pool.size() <= 1) {
+    # degenerate case: pool size 1, nothing else to sample from
     parent.right <- parent.left
   } else {
-    sampled.slot <- if (length(other.slots) == 1) other.slots else sample(other.slots, 1)
-    if (host$is.slot.active(sampled.slot)) {
-      parent.right <- host$get.slot.occupant(sampled.slot)
+    draw <- host$sample.other.slot(exclude.slot.id = own.slot)
+    if (draw$active) {
+      parent.right <- draw$pathogen
     } else {
       parent.right <- inner$new.pathogen(time)
-      parent.right$set.slot.id(sampled.slot)
-      host$activate.slot(sampled.slot, parent.right)
+      host$activate.new.slot(parent.right)
     }
   }
 
