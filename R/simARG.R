@@ -335,34 +335,6 @@ resolve.arg <- function(arg.result, seq.length = 9000L) {
   recomb.by.child <- split(recomb.rows, recomb.rows$pathogen1)
   recomb.children <- names(recomb.by.child)
 
-  # Collapse single-child intermediate nodes in the edges structure
-  # before building the (expensive, recursive) newick string -- this is
-  # exactly what ape::collapse.singles() does on the final tree, just
-  # done earlier on the cheaper edge-list representation, so those
-  # nodes are never visited by the recursive traversal at all. Verified
-  # against hand-built cases: matches ape::collapse.singles() applied
-  # afterward exactly (or converges to it after one more pass, when the
-  # root itself has a single child -- root's own branch is intentionally
-  # kept here rather than discarded, consistent with resolve.arg's
-  # existing uncollapsed output convention).
-  simplify.edges <- function(edges, root.node) {
-    repeat {
-      tab <- table(edges$parent)
-      collapsible <- names(tab)[tab == 1]
-      collapsible <- collapsible[collapsible != root.node]
-      collapsible <- collapsible[collapsible %in% edges$child]
-      if (length(collapsible) == 0) break
-      x <- collapsible[1]
-      child.idx  <- which(edges$child == x)
-      parent.idx <- which(edges$parent == x)
-      p <- edges$parent[child.idx]
-      y <- edges$child[parent.idx]
-      edges$parent[edges$child == y] <- p
-      edges <- edges[edges$child != x, ]
-    }
-    edges
-  }
-
   local.trees <- vector("list", length(starts))
   for (i in seq_along(starts)) {
     pos <- (starts[i] + ends[i]) / 2
@@ -412,7 +384,6 @@ resolve.arg <- function(arg.result, seq.length = 9000L) {
     edges     <- unique(edges)
     root.node <- all.nodes[!all.nodes %in% edges$child]
     if (length(root.node) > 1) root.node <- root.node[1]
-    edges <- simplify.edges(edges, root.node)
 
     # O(1) child lookup via precomputed split, instead of scanning the
     # full edges data.frame on every call -- to.newick() below calls
