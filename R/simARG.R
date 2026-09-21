@@ -1,3 +1,64 @@
+#' .compute.recomb.free.hosts
+#'
+#' Precompute, from the already-generated outer event log, which hosts can
+#' safely skip recombination entirely: a host whose founding transmission
+#' is a complete bottleneck (exactly one lineage enters), which never
+#' receives a superinfection, and which has at most one directly-sampled
+#' tip of its own can never produce an observable effect from internal
+#' recombination -- everything that happens inside it either dies with it
+#' or gets coalesced down to the single lineage that exits it anyway.
+#'
+#' This evaluates each host's bottleneck-size expression earlier than the
+#' main loop otherwise would -- a deliberate, opt-in tradeoff (see
+#' skip.recomb.free in sim.arg). It changes RNG call order relative to
+#' skip.recomb.free=FALSE, so results from the same seed will differ, even
+#' though the underlying distribution doesn't change.
+#'
+#' @keywords internal
+#' @noRd
+.compute.recomb.free.hosts <- function(events, mod, inner, envir=baseenv()) {
+  is.infected <- mod$get.infected()
+
+  trans      <- events[events$event == "transmission", ]
+  is.si      <- is.infected[trans$from.comp]
+  si.rows    <- trans[is.si, ]
+  found.rows <- trans[!is.si, ]  # each host's own founding transmission
+
+  si.count <- table(si.rows$to.host)
+
+  mig <- events[events$event == "migration", ]
+  if (nrow(mig) > 0) {
+    is.target  <- vapply(mig$to.comp, inner$has.target, logical(1))
+    samp.count <- table(mig$from.host[is.target])
+  } else {
+    samp.count <- table(character(0))
+  }
+
+  hosts    <- unique(found.rows$to.host)
+  profiles <- vector("list", length(hosts))
+  names(profiles) <- hosts
+
+  for (h in hosts) {
+    f.row <- found.rows[found.rows$to.host == h, ]
+    if (nrow(f.row) != 1) {
+      profiles[[h]] <- list(recomb.free = FALSE, bottleneck.size = NA)
+      next
+    }
+    expr   <- mod$get.bottleneck.size(f.row$to.comp)
+    b.size <- eval(parse(text = expr), envir = envir)
+
+    si <- if (h %in% names(si.count))   si.count[[h]]   else 0
+    ns <- if (h %in% names(samp.count)) samp.count[[h]] else 0
+
+    profiles[[h]] <- list(
+      recomb.free     = (b.size == 1 && si == 0 && ns <= 1),
+      bottleneck.size = b.size
+    )
+  }
+  profiles
+}
+
+
 #' sim.arg
 #'
 #' Simulate an ancestral recombination graph (ARG) for pathogen lineages
@@ -18,10 +79,16 @@
 #' @param outer  R6 object of class `OuterTree`
 #' @param rho    numeric, recombination rate per lineage per unit time
 #' @param seq.length  integer, genome length in bp (for breakpoint sampling)
+#' @param skip.recomb.free  logical, if TRUE precompute which hosts can
+#'   never have recombination observed in their sampled descendants
+#'   (complete bottleneck, no superinfection, at most one sampled tip) and
+#'   skip drawing recombination events for those hosts entirely. Default
+#'   FALSE preserves exact prior behaviour/RNG stream.
 #'
 #' @return R6 object of class `InnerTree` (ARG events recorded in log)
 #' @export
-sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
+sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L,
+                     skip.recomb.free = FALSE) {
   if (!is.R6(outer) || !is.element("OuterTree", class(outer))) {
     stop("Input argument must be an R6 object of class `OuterTree`")
   }
@@ -40,6 +107,11 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
   events$time <- as.numeric(events$time)
   events     <- events[order(events$time, decreasing = TRUE), ]
 
+  host.profiles <- NULL
+  if (skip.recomb.free) {
+    host.profiles <- .compute.recomb.free.hosts(events, mod, inner, envir = env)
+  }
+
   time.delta <- -diff(events$time)
   row        <- 1
 
@@ -54,7 +126,7 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
           warning("Active lineage count exceeded 500 -- aborting inner simulation")
           break
         }
-        ev <- .draw.next.event(active, mod, rho, env)
+        ev <- .draw.next.event(active, mod, rho, env, host.profiles = host.profiles)
         if (is.null(ev) || is.na(ev$dt) || ev$dt >= remaining) break
 
         remaining  <- remaining - ev$dt
@@ -81,7 +153,7 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
         .migrate.pathogens(e, inner)
       }
     } else if (e$event == "transmission") {
-      .do.infection(e, inner, envir = env)
+      .do.infection(e, inner, envir = env, host.profiles = host.profiles)
     }
 
     row <- row + 1
@@ -121,11 +193,14 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
 #' @param mod      Model R6 object
 #' @param rho      recombination rate per lineage per unit time
 #' @param envir    environment for rate evaluation
+#' @param host.profiles  optional named list from .compute.recomb.free.hosts;
+#'   hosts flagged recomb.free=TRUE have their recombination rate zeroed.
 #'
 #' @return list(dt, type, host, pathogen) or NULL if no events possible
 #' @keywords internal
 #' @noRd
-.draw.next.event <- function(active, mod, rho, envir = baseenv()) {
+.draw.next.event <- function(active, mod, rho, envir = baseenv(),
+                              host.profiles = NULL) {
   hosts      <- active$get.hosts()
   rates      <- numeric(0)
   event.list <- list()
@@ -147,8 +222,15 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
       }
     }
 
-    # recombination rate for this host (all lineages combined)
-    if (k >= 1 && rho > 0) {
+    # recombination rate for this host (all lineages combined) -- skipped
+    # entirely for hosts flagged recomb-free by skip.recomb.free (see
+    # .compute.recomb.free.hosts): recombination inside such a host can
+    # never be observed in the sampled tree, so drawing it would only
+    # waste simulation time (and RNG draws) without changing any output.
+    is.recomb.free <- !is.null(host.profiles) &&
+      isTRUE(host.profiles[[h$get.name()]]$recomb.free)
+
+    if (k >= 1 && rho > 0 && !is.recomb.free) {
       rates      <- c(rates, k * rho)
       event.list <- c(event.list, list(
         list(type = "recombination", host = h$get.name(), pathogen = NULL)

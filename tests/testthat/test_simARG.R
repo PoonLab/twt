@@ -320,3 +320,104 @@ test_that("resolve.arg: per-child breakpoint lookup is correct with multiple dis
   expect_true(is.monophyletic(phy3, c("A","C")))
   expect_false(is.monophyletic(phy3, c("C","D")))
 })
+
+
+# --- skip.recomb.free ---
+
+test_that(".compute.recomb.free.hosts flags hosts correctly under bottleneck/SI/tip-count conditions", {
+  # H1: bottleneck=1, no SI, 1 sampled tip -> recomb.free TRUE
+  # H2: bottleneck=1, no SI, 2 sampled tips -> recomb.free FALSE (tip count)
+  # H3: bottleneck=1, 1 SI event, 1 sampled tip -> recomb.free FALSE (superinfected)
+  # H4: bottleneck=2, no SI, 1 sampled tip -> recomb.free FALSE (loose bottleneck)
+  events <- data.frame(
+    time      = c(5,5,5,5, 3, 1,1,1,1,1),
+    event     = c(rep("transmission", 4), "transmission",
+                  rep("migration", 5)),
+    from.comp = c("S","S","S","S", "I",
+                  "I","I","I","I","I"),
+    to.comp   = c("I","I","I","J", "I",
+                  "T","T","T","T","T"),
+    from.host = c("Src1","Src2","Src3","Src4", "OtherHost",
+                  "H1","H2","H2","H3","H4"),
+    to.host   = c("H1","H2","H3","H4", "H3",
+                  NA,NA,NA,NA,NA),
+    stringsAsFactors = FALSE
+  )
+
+  fake.mod <- list(
+    get.infected        = function() c(S = FALSE, I = TRUE, J = FALSE),
+    get.bottleneck.size = function(comp) if (comp == "J") "2" else "1"
+  )
+  fake.inner <- list(has.target = function(comp) comp == "T")
+
+  profiles <- .compute.recomb.free.hosts(events, fake.mod, fake.inner, envir = new.env())
+
+  expect_true(profiles$H1$recomb.free)
+  expect_equal(profiles$H1$bottleneck.size, 1)
+
+  expect_false(profiles$H2$recomb.free)  # two sampled tips
+  expect_false(profiles$H3$recomb.free)  # superinfected
+  expect_false(profiles$H4$recomb.free)  # bottleneck size 2
+})
+
+test_that(".draw.next.event skips recombination for hosts flagged recomb.free", {
+  fake.host <- list(
+    count.pathogens = function() 1L,
+    get.compartment = function() "I",
+    get.name        = function() "H1",
+    get.pathogens   = function() list("P1")
+  )
+  fake.active <- list(
+    get.hosts        = function() list(fake.host),
+    get.host.by.name = function(name) fake.host
+  )
+  fake.mod <- list(get.coalescent.rate = function(comp) "0")
+
+  set.seed(1)
+  ev.free <- .draw.next.event(fake.active, fake.mod, rho = 0.5, envir = new.env(),
+                               host.profiles = list(H1 = list(recomb.free = TRUE,
+                                                               bottleneck.size = 1)))
+  expect_null(ev.free)
+
+  set.seed(1)
+  ev.default <- .draw.next.event(fake.active, fake.mod, rho = 0.5, envir = new.env())
+  expect_false(is.null(ev.default))
+  expect_equal(ev.default$type, "recombination")
+  expect_equal(ev.default$host, "H1")
+})
+
+test_that("sim.arg with skip.recomb.free=TRUE runs and produces valid trees", {
+  result <- suppressWarnings(
+    sim.arg(outer.tree, rho = RHO, seq.length = SEQ.LEN, skip.recomb.free = TRUE)
+  )
+  expect_type(result, "list")
+  expect_true(is.R6(result$inner))
+
+  resolved <- resolve.arg(result, seq.length = SEQ.LEN)
+  valid <- sapply(resolved$local.trees, function(lt) {
+    inherits(lt$phylo, "phylo") &&
+      length(lt$phylo$tip.label) == N.TIPS &&
+      sum(duplicated(lt$phylo$tip.label)) == 0
+  })
+  expect_true(all(valid))
+})
+
+test_that("skip.recomb.free eliminates recombination events for hosts flagged recomb-free", {
+  inner.for.profile <- InnerTree$new(outer.tree)
+  mod <- inner.for.profile$get.model()
+
+  events <- outer.tree$get.log()
+  events$time <- as.numeric(events$time)
+  events <- events[order(events$time, decreasing = TRUE), ]
+
+  profiles <- .compute.recomb.free.hosts(events, mod, inner.for.profile, envir = new.env())
+  free.hosts <- names(profiles)[sapply(profiles, function(p) isTRUE(p$recomb.free))]
+  skip_if(length(free.hosts) == 0, "no recomb-free host at this seed")
+
+  result.skip <- suppressWarnings(
+    sim.arg(outer.tree, rho = RHO, seq.length = SEQ.LEN, skip.recomb.free = TRUE)
+  )
+  log <- result.skip$inner$get.log()
+  recomb.hosts <- unique(log$from.host[log$event == "recombination"])
+  expect_false(any(free.hosts %in% recomb.hosts))
+})
