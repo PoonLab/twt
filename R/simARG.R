@@ -1,3 +1,102 @@
+#' .compute.recomb.free.hosts
+#'
+#' Precompute, from the outer event log, which hosts can safely skip
+#' recombination entirely: hosts that can never carry more than one
+#' active lineage at a time.
+#'
+#' A host qualifies only if its founding transmission is a complete
+#' bottleneck (b.size == 1), it's never superinfected, it has at most one
+#' directly-sampled tip, and -- recursively -- every host it infects or
+#' superinfects never returns a lineage either (has.lineage below). Out-
+#' degree matters here: a host that infects two people can carry two
+#' distinct lineages at once even with a clean founding bottleneck.
+#'
+#' has.lineage(h) treats any superinfection donated by h as a possible
+#' return, since the transfer count is stochastic and not known here.
+#'
+#' Evaluates each host's bottleneck-size expression earlier than the main
+#' loop otherwise would -- an opt-in tradeoff (see skip.recomb.free in
+#' sim.arg) that changes RNG call order vs skip.recomb.free=FALSE.
+#'
+#' @keywords internal
+#' @noRd
+.compute.recomb.free.hosts <- function(events, mod, inner, envir=baseenv()) {
+  is.infected <- mod$get.infected()
+
+  trans      <- events[events$event == "transmission", ]
+  is.si      <- is.infected[trans$from.comp]
+  si.rows    <- trans[is.si, ]
+  found.rows <- trans[!is.si, ]  # each host's own founding transmission
+
+  si.count <- table(si.rows$to.host)
+
+  mig <- events[events$event == "migration", ]
+  if (nrow(mig) > 0) {
+    is.target  <- vapply(mig$to.comp, inner$has.target, logical(1))
+    samp.count <- table(mig$from.host[is.target])
+  } else {
+    samp.count <- table(character(0))
+  }
+
+  hosts <- unique(found.rows$to.host)
+
+  # host -> hosts it infects (non-superinfection)
+  children.of <- split(found.rows$to.host, found.rows$from.host)
+  # host -> hosts it superinfects as donor -- can also return a lineage
+  si.children.of <- split(si.rows$to.host, si.rows$from.host)
+
+  ns.lookup <- as.list(samp.count)
+  si.lookup <- as.list(si.count)
+  memo      <- new.env(parent = emptyenv())
+
+  has.lineage <- function(h) {
+    cached <- memo[[h]]
+    if (!is.null(cached)) return(cached)
+    ns      <- if (!is.null(ns.lookup[[h]])) ns.lookup[[h]] else 0
+    si      <- if (!is.null(si.lookup[[h]])) si.lookup[[h]] else 0
+    kids    <- children.of[[h]]
+    si.kids <- si.children.of[[h]]
+    if (is.null(kids))    kids    <- character(0)
+    if (is.null(si.kids)) si.kids <- character(0)
+    result <- (ns > 0) || (si > 0) ||
+      any(vapply(kids,    has.lineage, logical(1))) ||
+      any(vapply(si.kids, has.lineage, logical(1)))
+    memo[[h]] <- result
+    result
+  }
+
+  profiles <- vector("list", length(hosts))
+  names(profiles) <- hosts
+
+  for (h in hosts) {
+    f.row <- found.rows[found.rows$to.host == h, ]
+    if (nrow(f.row) != 1) {
+      profiles[[h]] <- list(recomb.free = FALSE, bottleneck.size = NA)
+      next
+    }
+    expr   <- mod$get.bottleneck.size(f.row$to.comp)
+    b.size <- eval(parse(text = expr), envir = envir)
+
+    si <- if (h %in% names(si.count))   si.count[[h]]   else 0
+    ns <- if (h %in% names(samp.count)) samp.count[[h]] else 0
+
+    kids    <- children.of[[h]]
+    si.kids <- si.children.of[[h]]
+    if (is.null(kids))    kids    <- character(0)
+    if (is.null(si.kids)) si.kids <- character(0)
+    n.inputs <- ns +
+      sum(vapply(kids,    has.lineage, logical(1))) +
+      sum(vapply(si.kids, has.lineage, logical(1)))
+
+    profiles[[h]] <- list(
+      recomb.free     = (b.size == 1 && si == 0 && n.inputs <= 1),
+      bottleneck.size = b.size
+    )
+  }
+  profiles
+}
+
+
 #' sim.arg
 #'
 #' Simulate an ancestral recombination graph (ARG) for pathogen lineages
@@ -18,10 +117,16 @@
 #' @param outer  R6 object of class `OuterTree`
 #' @param rho    numeric, recombination rate per lineage per unit time
 #' @param seq.length  integer, genome length in bp (for breakpoint sampling)
+#' @param skip.recomb.free  logical, if TRUE precompute which hosts can
+#'   never have recombination observed in their sampled descendants
+#'   (complete bottleneck, no superinfection, at most one sampled tip) and
+#'   skip drawing recombination events for those hosts entirely. Default
+#'   FALSE preserves exact prior behaviour/RNG stream.
 #'
 #' @return R6 object of class `InnerTree` (ARG events recorded in log)
 #' @export
-sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
+sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L,
+                     skip.recomb.free = FALSE) {
   if (!is.R6(outer) || !is.element("OuterTree", class(outer))) {
     stop("Input argument must be an R6 object of class `OuterTree`")
   }
@@ -40,6 +145,11 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
   events$time <- as.numeric(events$time)
   events     <- events[order(events$time, decreasing = TRUE), ]
 
+  host.profiles <- NULL
+  if (skip.recomb.free) {
+    host.profiles <- .compute.recomb.free.hosts(events, mod, inner, envir = env)
+  }
+
   time.delta <- -diff(events$time)
   row        <- 1
 
@@ -54,7 +164,7 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
           warning("Active lineage count exceeded 500 -- aborting inner simulation")
           break
         }
-        ev <- .draw.next.event(active, mod, rho, env)
+        ev <- .draw.next.event(active, mod, rho, env, host.profiles = host.profiles)
         if (is.null(ev) || is.na(ev$dt) || ev$dt >= remaining) break
 
         remaining  <- remaining - ev$dt
@@ -63,8 +173,11 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
         if (ev$type == "coalescent") {
           .do.coalescent(ev$host, inner, event.time, envir = env)
         } else {
+          host.obj <- active$get.host.by.name(ev$host)
+          p.size.expr <- mod$get.pop.size(host.obj$get.compartment())
+          p.size.val <- eval(parse(text = p.size.expr), envir = env)
           bp <- .do.recombination(ev$host, ev$pathogen, inner, event.time,
-                                  seq.length = seq.length)
+                                  seq.length = seq.length, p.size = p.size.val)
           breakpoints[[bp$child]] <- bp$position
         }
       }
@@ -78,7 +191,7 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
         .migrate.pathogens(e, inner)
       }
     } else if (e$event == "transmission") {
-      .do.infection(e, inner, envir = env)
+      .do.infection(e, inner, envir = env, host.profiles = host.profiles)
     }
 
     row <- row + 1
@@ -118,11 +231,14 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
 #' @param mod      Model R6 object
 #' @param rho      recombination rate per lineage per unit time
 #' @param envir    environment for rate evaluation
+#' @param host.profiles  optional named list from .compute.recomb.free.hosts;
+#'   hosts flagged recomb.free=TRUE have their recombination rate zeroed.
 #'
 #' @return list(dt, type, host, pathogen) or NULL if no events possible
 #' @keywords internal
 #' @noRd
-.draw.next.event <- function(active, mod, rho, envir = baseenv()) {
+.draw.next.event <- function(active, mod, rho, envir = baseenv(),
+                              host.profiles = NULL) {
   hosts      <- active$get.hosts()
   rates      <- numeric(0)
   event.list <- list()
@@ -133,6 +249,7 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
 
     # coalescence rate for this host (requires 2+ lineages)
     if (k >= 2) {
+
       expr <- mod$get.coalescent.rate(comp)
       rate <- eval(parse(text = expr), envir = envir)
       if (rate > 0) {
@@ -143,8 +260,15 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
       }
     }
 
-    # recombination rate for this host (all lineages combined)
-    if (k >= 1 && rho > 0) {
+    # recombination rate for this host (all lineages combined) -- skipped
+    # entirely for hosts flagged recomb-free by skip.recomb.free (see
+    # .compute.recomb.free.hosts): recombination inside such a host can
+    # never be observed in the sampled tree, so drawing it would only
+    # waste simulation time (and RNG draws) without changing any output.
+    is.recomb.free <- !is.null(host.profiles) &&
+      isTRUE(host.profiles[[h$get.name()]]$recomb.free)
+
+    if (k >= 1 && rho > 0 && !is.recomb.free) {
       rates      <- c(rates, k * rho)
       event.list <- c(event.list, list(
         list(type = "recombination", host = h$get.name(), pathogen = NULL)
@@ -190,20 +314,62 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
 #' @keywords internal
 #' @noRd
 .do.recombination <- function(host.name, pathogen, inner, time,
-                              seq.length = 9000L) {
+                              seq.length = 9000L, p.size = NULL) {
   active <- inner$get.active()
   host   <- active$get.host.by.name(host.name)
+
+  # initialize this host's FIXED lineage pool (sample
+  # recombination parents from a fixed pool of p.size lineages, only
+  # activating a previously-inactive one when chosen, instead of always
+  # creating a brand-new lineage de novo. Total pool size never changes.)
+  if (!host$is.pool.initialized()) {
+    if (is.null(p.size)) {
+      stop(".do.recombination: p.size must be provided to initialize ",
+           "host's lineage pool on first use")
+    }
+    host$init.pool(p.size)
+  }
+
+  # ensure the recombining pathogen already occupies a pool slot -- if
+  # this is the first pool-tracked event involving it, assign one now.
+  # Can't exceed p.size though: if every slot's taken, this "new"
+  # lineage must actually be the same individual as one we're already
+  # tracking (needs a coalescent merge, not done yet) -- fail loudly
+  # instead of quietly breaking the active <= pool.size invariant.
+  if (is.na(pathogen$get.slot.id())) {
+    if (host$count.active.slots() >= host$get.pool.size()) {
+      stop(sprintf(
+        "Host %s's lineage pool is full (%d/%d slots), can't assign a new one. ",
+        host$get.name(), host$count.active.slots(), host$get.pool.size()),
+        "Increase p.size, decrease rho, or add coalescent merging to the pool.")
+    }
+    host$activate.new.slot(pathogen)
+  }
+  own.slot <- pathogen$get.slot.id()
 
   # sample breakpoint uniformly across genome
   breakpoint <- sample.int(seq.length - 1L, 1L)
   pathogen$set.breakpoint(breakpoint)
-
-  # end the current lineage at this recombination event
   pathogen$set.start.time(time)
 
-  # create two parental lineages — left and right of breakpoint
-  parent.left  <- inner$new.pathogen(time)
-  parent.right <- inner$new.pathogen(time)
+  # LEFT parent: continues in the SAME slot as the child
+  parent.left <- inner$new.pathogen(time)
+  parent.left$set.slot.id(own.slot)
+  host$activate.slot(own.slot, parent.left)
+
+  # RIGHT parent: sample from the fixed pool (excluding own slot)
+  if (host$get.pool.size() <= 1) {
+    # degenerate case: pool size 1, nothing else to sample from
+    parent.right <- parent.left
+  } else {
+    draw <- host$sample.other.slot(exclude.slot.id = own.slot)
+    if (draw$active) {
+      parent.right <- draw$pathogen
+    } else {
+      parent.right <- inner$new.pathogen(time)
+      host$activate.new.slot(parent.right)
+    }
+  }
 
   # record parent-child relationships (recombination has two parents)
   parent.left$add.child(pathogen)
@@ -216,9 +382,12 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
   idx <- which(sapply(paths, function(p) p$get.name()) == pathogen$get.name())
   if (length(idx) == 1) host$remove.pathogen(idx)
   host$add.pathogen(parent.left)
-  host$add.pathogen(parent.right)
+  already.present <- any(sapply(host$get.pathogens(), function(p) {
+    p$get.name() == parent.right$get.name()
+  }))
+  if (!already.present) host$add.pathogen(parent.right)
 
-  # log the recombination event (breakpoint not stored in log — fixed schema)
+  # log the recombination event (breakpoint not stored in log -- fixed schema)
   event <- list(
     time = time, event = "recombination",
     from.comp = host$get.compartment(), to.comp = NA,
@@ -252,7 +421,11 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L) {
 #' @export
 resolve.arg <- function(arg.result, seq.length = 9000L) {
   inner      <- arg.result$inner
-  bps        <- sort(unique(unlist(arg.result$breakpoints)))
+  # bp.by.child keeps names (per-child lookup); bps is deduped positions
+  # only, for segment boundaries -- unique() strips names, so don't use
+  # bps for per-child lookup
+  bp.by.child <- unlist(arg.result$breakpoints)
+  bps        <- sort(unique(bp.by.child))
   log        <- inner$get.log()
   log$time   <- as.numeric(log$time)
 
@@ -276,48 +449,81 @@ resolve.arg <- function(arg.result, seq.length = 9000L) {
   )
 
   # for each segment, trace from tips to root
+  # precompute everything that does NOT depend on segment position --
+  # these were being recomputed fresh inside the per-segment loop below
+  # (unvectorized trans.rows loop, re-filtering recomb.rows per child per
+  # segment) even though none of it references pos. With thousands of
+  # segments this was the dominant cost (confirmed via Rprof: [.data.frame
+  # subsetting was ~66% of total resolve.arg time). Only the recombination
+  # parent CHOICE (left vs right) genuinely depends on pos.
+  base.parent.map <- setNames(coal.rows$pathogen1, coal.rows$pathogen2)
+  trans.p1 <- trans.rows$pathogen1
+  trans.p2 <- trans.rows$pathogen2
+  trans.valid <- !is.na(trans.p1) & !is.na(trans.p2)
+  base.parent.map[trans.p2[trans.valid]] <- trans.p1[trans.valid]
+
+  recomb.by.child <- split(recomb.rows, recomb.rows$pathogen1)
+  recomb.children <- names(recomb.by.child)
+
   local.trees <- vector("list", length(starts))
   for (i in seq_along(starts)) {
     pos <- (starts[i] + ends[i]) / 2
-    # parent map for this segment
-    parent.map <- setNames(coal.rows$pathogen1, coal.rows$pathogen2)
-    for (r in seq_len(nrow(trans.rows))) {
-      p2 <- trans.rows$pathogen2[r]
-      p1 <- trans.rows$pathogen1[r]
-      if (!is.na(p2) && !is.na(p1)) parent.map[p2] <- p1
-    }
-    recomb.children <- unique(recomb.rows$pathogen1)
+    parent.map <- base.parent.map
     for (child in recomb.children) {
-      child.rows <- recomb.rows[recomb.rows$pathogen1 == child, ]
+      child.rows <- recomb.by.child[[child]]
       if (nrow(child.rows) < 2) next
-      bp <- bps[names(bps) == child]
-      if (length(bp) == 0) bp <- bps[1]
+      bp <- bp.by.child[child]
+      if (length(bp) == 0 || is.na(bp)) bp <- bps[1]
       parent <- if (pos <= bp) child.rows$pathogen2[1] else child.rows$pathogen2[2]
       parent.map[child] <- parent
     }
 
-    # trace tips to root
-    all.nodes <- character(0)
-    edges     <- data.frame(parent=character(0), child=character(0),
-                             stringsAsFactors=FALSE)
+    # trace tips to root -- preallocate buffers and fill by index rather
+    # than growing vectors with c() (still O(n^2) even without rbind/
+    # data.frame -- each c() call still copies the whole vector so far).
+    # A chain from any tip can't revisit a node (monotonic trace upward),
+    # so length(all.paths) is a safe upper bound on any single chain's
+    # length; multiply by n.tips for a safe total upper bound, then
+    # truncate to what was actually used.
+    max.steps <- length(all.paths) * length(tips)
+    edge.parents  <- character(max.steps)
+    edge.children <- character(max.steps)
+    all.nodes.buf <- character(max.steps * 2L + length(tips))
+    n.edges <- 0L
+    n.nodes <- 0L
     for (tip in tips) {
       cur <- tip
       while (!is.na(parent.map[cur]) && !is.null(parent.map[cur])) {
         par <- parent.map[cur]
-        edges <- rbind(edges, data.frame(parent=par, child=cur,
-                                          stringsAsFactors=FALSE))
-        all.nodes <- c(all.nodes, cur, par)
+        n.edges <- n.edges + 1L
+        edge.parents[n.edges]  <- par
+        edge.children[n.edges] <- cur
+        n.nodes <- n.nodes + 1L; all.nodes.buf[n.nodes] <- cur
+        n.nodes <- n.nodes + 1L; all.nodes.buf[n.nodes] <- par
         cur <- par
       }
-      all.nodes <- c(all.nodes, cur)
+      n.nodes <- n.nodes + 1L
+      all.nodes.buf[n.nodes] <- cur
     }
+    edges <- data.frame(parent=edge.parents[seq_len(n.edges)],
+                         child=edge.children[seq_len(n.edges)],
+                         stringsAsFactors=FALSE)
+    all.nodes <- all.nodes.buf[seq_len(n.nodes)]
 
     all.nodes <- unique(all.nodes)
     edges     <- unique(edges)
     root.node <- all.nodes[!all.nodes %in% edges$child]
     if (length(root.node) > 1) root.node <- root.node[1]
 
-    get.children <- function(node) edges$child[edges$parent == node]
+    # O(1) child lookup via precomputed split, instead of scanning the
+    # full edges data.frame on every call -- to.newick() below calls
+    # this once per node in the tree, so the previous O(n) scan made
+    # the whole traversal O(n^2) (confirmed dominant cost via Rprof).
+    children.map <- split(edges$child, edges$parent)
+    get.children <- function(node) {
+      ch <- children.map[[node]]
+      if (is.null(ch)) character(0) else ch
+    }
 
     get.time <- function(node) {
       t <- node.created[node]

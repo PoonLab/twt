@@ -207,3 +207,313 @@ test_that("resolve.arg produces genuinely divergent topology (hand-built positiv
   expect_true(is.monophyletic(phy2, c("A","C")))
   expect_false(is.monophyletic(phy2, c("A","B")))
 })
+test_that("Host lineage pool: basic activate/deactivate/query", {
+  h <- Host$new(name="H1", compartment="I")
+  expect_false(h$is.pool.initialized())
+  h$init.pool(5)
+  expect_true(h$is.pool.initialized())
+  expect_equal(h$get.pool.size(), 5)
+  expect_equal(h$count.inactive.slots(), 5)
+  expect_equal(h$count.active.slots(), 0)
+
+  p <- Pathogen$new(name="P1", end.time=1)
+  new.id <- h$activate.new.slot(p)
+  expect_equal(p$get.slot.id(), new.id)
+  expect_true(h$is.slot.active(new.id))
+  expect_equal(h$get.slot.occupant(new.id)$get.name(), "P1")
+  expect_equal(h$count.active.slots(), 1)
+  expect_equal(h$count.inactive.slots(), 4)
+
+  h$deactivate.slot(new.id)
+  expect_false(h$is.slot.active(new.id))
+  expect_equal(h$count.active.slots(), 0)
+  # pool size must not shrink after deactivation
+  expect_equal(h$get.pool.size(), 5)
+})
+
+test_that("Host lineage pool: init.pool is idempotent", {
+  h <- Host$new(name="H1", compartment="I")
+  h$init.pool(10)
+  h$init.pool(999)  # should be ignored, pool already initialized
+  expect_equal(h$get.pool.size(), 10)
+})
+
+test_that("sim.arg does not exceed pop.size at high rho (fixed lineage pool)", {
+  settings <- read_yaml("test_Superinfection.yaml")
+  settings$Parameters$sigma <- 0.05
+  mod <- Model$new(settings)
+  set.seed(33)
+  dyn <- tryCatch(sim.dynamics(mod, max.attempts=10), error=function(e) NULL)
+  if (is.null(dyn)) skip("could not build dynamics for this seed")
+  outer <- tryCatch(
+    withCallingHandlers(sim.outer.tree(dyn), warning=function(w) invokeRestart("muffleWarning")),
+    error=function(e) NULL)
+  if (is.null(outer)) skip("could not build outer tree for this seed")
+
+  # rho=5,7,10 previously exceeded pop.size and crashed/errored before
+  # the fixed lineage pool (Art's design: sample recombination parents
+  # from a fixed pool of p.size lineages instead of always creating a
+  # new lineage de novo). Now they should all succeed.
+  for (rho in c(5, 7, 10)) {
+    arg <- tryCatch(sim.arg(outer, rho=rho, seq.length=9000), error=function(e) e)
+    expect_false(inherits(arg, "error"),
+                 info=paste("rho =", rho, "should not error with fixed lineage pool"))
+  }
+})
+
+test_that("resolve.arg produces valid trees on top of the fixed lineage pool", {
+  settings <- read_yaml("test_Superinfection.yaml")
+  settings$Parameters$sigma <- 0.05
+  mod <- Model$new(settings)
+  set.seed(33)
+  dyn <- tryCatch(sim.dynamics(mod, max.attempts=10), error=function(e) NULL)
+  if (is.null(dyn)) skip("could not build dynamics for this seed")
+  outer <- tryCatch(
+    withCallingHandlers(sim.outer.tree(dyn), warning=function(w) invokeRestart("muffleWarning")),
+    error=function(e) NULL)
+  if (is.null(outer)) skip("could not build outer tree for this seed")
+
+  n.sampled <- outer$get.sampled()$count.type()
+  arg <- sim.arg(outer, rho=2, seq.length=9000)
+  res <- resolve.arg(arg, seq.length=9000)
+
+  valid <- sapply(res$local.trees, function(lt) {
+    phy <- lt$phylo
+    inherits(phy, "phylo") &&
+      length(phy$tip.label) == n.sampled &&
+      sum(duplicated(phy$tip.label)) == 0 &&
+      !any(is.na(phy$edge.length)) &&
+      !any(phy$edge.length < 0, na.rm=TRUE)
+  })
+  expect_true(all(valid))
+})
+test_that("resolve.arg: per-child breakpoint lookup is correct with multiple distinct breakpoints", {
+  # A and C recombine independently at different breakpoints (300, 700)
+  times <- c(A=10,B=10,C=10,D=10, L1=8,R1=8, L2=7,R2=7,
+             AB=5,CD=5, RR=4, ABCD=2, ROOT=1)
+  paths <- lapply(names(times), function(n) Pathogen$new(name=n, end.time=times[[n]]))
+  names(paths) <- names(times)
+  log <- data.frame(
+    time      = c(10,10,10,10, 8,8, 7,7, 5,5, 5,5, 4,4, 2,2, 1,1),
+    event     = c(rep("sampling",4), rep("recombination",2), rep("recombination",2),
+                  rep("coalescent",2), rep("coalescent",2), rep("coalescent",2),
+                  rep("coalescent",2), rep("coalescent",2)),
+    pathogen1 = c("A","B","C","D", "A","A", "C","C", "AB","AB", "CD","CD",
+                  "RR","RR", "ABCD","ABCD", "ROOT","ROOT"),
+    pathogen2 = c(NA,NA,NA,NA, "L1","R1", "L2","R2", "L1","B", "L2","D",
+                  "R1","R2", "AB","CD", "ABCD","RR"),
+    stringsAsFactors=FALSE
+  )
+  fake.inner <- list(get.log=function() log, get.all.pathogens=function() paths)
+  arg.result <- list(inner=fake.inner, breakpoints=list(A=300L, C=700L))
+  res <- resolve.arg(arg.result, seq.length=1000L)
+
+  expect_equal(length(res$local.trees), 3)
+
+  phy1 <- collapse.singles(res$local.trees[[1]]$phylo)
+  phy2 <- collapse.singles(res$local.trees[[2]]$phylo)
+  phy3 <- collapse.singles(res$local.trees[[3]]$phylo)
+
+  expect_true(is.monophyletic(phy1, c("C","D")))
+  expect_true(is.monophyletic(phy2, c("C","D")))
+  expect_false(is.monophyletic(phy2, c("A","C")))
+  expect_true(is.monophyletic(phy3, c("A","C")))
+  expect_false(is.monophyletic(phy3, c("C","D")))
+})
+
+
+# --- skip.recomb.free ---
+
+test_that(".compute.recomb.free.hosts flags hosts correctly under bottleneck/SI/tip-count conditions", {
+  # H1: bottleneck=1, no SI, 1 sampled tip -> recomb.free TRUE
+  # H2: bottleneck=1, no SI, 2 sampled tips -> recomb.free FALSE (tip count)
+  # H3: bottleneck=1, 1 SI event, 1 sampled tip -> recomb.free FALSE (superinfected)
+  # H4: bottleneck=2, no SI, 1 sampled tip -> recomb.free FALSE (loose bottleneck)
+  events <- data.frame(
+    time      = c(5,5,5,5, 3, 1,1,1,1,1),
+    event     = c(rep("transmission", 4), "transmission",
+                  rep("migration", 5)),
+    from.comp = c("S","S","S","S", "I",
+                  "I","I","I","I","I"),
+    to.comp   = c("I","I","I","J", "I",
+                  "T","T","T","T","T"),
+    from.host = c("Src1","Src2","Src3","Src4", "OtherHost",
+                  "H1","H2","H2","H3","H4"),
+    to.host   = c("H1","H2","H3","H4", "H3",
+                  NA,NA,NA,NA,NA),
+    stringsAsFactors = FALSE
+  )
+
+  fake.mod <- list(
+    get.infected        = function() c(S = FALSE, I = TRUE, J = FALSE),
+    get.bottleneck.size = function(comp) if (comp == "J") "2" else "1"
+  )
+  fake.inner <- list(has.target = function(comp) comp == "T")
+
+  profiles <- .compute.recomb.free.hosts(events, fake.mod, fake.inner, envir = new.env())
+
+  expect_true(profiles$H1$recomb.free)
+  expect_equal(profiles$H1$bottleneck.size, 1)
+
+  expect_false(profiles$H2$recomb.free)  # two sampled tips
+  expect_false(profiles$H3$recomb.free)  # superinfected
+  expect_false(profiles$H4$recomb.free)  # bottleneck size 2
+})
+
+test_that(".draw.next.event skips recombination for hosts flagged recomb.free", {
+  fake.host <- list(
+    count.pathogens = function() 1L,
+    get.compartment = function() "I",
+    get.name        = function() "H1",
+    get.pathogens   = function() list("P1")
+  )
+  fake.active <- list(
+    get.hosts        = function() list(fake.host),
+    get.host.by.name = function(name) fake.host
+  )
+  fake.mod <- list(get.coalescent.rate = function(comp) "0")
+
+  set.seed(1)
+  ev.free <- .draw.next.event(fake.active, fake.mod, rho = 0.5, envir = new.env(),
+                               host.profiles = list(H1 = list(recomb.free = TRUE,
+                                                               bottleneck.size = 1)))
+  expect_null(ev.free)
+
+  set.seed(1)
+  ev.default <- .draw.next.event(fake.active, fake.mod, rho = 0.5, envir = new.env())
+  expect_false(is.null(ev.default))
+  expect_equal(ev.default$type, "recombination")
+  expect_equal(ev.default$host, "H1")
+})
+
+test_that("sim.arg with skip.recomb.free=TRUE runs and produces valid trees", {
+  result <- suppressWarnings(
+    sim.arg(outer.tree, rho = RHO, seq.length = SEQ.LEN, skip.recomb.free = TRUE)
+  )
+  expect_type(result, "list")
+  expect_true(is.R6(result$inner))
+
+  resolved <- resolve.arg(result, seq.length = SEQ.LEN)
+  valid <- sapply(resolved$local.trees, function(lt) {
+    inherits(lt$phylo, "phylo") &&
+      length(lt$phylo$tip.label) == N.TIPS &&
+      sum(duplicated(lt$phylo$tip.label)) == 0
+  })
+  expect_true(all(valid))
+})
+
+test_that("skip.recomb.free eliminates recombination events for hosts flagged recomb-free", {
+  inner.for.profile <- InnerTree$new(outer.tree)
+  mod <- inner.for.profile$get.model()
+
+  events <- outer.tree$get.log()
+  events$time <- as.numeric(events$time)
+  events <- events[order(events$time, decreasing = TRUE), ]
+
+  profiles <- .compute.recomb.free.hosts(events, mod, inner.for.profile, envir = new.env())
+  free.hosts <- names(profiles)[sapply(profiles, function(p) isTRUE(p$recomb.free))]
+  skip_if(length(free.hosts) == 0, "no recomb-free host at this seed")
+
+  result.skip <- suppressWarnings(
+    sim.arg(outer.tree, rho = RHO, seq.length = SEQ.LEN, skip.recomb.free = TRUE)
+  )
+  log <- result.skip$inner$get.log()
+  recomb.hosts <- unique(log$from.host[log$event == "recombination"])
+  expect_false(any(free.hosts %in% recomb.hosts))
+})
+
+
+# --- pool-overflow bug: Host$activate.new.slot has no bound against pool.size ---
+
+test_that(".do.recombination errors instead of silently exceeding pool.size when every slot is already claimed", {
+  # pool's already full (2/2), so a fresh lineage needing a slot
+  # should error instead of pushing count past pool.size
+  fake.host <- list(
+    is.pool.initialized = function() TRUE,
+    count.active.slots   = function() 2L,
+    get.pool.size        = function() 2L,
+    get.name              = function() "H1",
+    activate.new.slot     = function(pathogen) stop("should not be reached")
+  )
+  fake.active <- list(get.host.by.name = function(name) fake.host)
+  fake.inner  <- list(get.active = function() fake.active)
+  fake.pathogen <- list(get.slot.id = function() NA_integer_)
+
+  expect_error(
+    .do.recombination("H1", fake.pathogen, fake.inner, time = 0.5,
+                       seq.length = 9000L, p.size = 2L),
+    regexp = "lineage pool is full"
+  )
+})
+
+
+# --- Idea 3: recombination can reuse an already-active lineage as the ---
+# --- "other parent", not just recruit a fresh inactive one            ---
+
+test_that(".do.recombination reuses an already-active lineage as the other parent", {
+  make.fake.pathogen <- function(name, slot = NA_integer_) {
+    own <- slot
+    children <- list()
+    parents <- list()
+    list(
+      get.name = function() name,
+      get.slot.id = function() own,
+      set.slot.id = function(id) own <<- id,
+      set.breakpoint = function(bp) invisible(NULL),
+      set.start.time = function(t) invisible(NULL),
+      add.child = function(child) children[[length(children) + 1]] <<- child,
+      add.parent = function(parent) parents[[length(parents) + 1]] <<- parent,
+      get.children = function() children,
+      get.parents = function() parents
+    )
+  }
+
+  child <- make.fake.pathogen("P_child", slot = 1L)
+  other.active <- make.fake.pathogen("P_other_active", slot = 2L)
+  host.pathogens <- list(child, other.active)
+
+  excluded.slot <- NULL
+  fake.host <- list(
+    is.pool.initialized = function() TRUE,
+    get.pool.size       = function() 2L,
+    get.compartment     = function() "I",
+    activate.slot       = function(slot.id, pathogen) invisible(NULL),
+    sample.other.slot   = function(exclude.slot.id) {
+      excluded.slot <<- exclude.slot.id
+      list(active = TRUE, pathogen = other.active)  # force reuse of an active lineage
+    },
+    get.pathogens   = function() host.pathogens,
+    remove.pathogen = function(idx) {
+      removed <- host.pathogens[[idx]]
+      host.pathogens[[idx]] <<- NULL
+      removed
+    },
+    add.pathogen = function(p) host.pathogens[[length(host.pathogens) + 1]] <<- p
+  )
+  fake.active <- list(get.host.by.name = function(name) fake.host)
+
+  events.logged <- list()
+  n.new <- 0
+  fake.inner <- list(
+    get.active = function() fake.active,
+    new.pathogen = function(time) {
+      n.new <<- n.new + 1
+      make.fake.pathogen(paste0("P_new", n.new))
+    },
+    add.event = function(event) events.logged[[length(events.logged) + 1]] <<- event
+  )
+
+  result <- .do.recombination("H1", child, fake.inner, time = 0.5, seq.length = 9000L)
+
+  expect_equal(excluded.slot, 1L)          # no self-pairing
+  expect_equal(result$right, "P_other_active")
+  expect_equal(n.new, 1)                   # only the left parent is freshly created
+
+  expect_equal(length(child$get.parents()), 2)
+  expect_true("P_child" %in% sapply(other.active$get.children(), function(p) p$get.name()))
+
+  # reused lineage isn't re-added to the host's pathogen list a second time
+  expect_equal(sum(sapply(host.pathogens, function(p) p$get.name() == "P_other_active")), 1)
+
+  expect_equal(length(events.logged), 2)
+})
