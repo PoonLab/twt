@@ -293,8 +293,18 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L,
   }
 
   # ensure the recombining pathogen already occupies a pool slot -- if
-  # this is the first pool-tracked event involving it, assign one now
+  # this is the first pool-tracked event involving it, assign one now.
+  # Can't exceed p.size though: if every slot's taken, this "new"
+  # lineage must actually be the same individual as one we're already
+  # tracking (needs a coalescent merge, not done yet) -- fail loudly
+  # instead of quietly breaking the active <= pool.size invariant.
   if (is.na(pathogen$get.slot.id())) {
+    if (host$count.active.slots() >= host$get.pool.size()) {
+      stop(sprintf(
+        "Host %s's lineage pool is full (%d/%d slots), can't assign a new one. ",
+        host$get.name(), host$count.active.slots(), host$get.pool.size()),
+        "Increase p.size, decrease rho, or add coalescent merging to the pool.")
+    }
     host$activate.new.slot(pathogen)
   }
   own.slot <- pathogen$get.slot.id()

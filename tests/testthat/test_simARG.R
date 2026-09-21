@@ -421,3 +421,53 @@ test_that("skip.recomb.free eliminates recombination events for hosts flagged re
   recomb.hosts <- unique(log$from.host[log$event == "recombination"])
   expect_false(any(free.hosts %in% recomb.hosts))
 })
+
+
+# --- pool-overflow bug: Host$activate.new.slot has no bound against pool.size ---
+
+test_that("Host pool: activate.new.slot has no bound and can exceed pool.size", {
+  # raw primitive has no guard -- the check lives at the
+  # .do.recombination call site, tested next
+  h <- Host$new(name = "H1", compartment = "I")
+  h$init.pool(2)
+
+  make.fake.pathogen <- function() {
+    slot <- NA_integer_
+    list(
+      set.slot.id = function(id) slot <<- id,
+      get.slot.id = function() slot
+    )
+  }
+  p1 <- make.fake.pathogen()
+  p2 <- make.fake.pathogen()
+  p3 <- make.fake.pathogen()
+
+  h$activate.new.slot(p1)
+  h$activate.new.slot(p2)
+  expect_equal(h$count.active.slots(), 2)
+  expect_equal(h$get.pool.size(), 2)  # pool is now at capacity
+
+  h$activate.new.slot(p3)
+  expect_gt(h$count.active.slots(), h$get.pool.size())  # invariant violated
+})
+
+test_that(".do.recombination errors instead of silently exceeding pool.size when every slot is already claimed", {
+  # pool's already full (2/2), so a fresh lineage needing a slot
+  # should error instead of pushing count past pool.size
+  fake.host <- list(
+    is.pool.initialized = function() TRUE,
+    count.active.slots   = function() 2L,
+    get.pool.size        = function() 2L,
+    get.name              = function() "H1",
+    activate.new.slot     = function(pathogen) stop("should not be reached")
+  )
+  fake.active <- list(get.host.by.name = function(name) fake.host)
+  fake.inner  <- list(get.active = function() fake.active)
+  fake.pathogen <- list(get.slot.id = function() NA_integer_)
+
+  expect_error(
+    .do.recombination("H1", fake.pathogen, fake.inner, time = 0.5,
+                       seq.length = 9000L, p.size = 2L),
+    regexp = "lineage pool is full"
+  )
+})
