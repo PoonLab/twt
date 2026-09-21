@@ -471,3 +471,75 @@ test_that(".do.recombination errors instead of silently exceeding pool.size when
     regexp = "lineage pool is full"
   )
 })
+
+
+# --- Idea 3: recombination can reuse an already-active lineage as the ---
+# --- "other parent", not just recruit a fresh inactive one            ---
+
+test_that(".do.recombination reuses an already-active lineage as the other parent", {
+  make.fake.pathogen <- function(name, slot = NA_integer_) {
+    own <- slot
+    children <- list()
+    parents <- list()
+    list(
+      get.name = function() name,
+      get.slot.id = function() own,
+      set.slot.id = function(id) own <<- id,
+      set.breakpoint = function(bp) invisible(NULL),
+      set.start.time = function(t) invisible(NULL),
+      add.child = function(child) children[[length(children) + 1]] <<- child,
+      add.parent = function(parent) parents[[length(parents) + 1]] <<- parent,
+      get.children = function() children,
+      get.parents = function() parents
+    )
+  }
+
+  child <- make.fake.pathogen("P_child", slot = 1L)
+  other.active <- make.fake.pathogen("P_other_active", slot = 2L)
+  host.pathogens <- list(child, other.active)
+
+  excluded.slot <- NULL
+  fake.host <- list(
+    is.pool.initialized = function() TRUE,
+    get.pool.size       = function() 2L,
+    get.compartment     = function() "I",
+    activate.slot       = function(slot.id, pathogen) invisible(NULL),
+    sample.other.slot   = function(exclude.slot.id) {
+      excluded.slot <<- exclude.slot.id
+      list(active = TRUE, pathogen = other.active)  # force reuse of an active lineage
+    },
+    get.pathogens   = function() host.pathogens,
+    remove.pathogen = function(idx) {
+      removed <- host.pathogens[[idx]]
+      host.pathogens[[idx]] <<- NULL
+      removed
+    },
+    add.pathogen = function(p) host.pathogens[[length(host.pathogens) + 1]] <<- p
+  )
+  fake.active <- list(get.host.by.name = function(name) fake.host)
+
+  events.logged <- list()
+  n.new <- 0
+  fake.inner <- list(
+    get.active = function() fake.active,
+    new.pathogen = function(time) {
+      n.new <<- n.new + 1
+      make.fake.pathogen(paste0("P_new", n.new))
+    },
+    add.event = function(event) events.logged[[length(events.logged) + 1]] <<- event
+  )
+
+  result <- .do.recombination("H1", child, fake.inner, time = 0.5, seq.length = 9000L)
+
+  expect_equal(excluded.slot, 1L)          # no self-pairing
+  expect_equal(result$right, "P_other_active")
+  expect_equal(n.new, 1)                   # only the left parent is freshly created
+
+  expect_equal(length(child$get.parents()), 2)
+  expect_true("P_child" %in% sapply(other.active$get.children(), function(p) p$get.name()))
+
+  # reused lineage isn't re-added to the host's pathogen list a second time
+  expect_equal(sum(sapply(host.pathogens, function(p) p$get.name() == "P_other_active")), 1)
+
+  expect_equal(length(events.logged), 2)
+})
