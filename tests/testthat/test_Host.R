@@ -93,3 +93,28 @@ test_that("Superinfection of host", {
   expect_equal(result, expected)
 })
 
+
+test_that("Pool: activate.new.slot enforces pool.size", {
+  h <- Host$new(compartment="I")
+  h$init.pool(2)
+  h$activate.new.slot(Pathogen$new())
+  h$activate.new.slot(Pathogen$new())
+
+  expect_error(h$activate.new.slot(Pathogen$new()), "capacity")
+})
+
+test_that("Pool: activate.new.slot requires init.pool first", {
+  h <- Host$new(compartment="I")
+  expect_error(h$activate.new.slot(Pathogen$new()), "initializing")
+})
+
+test_that("Pool: activate.slot updates the pathogen's slot id", {
+  h <- Host$new(compartment="I")
+  h$init.pool(2)
+  p <- Pathogen$new()
+  h$activate.slot(1, p)
+
+  result <- p$get.slot.id()
+  expected <- 1
+  expect_equal(result, expected)
+})

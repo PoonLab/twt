@@ -118,6 +118,13 @@ Host <- R6Class(
     },
     # activate a genuinely NEW (never-before-used) slot with a fresh id
     activate.new.slot = function(pathogen) {
+      if (is.null(private$pool.size)) {
+        stop("Cannot activate a slot before initializing the host pool.")
+      }
+      if (length(private$active.occupants) >= private$pool.size) {
+        stop("Cannot activate a new slot: host pool is already at capacity (",
+             private$pool.size, ").")
+      }
       private$next.slot.id <- private$next.slot.id + 1L
       new.id <- private$next.slot.id
       pathogen$set.slot.id(new.id)
@@ -127,6 +134,7 @@ Host <- R6Class(
     # re-activate an EXISTING slot id with a (possibly different) occupant
     # -- used when a slot's occupant changes (e.g. after coalescence)
     activate.slot = function(slot.id, pathogen) {
+      pathogen$set.slot.id(slot.id)
       private$active.occupants[[as.character(slot.id)]] <- pathogen
     },
     deactivate.slot = function(slot.id) {

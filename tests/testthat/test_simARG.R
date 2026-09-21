@@ -425,32 +425,6 @@ test_that("skip.recomb.free eliminates recombination events for hosts flagged re
 
 # --- pool-overflow bug: Host$activate.new.slot has no bound against pool.size ---
 
-test_that("Host pool: activate.new.slot has no bound and can exceed pool.size", {
-  # raw primitive has no guard -- the check lives at the
-  # .do.recombination call site, tested next
-  h <- Host$new(name = "H1", compartment = "I")
-  h$init.pool(2)
-
-  make.fake.pathogen <- function() {
-    slot <- NA_integer_
-    list(
-      set.slot.id = function(id) slot <<- id,
-      get.slot.id = function() slot
-    )
-  }
-  p1 <- make.fake.pathogen()
-  p2 <- make.fake.pathogen()
-  p3 <- make.fake.pathogen()
-
-  h$activate.new.slot(p1)
-  h$activate.new.slot(p2)
-  expect_equal(h$count.active.slots(), 2)
-  expect_equal(h$get.pool.size(), 2)  # pool is now at capacity
-
-  h$activate.new.slot(p3)
-  expect_gt(h$count.active.slots(), h$get.pool.size())  # invariant violated
-})
-
 test_that(".do.recombination errors instead of silently exceeding pool.size when every slot is already claimed", {
   # pool's already full (2/2), so a fresh lineage needing a slot
   # should error instead of pushing count past pool.size
