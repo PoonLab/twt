@@ -1,18 +1,22 @@
 #' .compute.recomb.free.hosts
 #'
-#' Precompute, from the already-generated outer event log, which hosts can
-#' safely skip recombination entirely: a host whose founding transmission
-#' is a complete bottleneck (exactly one lineage enters), which never
-#' receives a superinfection, and which has at most one directly-sampled
-#' tip of its own can never produce an observable effect from internal
-#' recombination -- everything that happens inside it either dies with it
-#' or gets coalesced down to the single lineage that exits it anyway.
+#' Precompute, from the outer event log, which hosts can safely skip
+#' recombination entirely: hosts that can never carry more than one
+#' active lineage at a time.
 #'
-#' This evaluates each host's bottleneck-size expression earlier than the
-#' main loop otherwise would -- a deliberate, opt-in tradeoff (see
-#' skip.recomb.free in sim.arg). It changes RNG call order relative to
-#' skip.recomb.free=FALSE, so results from the same seed will differ, even
-#' though the underlying distribution doesn't change.
+#' A host qualifies only if its founding transmission is a complete
+#' bottleneck (b.size == 1), it's never superinfected, it has at most one
+#' directly-sampled tip, and -- recursively -- every host it infects or
+#' superinfects never returns a lineage either (has.lineage below). Out-
+#' degree matters here: a host that infects two people can carry two
+#' distinct lineages at once even with a clean founding bottleneck.
+#'
+#' has.lineage(h) treats any superinfection donated by h as a possible
+#' return, since the transfer count is stochastic and not known here.
+#'
+#' Evaluates each host's bottleneck-size expression earlier than the main
+#' loop otherwise would -- an opt-in tradeoff (see skip.recomb.free in
+#' sim.arg) that changes RNG call order vs skip.recomb.free=FALSE.
 #'
 #' @keywords internal
 #' @noRd
@@ -34,7 +38,33 @@
     samp.count <- table(character(0))
   }
 
-  hosts    <- unique(found.rows$to.host)
+  hosts <- unique(found.rows$to.host)
+
+  # host -> hosts it infects (non-superinfection)
+  children.of <- split(found.rows$to.host, found.rows$from.host)
+  # host -> hosts it superinfects as donor -- can also return a lineage
+  si.children.of <- split(si.rows$to.host, si.rows$from.host)
+
+  ns.lookup <- as.list(samp.count)
+  si.lookup <- as.list(si.count)
+  memo      <- new.env(parent = emptyenv())
+
+  has.lineage <- function(h) {
+    cached <- memo[[h]]
+    if (!is.null(cached)) return(cached)
+    ns      <- if (!is.null(ns.lookup[[h]])) ns.lookup[[h]] else 0
+    si      <- if (!is.null(si.lookup[[h]])) si.lookup[[h]] else 0
+    kids    <- children.of[[h]]
+    si.kids <- si.children.of[[h]]
+    if (is.null(kids))    kids    <- character(0)
+    if (is.null(si.kids)) si.kids <- character(0)
+    result <- (ns > 0) || (si > 0) ||
+      any(vapply(kids,    has.lineage, logical(1))) ||
+      any(vapply(si.kids, has.lineage, logical(1)))
+    memo[[h]] <- result
+    result
+  }
+
   profiles <- vector("list", length(hosts))
   names(profiles) <- hosts
 
@@ -50,8 +80,16 @@
     si <- if (h %in% names(si.count))   si.count[[h]]   else 0
     ns <- if (h %in% names(samp.count)) samp.count[[h]] else 0
 
+    kids    <- children.of[[h]]
+    si.kids <- si.children.of[[h]]
+    if (is.null(kids))    kids    <- character(0)
+    if (is.null(si.kids)) si.kids <- character(0)
+    n.inputs <- ns +
+      sum(vapply(kids,    has.lineage, logical(1))) +
+      sum(vapply(si.kids, has.lineage, logical(1)))
+
     profiles[[h]] <- list(
-      recomb.free     = (b.size == 1 && si == 0 && ns <= 1),
+      recomb.free     = (b.size == 1 && si == 0 && n.inputs <= 1),
       bottleneck.size = b.size
     )
   }
