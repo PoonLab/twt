@@ -1,22 +1,16 @@
-#' .compute.recomb.free.hosts
+#' Precompute which hosts can skip recombination (see skip.recomb.free in
+#' sim.arg): hosts that can never carry more than one active lineage.
 #'
-#' Precompute, from the outer event log, which hosts can safely skip
-#' recombination entirely: hosts that can never carry more than one
-#' active lineage at a time.
+#' A host qualifies if its founding transmission is a complete bottleneck
+#' (b.size == 1), it's never superinfected, has at most one sampled tip,
+#' and none of the hosts it infects ever return a lineage either, checked
+#' recursively via has.lineage below. Out-degree matters -- infecting two
+#' hosts can produce two concurrent lineages even with a bottleneck of 1.
 #'
-#' A host qualifies only if its founding transmission is a complete
-#' bottleneck (b.size == 1), it's never superinfected, it has at most one
-#' directly-sampled tip, and -- recursively -- every host it infects or
-#' superinfects never returns a lineage either (has.lineage below). Out-
-#' degree matters here: a host that infects two people can carry two
-#' distinct lineages at once even with a clean founding bottleneck.
-#'
-#' has.lineage(h) treats any superinfection donated by h as a possible
-#' return, since the transfer count is stochastic and not known here.
-#'
-#' Evaluates each host's bottleneck-size expression earlier than the main
-#' loop otherwise would -- an opt-in tradeoff (see skip.recomb.free in
-#' sim.arg) that changes RNG call order vs skip.recomb.free=FALSE.
+#' @param events event log data.frame from sim.outer.tree
+#' @param mod    Model R6 object
+#' @param inner  InnerTree R6 object
+#' @param envir  environment for evaluating bottleneck-size expressions
 #'
 #' @keywords internal
 #' @noRd
@@ -42,8 +36,6 @@
 
   # host -> hosts it infects (non-superinfection)
   children.of <- split(found.rows$to.host, found.rows$from.host)
-  # host -> hosts it superinfects as donor -- can also return a lineage
-  si.children.of <- split(si.rows$to.host, si.rows$from.host)
 
   ns.lookup <- as.list(samp.count)
   si.lookup <- as.list(si.count)
@@ -52,15 +44,12 @@
   has.lineage <- function(h) {
     cached <- memo[[h]]
     if (!is.null(cached)) return(cached)
-    ns      <- if (!is.null(ns.lookup[[h]])) ns.lookup[[h]] else 0
-    si      <- if (!is.null(si.lookup[[h]])) si.lookup[[h]] else 0
-    kids    <- children.of[[h]]
-    si.kids <- si.children.of[[h]]
-    if (is.null(kids))    kids    <- character(0)
-    if (is.null(si.kids)) si.kids <- character(0)
+    ns   <- if (!is.null(ns.lookup[[h]])) ns.lookup[[h]] else 0
+    si   <- if (!is.null(si.lookup[[h]])) si.lookup[[h]] else 0
+    kids <- children.of[[h]]
+    if (is.null(kids)) kids <- character(0)
     result <- (ns > 0) || (si > 0) ||
-      any(vapply(kids,    has.lineage, logical(1))) ||
-      any(vapply(si.kids, has.lineage, logical(1)))
+      any(vapply(kids, has.lineage, logical(1)))
     memo[[h]] <- result
     result
   }
@@ -80,13 +69,9 @@
     si <- if (h %in% names(si.count))   si.count[[h]]   else 0
     ns <- if (h %in% names(samp.count)) samp.count[[h]] else 0
 
-    kids    <- children.of[[h]]
-    si.kids <- si.children.of[[h]]
-    if (is.null(kids))    kids    <- character(0)
-    if (is.null(si.kids)) si.kids <- character(0)
-    n.inputs <- ns +
-      sum(vapply(kids,    has.lineage, logical(1))) +
-      sum(vapply(si.kids, has.lineage, logical(1)))
+    kids <- children.of[[h]]
+    if (is.null(kids)) kids <- character(0)
+    n.inputs <- ns + sum(vapply(kids, has.lineage, logical(1)))
 
     profiles[[h]] <- list(
       recomb.free     = (b.size == 1 && si == 0 && n.inputs <= 1),
