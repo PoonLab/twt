@@ -478,7 +478,7 @@ test_that(".do.recombination reuses an already-active lineage as the other paren
     get.pool.size       = function() 2L,
     get.compartment     = function() "I",
     activate.slot       = function(slot.id, pathogen) invisible(NULL),
-    sample.other.slot   = function(exclude.slot.id) {
+    sample.other.slot   = function(exclude.slot.id, include.active = TRUE) {
       excluded.slot <<- exclude.slot.id
       list(active = TRUE, pathogen = other.active)  # force reuse of an active lineage
     },

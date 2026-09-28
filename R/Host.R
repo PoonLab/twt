@@ -144,7 +144,11 @@ Host <- R6Class(
     # over all pool.size slots (optionally excluding one, e.g. the child's
     # own slot). Returns a list(active=TRUE/FALSE, pathogen=<occupant or
     # NULL>) -- caller creates+activates a new lineage when active=FALSE.
-    sample.other.slot = function(exclude.slot.id=NA) {
+    # include.active=FALSE forces the "other parent" to always be
+    # recruited fresh, never reused from an already-active lineage --
+    # the unidirectional option (see bidirectional.recomb in sim.arg)
+    sample.other.slot = function(exclude.slot.id=NA, include.active=TRUE) {
+      if (!include.active) return(list(active=FALSE, pathogen=NULL))
       active.ids <- names(private$active.occupants)
       if (!is.na(exclude.slot.id)) {
         active.ids <- setdiff(active.ids, as.character(exclude.slot.id))

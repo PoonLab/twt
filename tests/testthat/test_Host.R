@@ -118,3 +118,27 @@ test_that("Pool: activate.slot updates the pathogen's slot id", {
   expected <- 1
   expect_equal(result, expected)
 })
+
+test_that("Pool: sample.other.slot(include.active=FALSE) never reuses an active lineage", {
+  h <- Host$new(compartment="I")
+  h$init.pool(3)
+  h$activate.new.slot(Pathogen$new())
+  h$activate.new.slot(Pathogen$new())
+
+  for (i in 1:20) {
+    draw <- h$sample.other.slot(include.active = FALSE)
+    expect_false(draw$active)
+    expect_null(draw$pathogen)
+  }
+})
+
+test_that("Pool: sample.other.slot(include.active=TRUE) can reuse an active lineage", {
+  h <- Host$new(compartment="I")
+  h$init.pool(2)
+  h$activate.new.slot(Pathogen$new())
+  h$activate.new.slot(Pathogen$new())
+  # both slots active, excluding one leaves exactly one candidate, which
+  # is active -- deterministic, no reliance on RNG luck
+  draw <- h$sample.other.slot(exclude.slot.id = 1, include.active = TRUE)
+  expect_true(draw$active)
+})

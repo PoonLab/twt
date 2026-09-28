@@ -111,7 +111,8 @@
 #' @return R6 object of class `InnerTree` (ARG events recorded in log)
 #' @export
 sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L,
-                     skip.recomb.free = FALSE) {
+                     skip.recomb.free = FALSE,
+                     bidirectional.recomb = TRUE) {
   if (!is.R6(outer) || !is.element("OuterTree", class(outer))) {
     stop("Input argument must be an R6 object of class `OuterTree`")
   }
@@ -162,7 +163,8 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L,
           p.size.expr <- mod$get.pop.size(host.obj$get.compartment())
           p.size.val <- eval(parse(text = p.size.expr), envir = env)
           bp <- .do.recombination(ev$host, ev$pathogen, inner, event.time,
-                                  seq.length = seq.length, p.size = p.size.val)
+                                  seq.length = seq.length, p.size = p.size.val,
+                                  bidirectional.recomb = bidirectional.recomb)
           breakpoints[[bp$child]] <- bp$position
         }
       }
@@ -299,7 +301,8 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L,
 #' @keywords internal
 #' @noRd
 .do.recombination <- function(host.name, pathogen, inner, time,
-                              seq.length = 9000L, p.size = NULL) {
+                              seq.length = 9000L, p.size = NULL,
+                              bidirectional.recomb = TRUE) {
   active <- inner$get.active()
   host   <- active$get.host.by.name(host.name)
 
@@ -347,7 +350,8 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L,
     # degenerate case: pool size 1, nothing else to sample from
     parent.right <- parent.left
   } else {
-    draw <- host$sample.other.slot(exclude.slot.id = own.slot)
+    draw <- host$sample.other.slot(exclude.slot.id = own.slot,
+                                    include.active = bidirectional.recomb)
     if (draw$active) {
       parent.right <- draw$pathogen
     } else {
