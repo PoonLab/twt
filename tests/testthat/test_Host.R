@@ -142,3 +142,37 @@ test_that("Pool: sample.other.slot(include.active=TRUE) can reuse an active line
   draw <- h$sample.other.slot(exclude.slot.id = 1, include.active = TRUE)
   expect_true(draw$active)
 })
+
+test_that("Pool: init.pool rejects invalid n", {
+  h <- Host$new(compartment="I")
+  expect_error(h$init.pool(-1), "positive scalar integer")
+  expect_error(h$init.pool(0), "positive scalar integer")
+  expect_error(h$init.pool(1.5), "positive scalar integer")
+  expect_error(h$init.pool(c(1, 2)), "positive scalar integer")
+  expect_error(h$init.pool(NA_real_), "positive scalar integer")
+  expect_error(h$init.pool("2"), "positive scalar integer")
+})
+
+test_that("Pool: methods error clearly before init.pool is called", {
+  h <- Host$new(compartment="I")
+  expect_error(h$activate.new.slot(Pathogen$new()), "initializing the host pool")
+  expect_error(h$activate.slot(1, Pathogen$new()), "initializing the host pool")
+  expect_error(h$deactivate.slot(1), "initializing the host pool")
+  expect_error(h$sample.other.slot(), "before initializing it")
+  expect_error(h$is.slot.active(1), "initializing the host pool")
+  expect_error(h$get.slot.occupant(1), "initializing the host pool")
+  expect_error(h$get.active.slot.ids(), "initializing the host pool")
+  expect_error(h$count.active.slots(), "initializing the host pool")
+  expect_error(h$count.inactive.slots(), "initializing the host pool")
+})
+
+test_that("Pool: sample.other.slot rejects a stale/invalid exclude.slot.id", {
+  h <- Host$new(compartment="I")
+  h$init.pool(3)
+  h$activate.new.slot(Pathogen$new())
+  h$activate.new.slot(Pathogen$new())
+
+  # slot id 99 was never activated
+  expect_error(h$sample.other.slot(exclude.slot.id = 99),
+               "not a currently active slot")
+})

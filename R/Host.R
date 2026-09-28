@@ -96,24 +96,45 @@ Host <- R6Class(
     # than pre-numbered 1..n.
     init.pool = function(n) {
       if (is.null(private$pool.size)) {
-        private$pool.size <- n
+        if (!is.numeric(n) || length(n) != 1 || is.na(n) ||
+            n != as.integer(n) || n <= 0) {
+          stop("init.pool: n must be a positive scalar integer, got: ", n)
+        }
+        private$pool.size <- as.integer(n)
         private$active.occupants <- list()
         private$next.slot.id <- 0L
       }
     },
     get.pool.size = function() { private$pool.size },
     is.pool.initialized = function() { !is.null(private$pool.size) },
-    count.active.slots = function() { length(private$active.occupants) },
+    count.active.slots = function() {
+      if (is.null(private$pool.size)) {
+        stop("Cannot count slots before initializing the host pool.")
+      }
+      length(private$active.occupants)
+    },
     count.inactive.slots = function() {
+      if (is.null(private$pool.size)) {
+        stop("Cannot count slots before initializing the host pool.")
+      }
       private$pool.size - length(private$active.occupants)
     },
     is.slot.active = function(slot.id) {
+      if (is.null(private$pool.size)) {
+        stop("Cannot query slot state before initializing the host pool.")
+      }
       as.character(slot.id) %in% names(private$active.occupants)
     },
     get.slot.occupant = function(slot.id) {
+      if (is.null(private$pool.size)) {
+        stop("Cannot query slot state before initializing the host pool.")
+      }
       private$active.occupants[[as.character(slot.id)]]
     },
     get.active.slot.ids = function() {
+      if (is.null(private$pool.size)) {
+        stop("Cannot query slot state before initializing the host pool.")
+      }
       as.integer(names(private$active.occupants))
     },
     # activate a genuinely NEW (never-before-used) slot with a fresh id
@@ -134,10 +155,16 @@ Host <- R6Class(
     # re-activate an EXISTING slot id with a (possibly different) occupant
     # -- used when a slot's occupant changes (e.g. after coalescence)
     activate.slot = function(slot.id, pathogen) {
+      if (is.null(private$pool.size)) {
+        stop("Cannot activate a slot before initializing the host pool.")
+      }
       pathogen$set.slot.id(slot.id)
       private$active.occupants[[as.character(slot.id)]] <- pathogen
     },
     deactivate.slot = function(slot.id) {
+      if (is.null(private$pool.size)) {
+        stop("Cannot deactivate a slot before initializing the host pool.")
+      }
       private$active.occupants[[as.character(slot.id)]] <- NULL
     },
     # sample a recombination "other parent" from the fixed pool, uniformly
@@ -148,9 +175,16 @@ Host <- R6Class(
     # recruited fresh, never reused from an already-active lineage --
     # the unidirectional option (see bidirectional.recomb in sim.arg)
     sample.other.slot = function(exclude.slot.id=NA, include.active=TRUE) {
+      if (is.null(private$pool.size)) {
+        stop("Cannot sample from a host pool before initializing it.")
+      }
       if (!include.active) return(list(active=FALSE, pathogen=NULL))
       active.ids <- names(private$active.occupants)
       if (!is.na(exclude.slot.id)) {
+        if (!self$is.slot.active(exclude.slot.id)) {
+          stop("sample.other.slot: exclude.slot.id (", exclude.slot.id,
+               ") is not a currently active slot.")
+        }
         active.ids <- setdiff(active.ids, as.character(exclude.slot.id))
       }
       n.total <- private$pool.size - (if (is.na(exclude.slot.id)) 0L else 1L)
