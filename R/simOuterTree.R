@@ -223,6 +223,14 @@ sim.outer.tree <- function(dynamics) {
     }
     stopifnot(n.source > 0)
     n.active.source <- active$count.type(e$source)
+    if (e$source == e$to.comp && is.superinfect) {
+      # superinfection keeps recip active (not removed above), so it's
+      # still counted here -- but n.source already excluded it via the
+      # -1 adjustment. Exclude it consistently here too, or the active
+      # count can exceed the aggregate count by exactly 1 whenever
+      # source and recipient compartments match under superinfection.
+      n.active.source <- n.active.source - 1
+    }
     stopifnot(n.active.source <= n.source)
     
     if (sample(1:n.source, 1) <= n.active.source) {
