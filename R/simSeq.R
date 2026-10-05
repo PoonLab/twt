@@ -40,7 +40,8 @@ simulate.sequences <- function(resolved, mu = 1e-3,
                                 gtr.rates = HIV1.SUBSTITUTION.MODEL$gtr.rates,
                                 bf = HIV1.SUBSTITUTION.MODEL$bf,
                                 kappa = 1,
-                                site.rate.categories = HIV1.SUBSTITUTION.MODEL$site.rate.categories) {
+                                site.rate.categories = HIV1.SUBSTITUTION.MODEL$site.rate.categories,
+                                seed = NULL) {
   if (!requireNamespace("phangorn", quietly = TRUE)) {
     stop("simulate.sequences() requires the 'phangorn' package. ",
          "Install it with install.packages(\"phangorn\").")
@@ -74,9 +75,26 @@ simulate.sequences <- function(resolved, mu = 1e-3,
     lens
   }
 
+  if (!is.null(seed)) set.seed(seed)
+
+  segs <- resolved$local.trees
+  seg.starts <- vapply(segs, function(s) as.numeric(s$start), numeric(1))
+  seg.ends   <- vapply(segs, function(s) as.numeric(s$end), numeric(1))
+  genome.len <- as.integer(max(seg.ends))
+  if (sum(seg.ends - seg.starts + 1) != genome.len) {
+    stop("simulate.sequences: segments do not tile sites 1-", genome.len,
+         " exactly (total segment length ", sum(seg.ends - seg.starts + 1), ")")
+  }
+
+  # A site's rate category is a property of its genomic position, so draw it
+  # once for the whole genome (exact proportions, random positions) and reuse
+  # it for every segment, whichever local tree covers the site.
+  site.cat <- sample(rep(seq_along(site.rate.categories),
+                         times = category.lengths(genome.len)))
+
   tip.seqs <- list()
 
-  for (seg in resolved$local.trees) {
+  for (seg in segs) {
     if (is.null(seg$phylo)) {
       stop("simulate.sequences: segment ", seg$start, "-", seg$end,
            " has no valid tree (resolve.arg failed to parse it)")
@@ -84,24 +102,31 @@ simulate.sequences <- function(resolved, mu = 1e-3,
 
     tree <- seg$phylo
     tree$edge.length <- tree$edge.length * mu   # time -> substitutions/site
-    seg.len <- seg$end - seg$start + 1L
-    cat.lens <- category.lengths(seg.len)
+    cols <- seq.int(seg$start, seg$end)
+    seg.cat <- site.cat[cols]
+    seg.align <- matrix(NA_character_, nrow = length(tree$tip.label), ncol = length(cols),
+                        dimnames = list(tree$tip.label, NULL))
 
-    cat.sims <- list()
     for (k in seq_along(site.rate.categories)) {
-      if (cat.lens[k] == 0) next
-      cat.sims[[length(cat.sims) + 1]] <- phangorn::simSeq(
-        tree, l = cat.lens[k], Q = Q, bf = bf, type = "DNA",
+      sel <- which(seg.cat == k)
+      if (length(sel) == 0) next
+      sim <- phangorn::simSeq(
+        tree, l = length(sel), Q = Q, bf = bf, type = "DNA",
         rate = site.rate.categories[[k]]$rate
       )
+      a <- as.character(sim)
+      seg.align[rownames(a), sel] <- a
     }
-    sim   <- if (length(cat.sims) == 1) cat.sims[[1]] else do.call(c, cat.sims)
-    align <- as.character(sim)
 
     for (tip in tree$tip.label) {
-      tip.seqs[[tip]] <- c(tip.seqs[[tip]], align[tip, ])
+      tip.seqs[[tip]] <- c(tip.seqs[[tip]], seg.align[tip, ])
     }
   }
 
-  vapply(tip.seqs, paste, collapse = "", FUN.VALUE = character(1))
+  out <- vapply(tip.seqs, paste, collapse = "", FUN.VALUE = character(1))
+  if (any(nchar(out) != genome.len)) {
+    stop("simulate.sequences: not every tip appears in every segment tree ",
+         "(expected ", genome.len, " sites per tip)")
+  }
+  out
 }

@@ -38,3 +38,38 @@ test_that("simulate.sequences errors on a segment with no valid tree", {
   )
   expect_error(simulate.sequences(resolved), regexp = "no valid tree")
 })
+
+test_that("simulate.sequences is reproducible with a seed and returns full-length sequences", {
+  skip_if_not_installed("phangorn")
+  set.seed(42)
+  t1 <- ape::rtree(6, tip.label = paste0("t", 1:6))
+  t2 <- ape::rtree(6, tip.label = paste0("t", 1:6))
+  resolved <- list(local.trees = list(
+    list(start = 1L, end = 40L, phylo = t1),
+    list(start = 41L, end = 100L, phylo = t2)))
+  a <- simulate.sequences(resolved, mu = 0.05, seed = 1)
+  b <- simulate.sequences(resolved, mu = 0.05, seed = 1)
+  expect_identical(a, b)
+  expect_true(all(nchar(a) == 100))
+  expect_setequal(names(a), paste0("t", 1:6))
+})
+
+test_that("simulate.sequences errors when a tip is missing from a segment tree", {
+  skip_if_not_installed("phangorn")
+  set.seed(42)
+  t1 <- ape::rtree(6, tip.label = paste0("t", 1:6))
+  resolved <- list(local.trees = list(
+    list(start = 1L, end = 50L, phylo = t1),
+    list(start = 51L, end = 100L, phylo = ape::drop.tip(t1, "t6"))))
+  expect_error(simulate.sequences(resolved, mu = 0.05, seed = 1), "not every tip")
+})
+
+test_that("simulate.sequences errors when segments do not tile the genome", {
+  skip_if_not_installed("phangorn")
+  set.seed(42)
+  t1 <- ape::rtree(6, tip.label = paste0("t", 1:6))
+  resolved <- list(local.trees = list(
+    list(start = 1L, end = 40L, phylo = t1),
+    list(start = 51L, end = 100L, phylo = t1)))
+  expect_error(simulate.sequences(resolved, mu = 0.05, seed = 1), "tile")
+})
