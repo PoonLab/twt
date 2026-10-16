@@ -94,6 +94,10 @@ Host <- R6Class(
     # touched, so they're never materialized -- just counted as
     # pool.size - n.active. New slot ids are generated on demand rather
     # than pre-numbered 1..n.
+    #
+    # The pool is initialized when the host is activated, and from then on
+    # we follow lineages in the host backward in time (from sampling toward
+    # infection).
     init.pool = function(n) {
       if (is.null(private$pool.size)) {
         if (!is.numeric(n) || length(n) != 1 || is.na(n) ||
