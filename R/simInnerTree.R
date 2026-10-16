@@ -327,6 +327,110 @@ sim.inner.tree <- function(outer) {
 }
 
 
+#' Merge two Pathogen lineages in a Host into a single ancestor (one binary
+#' coalescent event), updating the lineage pool and the inner event log.
+#' p1 and p2 must already have been removed from the Host.
+#'
+#' @param host:  R6 object of class `Host`
+#' @param inner:  R6 object of class `InnerTree`
+#' @param time:  numeric, time of the event
+#' @param p1,p2:  R6 objects of class `Pathogen`
+#' @param add:  bool, if TRUE then add the ancestor to the Host
+#' @return the ancestor Pathogen
+#'
+#' @keywords internal
+#' @noRd
+.coalesce.pair <- function(host, inner, time, p1, p2, add=TRUE) {
+  comp <- host$get.compartment()
+  p1$set.start.time(time)
+  p2$set.start.time(time)
+
+  anc <- inner$new.pathogen(time)  # sets end.time
+
+  # reconcile the lineage pool: the ancestor represents the same
+  # physical individual as whichever of p1/p2 already occupied a pool
+  # slot (from a prior recombination event). If both occupied slots,
+  # keep one for the ancestor and free the other -- two active
+  # lineages coalescing means one fewer active individual going
+  # forward. If neither occupied a slot, this coalescence never
+  # touched the pool, so the ancestor stays unassigned too.
+  p1.slot <- p1$get.slot.id()
+  p2.slot <- p2$get.slot.id()
+  if (!is.na(p1.slot)) {
+    anc$set.slot.id(p1.slot)
+    host$activate.slot(p1.slot, anc)
+    if (!is.na(p2.slot) && p2.slot != p1.slot) {
+      host$deactivate.slot(p2.slot)
+    }
+  } else if (!is.na(p2.slot)) {
+    anc$set.slot.id(p2.slot)
+    host$activate.slot(p2.slot, anc)
+  }
+
+  if (add) host$add.pathogen(anc)
+
+  # assign ancestral/descendant relations
+  anc$add.child(p1)
+  anc$add.child(p2)
+  p1$set.parent(anc)
+  p2$set.parent(anc)
+
+  # update inner log
+  event <- list(
+    time=time, event='coalescent', from.comp=comp, to.comp=NA,
+    from.host=host$get.name(), to.host=NA,
+    pathogen1=anc$get.name(), pathogen2=p1$get.name()
+  )
+  inner$add.event(event)
+  event$pathogen2 <- p2$get.name()
+  inner$add.event(event)
+
+  anc
+}
+
+
+#' Transmission bottleneck of two or more with several active lineages.
+#'
+#' Going backwards in time, each active lineage in the recipient picks, at
+#' random, which of the [size] transmitted lineages it descends from
+#' (issue 185).  Lineages that pick the same transmitted lineage are merged
+#' into one ancestor; transmitted lineages that no active lineage picks are
+#' not ancestral to anything tracked and are ignored.  Every active lineage
+#' therefore has an ancestor.  A bottleneck of one is handled by the
+#' pairwise loop in .do.coalescent instead.
+#'
+#' @param host:  R6 object of class `Host`
+#' @param inner:  R6 object of class `InnerTree`
+#' @param time:  numeric, time of the transmission
+#' @param size:  numeric, bottleneck size (2 or more)
+#'
+#' @keywords internal
+#' @noRd
+.do.bottleneck <- function(host, inner, time, size) {
+  k <- host$count.pathogens()
+  if (k < 2) return(invisible(NULL))
+
+  # take every active lineage out of the Host
+  paths <- vector("list", k)
+  for (i in seq_len(k)) paths[[i]] <- host$remove.pathogen(1)
+
+  # each active lineage picks which transmitted lineage it descends from
+  pick <- sample.int(size, k, replace=TRUE)
+
+  for (g in unique(pick)) {
+    grp <- paths[pick == g]
+    while (length(grp) > 1) {
+      i <- sample.int(length(grp), 2)
+      anc <- .coalesce.pair(host, inner, time, grp[[i[1]]], grp[[i[2]]],
+                            add=FALSE)
+      grp <- c(grp[-i], list(anc))
+    }
+    host$add.pathogen(grp[[1]])
+  }
+  invisible(NULL)
+}
+
+
 #' .do.coalescent
 #'
 #' A coalescent event is the merging of two Pathogen lineages to their
@@ -375,53 +479,17 @@ sim.inner.tree <- function(outer) {
     }
   }
 
+  if (bottleneck && size >= 2) {
+    # bottleneck of two or more: each active lineage picks one of the
+    # transmitted lineages as its ancestor (issue 185)
+    .do.bottleneck(host, inner, time, size)
+    return(invisible(NULL))
+  }
+
   while (count > size) {
     p1 <- host$sample.pathogen(remove=TRUE)
-    p1$set.start.time(time)
-
     p2 <- host$sample.pathogen(remove=TRUE)
-    p2$set.start.time(time)
-
-    anc <- inner$new.pathogen(time)  # sets end.time
-
-    # reconcile the lineage pool: the ancestor represents the same
-    # physical individual as whichever of p1/p2 already occupied a pool
-    # slot (from a prior recombination event). If both occupied slots,
-    # keep one for the ancestor and free the other -- two active
-    # lineages coalescing means one fewer active individual going
-    # forward. If neither occupied a slot, this coalescence never
-    # touched the pool, so the ancestor stays unassigned too.
-    p1.slot <- p1$get.slot.id()
-    p2.slot <- p2$get.slot.id()
-    if (!is.na(p1.slot)) {
-      anc$set.slot.id(p1.slot)
-      host$activate.slot(p1.slot, anc)
-      if (!is.na(p2.slot) && p2.slot != p1.slot) {
-        host$deactivate.slot(p2.slot)
-      }
-    } else if (!is.na(p2.slot)) {
-      anc$set.slot.id(p2.slot)
-      host$activate.slot(p2.slot, anc)
-    }
-
-    host$add.pathogen(anc)
-
-    # assign ancestral/descendant relations
-    anc$add.child(p1)
-    anc$add.child(p2)
-    p1$set.parent(anc)
-    p2$set.parent(anc)
-
-    # update inner log
-    event <- list(
-      time=time, event='coalescent', from.comp=comp, to.comp=NA,
-      from.host=host$get.name(), to.host=NA,
-      pathogen1=anc$get.name(), pathogen2=p1$get.name()
-    )
-    inner$add.event(event)
-    event$pathogen2 <- p2$get.name()
-    inner$add.event(event)
-
+    .coalesce.pair(host, inner, time, p1, p2)
     count <- host$count.pathogens()  # update count
   }
 }
