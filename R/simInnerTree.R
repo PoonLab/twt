@@ -389,6 +389,48 @@ sim.inner.tree <- function(outer) {
 }
 
 
+#' Transmission bottleneck of two or more with several active lineages.
+#'
+#' Going backwards in time, each active lineage in the recipient picks, at
+#' random, which of the [size] transmitted lineages it descends from
+#' (issue 185).  Lineages that pick the same transmitted lineage are merged
+#' into one ancestor; transmitted lineages that no active lineage picks are
+#' not ancestral to anything tracked and are ignored.  Every active lineage
+#' therefore has an ancestor.  A bottleneck of one is handled by the
+#' pairwise loop in .do.coalescent instead.
+#'
+#' @param host:  R6 object of class `Host`
+#' @param inner:  R6 object of class `InnerTree`
+#' @param time:  numeric, time of the transmission
+#' @param size:  numeric, bottleneck size (2 or more)
+#'
+#' @keywords internal
+#' @noRd
+.do.bottleneck <- function(host, inner, time, size) {
+  k <- host$count.pathogens()
+  if (k < 2) return(invisible(NULL))
+
+  # take every active lineage out of the Host
+  paths <- vector("list", k)
+  for (i in seq_len(k)) paths[[i]] <- host$remove.pathogen(1)
+
+  # each active lineage picks which transmitted lineage it descends from
+  pick <- sample.int(size, k, replace=TRUE)
+
+  for (g in unique(pick)) {
+    grp <- paths[pick == g]
+    while (length(grp) > 1) {
+      i <- sample.int(length(grp), 2)
+      anc <- .coalesce.pair(host, inner, time, grp[[i[1]]], grp[[i[2]]],
+                            add=FALSE)
+      grp <- c(grp[-i], list(anc))
+    }
+    host$add.pathogen(grp[[1]])
+  }
+  invisible(NULL)
+}
+
+
 #' .do.coalescent
 #'
 #' A coalescent event is the merging of two Pathogen lineages to their
@@ -435,6 +477,13 @@ sim.inner.tree <- function(outer) {
       expr <- inner$get.model()$get.bottleneck.size(comp)
       size <- eval(parse(text=expr), envir=envir)
     }
+  }
+
+  if (bottleneck && size >= 2) {
+    # bottleneck of two or more: each active lineage picks one of the
+    # transmitted lineages as its ancestor (issue 185)
+    .do.bottleneck(host, inner, time, size)
+    return(invisible(NULL))
   }
 
   while (count > size) {
