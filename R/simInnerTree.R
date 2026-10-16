@@ -1,50 +1,50 @@
 #' sim.inner.tree
-#' 
-#' Simulate the coalescence of Pathogen lineages within Hosts, and resolve 
+#'
+#' Simulate the coalescence of Pathogen lineages within Hosts, and resolve
 #' superinfection events that may involve sampled lineages.
-#' 
+#'
 #' @param outer:  R6 object of class `OuterTree`
-#' 
+#'
 #' @return R6 object of class `InnerTree`
 #' @export
 sim.inner.tree <- function(outer) {
   if ( !is.R6(outer) | !is.element("OuterTree", class(outer)) ) {
     stop("Input argument must be an R6 object of class `OuterTree`")
   }
-  
+
   inner <- InnerTree$new(outer)
   mod <- inner$get.model()
   active <- inner$get.active()
   inactive <- inner$get.inactive()
-  
+
   env <- new.env()  # to instantiate bottleneck/coalescence expressions
   eval(parse(text="require(stats)"), envir=env)
-  
+
   # iterate through events in outer tree in reverse time (most recent first)
   events <- outer$get.log()
   events$time <- as.numeric(events$time)
   events <- events[order(events$time, decreasing=TRUE), ]
-  
+
   time.delta <- -diff(events$time)  # time to next event
   row <- 1
   p.index <- 1  # uniquely label Pathogens
-  
+
   while (row <= nrow(events)) {
     e <- events[row, ]
     t.delta <-  ifelse(row==1, NA, time.delta[row-1])
-    
+
     # check if coalescence occurs before next event
     if (row > 1 & inner$n.active() > 0) {
       wait.time <- .rcoal(active, mod, env)
       if ( !all(is.na(wait.time)) ) {
         if ( wait.time$dt < t.delta ) {
-          t.delta <- t.delta - wait.time$dt 
+          t.delta <- t.delta - wait.time$dt
           .do.coalescent(wait.time$host, inner, e$time + t.delta, envir=env)
           next
         }
-      } 
+      }
     }
-    
+
     # otherwise no coalescence, handle the event
     if (e$event == "migration") {
       if ( inner$has.target(e$to.comp) ) {
@@ -53,21 +53,21 @@ sim.inner.tree <- function(outer) {
       } else {
         # record the migration event for any Pathogens carried by the Host
         .migrate.pathogens(e, inner)
-      } 
+      }
     } else if (e$event == "transmission") {
       .do.infection(e, inner, envir=env)
     }
-    
+
     row <- row + 1  # go to next event
   }
-  
+
   count <- active$count.type()
   if (count > 1) {
     warning("Multiple (", count, ") hosts remain in active HostSet at end of ",
             "simulation.")
   } else if (count == 0) {
     warning("Empty active HostSet at end of simulation!")
-    
+
   } else {
     # finish coalescence in last host
     root <- active$get.hosts()[[1]]
@@ -78,7 +78,7 @@ sim.inner.tree <- function(outer) {
       .do.coalescent(root$get.name(), inner, cur.time)
     }
   }
-  
+
   return(inner)
 }
 
@@ -102,14 +102,14 @@ sim.inner.tree <- function(outer) {
     choose(k, 2) * rate
   })
   names(rates) <- active$get.names()
-  
+
   total.rate <- sum(rates)
   if (total.rate == 0) return(NA)
-  
+
   dt     <- rexp(1, total.rate)
   u      <- runif(1) * total.rate
   chosen <- which(cumsum(rates) >= u)[1]
-  
+
   return(list(dt=dt, host=names(rates)[chosen]))
 }
 
@@ -124,13 +124,13 @@ sim.inner.tree <- function(outer) {
   host <- sampled$get.host.by.name(e$from.host, remove=TRUE)
   active <- inner$get.active()
   active$add.host(host)
-  
+
   # create a Pathogen and link to sampled Host
   path <- inner$new.pathogen(e$time)
   host$add.pathogen(path)
-  
+
   event <- list(
-    time=e$time, event='sampling', 
+    time=e$time, event='sampling',
     from.comp=e$from.comp, to.comp=e$to.comp,
     from.host=host$get.name(), to.host=NA,
     pathogen1=path$get.name(), pathogen2=NA
@@ -140,38 +140,44 @@ sim.inner.tree <- function(outer) {
 
 
 #' .do.infection
-#' 
-#' Transfer Pathogen from one Host to another.  If this is the first infection 
-#' of the recipient Host, and it carries multiple Pathogens, then do a 
-#' bottleneck.  If it is a subsequent infection (superinfection), one of the 
+#'
+#' Transfer Pathogen from one Host to another.  If this is the first infection
+#' of the recipient Host, and it carries multiple Pathogens, then do a
+#' bottleneck.  If it is a subsequent infection (superinfection), one of the
 #' Pathogens is transferred with probability equal to the coalescence rate.
-#' 
-#' We assume that superinfection samples [b.size] Pathogens from 
-#' a population of [p.size] at random without replacement.  [count] of 
-#' these are actively tracked lineages, so 0, 1, ..., [bsize] of them 
-#' may be transferred to the super-infecting source Host.  It is possible 
-#' that all active lineages are transferred at this event, leaving none 
-#' for the first transmission to this Host, in which case the Host is 
+#'
+#' We assume that superinfection samples [b.size] Pathogens from
+#' a population of [p.size] at random without replacement.  [count] of
+#' these are actively tracked lineages, so 0, 1, ..., [bsize] of them
+#' may be transferred to the super-infecting source Host.  It is possible
+#' that all active lineages are transferred at this event, leaving none
+#' for the first transmission to this Host, in which case the Host is
 #' deactivated.
-#' 
+#'
 #' @param e:  row from outer event log
 #' @param inner:  R6 object of class `InnerTree`
+#' @param host.profiles:  optional named list from
+#'   .compute.recomb.free.hosts (simARG.R), keyed by host name. When the
+#'   recipient's entry has a non-NULL bottleneck.size, that precomputed
+#'   value is reused for the first-infection bottleneck below instead of
+#'   re-evaluating the (possibly random) bottleneck-size expression a
+#'   second time.
 #' @return R6 object of class `Host` if it is empty (no more Pathogens)
-#' 
+#'
 #' @keywords internal
 #' @noRd
-.do.infection <- function(e, inner, envir=baseenv()) {
+.do.infection <- function(e, inner, envir=baseenv(), host.profiles=NULL) {
   active <- inner$get.active()
   inactive <- inner$get.inactive()
-  
+
   suppressWarnings(
-    recipient <- active$get.host.by.name(e$to.host)  
+    recipient <- active$get.host.by.name(e$to.host)
   )
   if (is.null(recipient)) {
     # host was de-activated when last Pathogen was moved out by superinfection
     return(FALSE)
   }
-  
+
   # source may or may not be an active Host
   source.is.active <- TRUE
   suppressWarnings({
@@ -181,80 +187,127 @@ sim.inner.tree <- function(outer) {
       source.is.active <- FALSE
     }
   })
-  
+
   # prepare log entry
   event <- list(
-    time=e$time, event='transmission', 
+    time=e$time, event='transmission',
     from.comp=e$src.comp, to.comp=e$to.comp,
     from.host=e$from.host, to.host=e$to.host,
     pathogen1=NA, pathogen2=NA
   )
-  
+
   is.infected <- inner$get.model()$get.infected()
-  
+
   if (is.infected[[e$from.comp]]) {
     # superinfection
     count <- recipient$count.pathogens()
-    
+
     # determine bottleneck and population sizes
     expr <- inner$get.model()$get.bottleneck.size(e$to.comp)
     b.size <- eval(parse(text=expr), envir=envir)
     expr <- inner$get.model()$get.pop.size(e$to.comp)
     p.size <- eval(parse(text=expr), envir=envir)
-    
+
+    if (count > p.size) {
+      # count (n.active.lineages) is tracked ancestral segment/lineage
+      # objects, not necessarily distinct physical genomes -- once
+      # recombination is active, lineage count can legitimately exceed
+      # the population's census size, and the correct relationship
+      # between the two is not yet resolved (see issue tracker: rhyper()
+      # here implicitly assumes count occupies count distinct slots
+      # among p.size exchangeable individuals, which breaks once one
+      # genome can carry several ancestral segments). Fail loudly with
+      # a clear diagnostic rather than silently capping or crashing on
+      # an opaque NA, until the bottleneck/occupancy model is revisited.
+      stop(sprintf(
+        "Tracked lineage count (%d) exceeds pathogen population size (%d) ",
+        count, p.size),
+        "in host ", recipient$get.name(), " at time ", e$time, ". ",
+        "This means more ancestral lineages/segments are being tracked ",
+        "than the model's nominal population size anticipates (likely ",
+        "from recombination). The bottleneck sampling here assumes ",
+        "count occupies count distinct slots among p.size individuals, ",
+        "which is not valid once lineage count and physical individual ",
+        "count can diverge -- needs a proper occupancy/carrier model, ",
+        "not a silent cap.")
+    }
     n.transfer <- rhyper(1, count, p.size-count, b.size)
     if (n.transfer > 0) {
       for (i in 1:n.transfer) {
         path <- recipient$remove.pathogen(1)
+        if (!is.na(path$get.slot.id()) && recipient$is.pool.initialized()) {
+          recipient$deactivate.slot(path$get.slot.id())
+        }
+        path$set.slot.id(NA)
         source$add.pathogen(path)
         event$pathogen1 <- path$get.name()
         inner$add.event(event)
       }
       if (!source.is.active) { active$add.host(source) }
-      
+
     } else {
       # no Pathogens transferred: only restore to inactive HostSet if
       # source was pulled from inactive in the first place -- if it was
       # already active (e.g. still infecting others), it must stay active
       if (!source.is.active) { inactive$add.host(source) }
     }
-    
+
   } else {
     # first infection
-    
+
     if (recipient$count.pathogens() > 1) {
-      # bottleneck remaining Pathogen lineages
-      .do.coalescent(recipient$get.name(), inner, e$time, bottleneck=TRUE, 
-                     envir=envir)
+      # bottleneck remaining Pathogen lineages -- reuse the bottleneck
+      # size precomputed by .compute.recomb.free.hosts (skip.recomb.free)
+      # when available, rather than re-evaluating the (possibly random)
+      # bottleneck-size expression a second time, which would consume an
+      # extra RNG draw and could give an inconsistent value.
+      preset <- NULL
+      if (!is.null(host.profiles)) {
+        preset <- host.profiles[[e$to.host]]$bottleneck.size
+      }
+      .do.coalescent(recipient$get.name(), inner, e$time, bottleneck=TRUE,
+                     envir=envir, preset.bottleneck.size=preset)
     }
-    
+
     # move remaining Pathogens from recipient to source
     count <- recipient$count.pathogens()
     if (count > 0) {
       for (i in 1:count) {
         path <- recipient$remove.pathogen(1)
+        # backward in time, this pathogen's old slot in recipient
+        # must be freed -- otherwise repeated superinfection transfers
+        # leave the pool bookkeeping stale (slots marked active forever
+        # even though their occupant left), eventually starving future
+        # recombination events of any slot that correctly registers as
+        # free. Reset the pathogen's own slot.id too, since slot ids are
+        # host-local -- it gets a fresh one lazily if/when it's ever
+        # involved in a recombination event in its NEW host.
+        if (!is.na(path$get.slot.id()) && recipient$is.pool.initialized()) {
+          recipient$deactivate.slot(path$get.slot.id())
+        }
+        path$set.slot.id(NA)
         source$add.pathogen(path)
         event$pathogen1 <- path$get.name()  # copy-on-modify
         inner$add.event(event)
       }
     }
-    
+
     if (!source.is.active) { active$add.host(source) }
   }
-  
+
   # deactivate if Host is empty
   if (recipient$count.pathogens() == 0) {
     host <- active$remove.host(recipient)
     inactive$add.host(host)
   }
-  
+
   return(TRUE)
 }
 
 
-#' Propagate an outer tree migration event to every Pathogen carried by 
+#' Propagate an outer tree migration event to every Pathogen carried by
 #' the affected Host, updating the inner event log.
-#' 
+#'
 #' @param e:  row from outer event log
 #' @param inner:  R6 object of class `InnerTree`
 #' @keywords internal
@@ -264,7 +317,7 @@ sim.inner.tree <- function(outer) {
   host <- active$get.host.by.name(e$from.host)
   for (path in host$get.pathogens()) {
     event <- list(
-      time=e$time, event='migration', 
+      time=e$time, event='migration',
       from.comp=e$from.comp, to.comp=e$to.comp,
       from.host=host$get.name(), to.host=NA,
       pathogen1=path$get.name(), pathogen2=NA
@@ -275,60 +328,90 @@ sim.inner.tree <- function(outer) {
 
 
 #' .do.coalescent
-#' 
-#' A coalescent event is the merging of two Pathogen lineages to their 
-#' common ancestor.  To facilitate subsequent steps, both Pathogens are 
-#' replaced by a new Pathogen representing their ancestor.  This function is 
-#' also used to handle transmission bottlenecks, which are associated with 
+#'
+#' A coalescent event is the merging of two Pathogen lineages to their
+#' common ancestor.  To facilitate subsequent steps, both Pathogens are
+#' replaced by a new Pathogen representing their ancestor.  This function is
+#' also used to handle transmission bottlenecks, which are associated with
 #' the first event for the recipient Host.
-#' 
+#'
 #' @param host.name:  character, name of Host for coalescence
 #' @param inner:  R6 object of class `InnerTree`
-#' @param time:  numeric, time of event in simulation time, to update 
+#' @param time:  numeric, time of event in simulation time, to update
 #'               Pathogen start.time or end.time
-#' @param bottleneck:  bool, if TRUE then determine bottleneck size and 
+#' @param bottleneck:  bool, if TRUE then determine bottleneck size and
 #'                     coalesce all Pathogens to that size
 #' @param envir:  environment, for evaluating bottleneck size expression
 #'                (defaults to base env)
-#' 
+#' @param preset.bottleneck.size:  optional numeric. When bottleneck=TRUE
+#'   and this is not NULL, it is used directly as the bottleneck size
+#'   instead of evaluating the model's bottleneck-size expression again
+#'   (see .do.infection / skip.recomb.free) -- avoids a second, possibly
+#'   inconsistent random draw when the caller already computed it.
+#'
 #' @keywords internal
 #' @noRd
 .do.coalescent <- function(host.name, inner, time, bottleneck=FALSE,
-                           envir=baseenv()) {
+                           envir=baseenv(), preset.bottleneck.size=NULL) {
   active <- inner$get.active()
   host <- active$get.host.by.name(host.name)
   comp <- host$get.compartment()
-  
+
   count <- host$count.pathogens()
   if (count < 2) {
-    warning("Cannot coalesce fewer than two Pathogens in Host ", 
+    warning("Cannot coalesce fewer than two Pathogens in Host ",
             host$get.name())
     return(NULL)
   }
-  
+
   size <- count - 1  # default to single coalescent event
   if (bottleneck) {
-    # determine bottleneck size
-    expr <- inner$get.model()$get.bottleneck.size(comp)
-    size <- eval(parse(text=expr), envir=envir)
+    if (!is.null(preset.bottleneck.size)) {
+      size <- preset.bottleneck.size
+    } else {
+      # determine bottleneck size
+      expr <- inner$get.model()$get.bottleneck.size(comp)
+      size <- eval(parse(text=expr), envir=envir)
+    }
   }
-  
+
   while (count > size) {
     p1 <- host$sample.pathogen(remove=TRUE)
     p1$set.start.time(time)
-    
+
     p2 <- host$sample.pathogen(remove=TRUE)
     p2$set.start.time(time)
-    
+
     anc <- inner$new.pathogen(time)  # sets end.time
+
+    # reconcile the lineage pool: the ancestor represents the same
+    # physical individual as whichever of p1/p2 already occupied a pool
+    # slot (from a prior recombination event). If both occupied slots,
+    # keep one for the ancestor and free the other -- two active
+    # lineages coalescing means one fewer active individual going
+    # forward. If neither occupied a slot, this coalescence never
+    # touched the pool, so the ancestor stays unassigned too.
+    p1.slot <- p1$get.slot.id()
+    p2.slot <- p2$get.slot.id()
+    if (!is.na(p1.slot)) {
+      anc$set.slot.id(p1.slot)
+      host$activate.slot(p1.slot, anc)
+      if (!is.na(p2.slot) && p2.slot != p1.slot) {
+        host$deactivate.slot(p2.slot)
+      }
+    } else if (!is.na(p2.slot)) {
+      anc$set.slot.id(p2.slot)
+      host$activate.slot(p2.slot, anc)
+    }
+
     host$add.pathogen(anc)
-    
+
     # assign ancestral/descendant relations
     anc$add.child(p1)
     anc$add.child(p2)
     p1$set.parent(anc)
     p2$set.parent(anc)
-    
+
     # update inner log
     event <- list(
       time=time, event='coalescent', from.comp=comp, to.comp=NA,
@@ -338,7 +421,7 @@ sim.inner.tree <- function(outer) {
     inner$add.event(event)
     event$pathogen2 <- p2$get.name()
     inner$add.event(event)
-    
+
     count <- host$count.pathogens()  # update count
   }
 }

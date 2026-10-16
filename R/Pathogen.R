@@ -41,6 +41,8 @@ Pathogen <- R6Class(
     # immutable attributes
     get.name = function() { private$name },
     get.end.time = function() { private$end.time },
+    get.slot.id = function() { private$slot.id },
+    set.slot.id = function(id) { private$slot.id <- id },
     
     # mutables
     get.start.time = function() { private$start.time },
@@ -78,6 +80,7 @@ Pathogen <- R6Class(
     end.time = NULL,
     parents = NULL,
     children = NULL,
-    breakpoint = NULL
+    breakpoint = NULL,
+    slot.id = NA
   )
 )
