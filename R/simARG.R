@@ -100,25 +100,37 @@
 #' single ancestor (MRCA per segment).
 #'
 #' @param outer  R6 object of class `OuterTree`
-#' @param rho    numeric, recombination rate per lineage per unit time
-#' @param seq.length  integer, genome length in bp (for breakpoint sampling)
+#' @param rho    numeric, genome-level recombination rate: expected number of
+#'   recombination events per lineage per unit time across the whole genome
+#'   (not per nucleotide). Each event places one breakpoint uniformly along
+#'   the genome. Cannot be combined with `rho.per.site`.
+#' @param seq.length  integer, genome length in bp (for breakpoint sampling,
+#'   and to convert a per-nucleotide rate to a genome-level rate)
 #' @param skip.recomb.free  logical, if TRUE precompute which hosts can
 #'   never have recombination observed in their sampled descendants
 #'   (complete bottleneck, no superinfection, at most one sampled tip) and
 #'   skip drawing recombination events for those hosts entirely. Default
 #'   FALSE preserves exact prior behaviour/RNG stream.
+#' @param rho.per.site  numeric, per-nucleotide recombination rate per lineage
+#'   per unit time. The genome-level rate is rho.per.site * seq.length, so the
+#'   same value describes the same biology for any seq.length. If NULL (the
+#'   default) and `rho` is not given, the model YAML is checked for
+#'   `Parameters: rho.per.site`; if that is absent too, `rho` is used.
 #'
 #' @return R6 object of class `InnerTree` (ARG events recorded in log)
 #' @export
 sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L,
                      skip.recomb.free = FALSE,
-                     bidirectional.recomb = TRUE) {
+                     bidirectional.recomb = TRUE,
+                     rho.per.site = NULL) {
   if (!is.R6(outer) || !is.element("OuterTree", class(outer))) {
     stop("Input argument must be an R6 object of class `OuterTree`")
   }
 
   inner <- InnerTree$new(outer)
   mod   <- inner$get.model()
+  rho.given <- !missing(rho)
+  rho <- .resolve.rho(rho, rho.given, rho.per.site, seq.length, mod)
   active   <- inner$get.active()
   inactive <- inner$get.inactive()
 
@@ -547,4 +559,38 @@ resolve.arg <- function(arg.result, seq.length = 9000L) {
     local.trees = local.trees,
     breakpoints = bps
   ))
+}
+
+
+# Resolve the genome-level recombination rate (events per lineage per unit
+# time) used by sim.arg. Order of precedence:
+#   1. `rho.per.site` argument: per-nucleotide rate, times seq.length
+#   2. `rho` argument, if the caller supplied it: already genome-level
+#   3. `Parameters: rho.per.site` in the model YAML: per-nucleotide rate
+#   4. the default genome-level `rho`
+# The multiplier is seq.length (not seq.length - 1): reported rates are
+# normalized by genome length.
+#' @keywords internal
+#' @noRd
+.resolve.rho <- function(rho, rho.given, rho.per.site, seq.length, mod) {
+  check <- function(x, what) {
+    if (!is.numeric(x) || length(x) != 1 || is.na(x) || x < 0) {
+      stop(what, " must be a single non-negative number")
+    }
+  }
+  if (!is.null(rho.per.site)) {
+    if (rho.given) {
+      stop("Specify either rho (per genome) or rho.per.site (per nucleotide), ",
+           "not both")
+    }
+    check(rho.per.site, "rho.per.site")
+    return(rho.per.site * seq.length)
+  }
+  if (rho.given) return(rho)
+  yaml.rate <- mod$get.parameters()$rho.per.site
+  if (!is.null(yaml.rate)) {
+    check(yaml.rate, "Parameters: rho.per.site")
+    return(yaml.rate * seq.length)
+  }
+  rho
 }
