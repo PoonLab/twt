@@ -217,3 +217,45 @@ test_that("time variable is available", {
   # plotting is better but I have not figured out an easy way to 
   # demonstrate that the residuals of the second model are cleanly sinusoidal
 })
+
+fresh.settings <- function() yaml.load_file("test_SIR.yaml")
+
+# --- sim.dynamics -----------------------------------------------------------
+
+test_that("sim.dynamics requires a Model object", {
+  expect_error(sim.dynamics("not a model"),
+               "input `mod` must be an R6 object of class `Model`",
+               fixed = TRUE)
+  expect_error(sim.dynamics(Pathogen$new(name = "a")),
+               "input `mod` must be an R6 object of class `Model`",
+               fixed = TRUE)
+})
+
+test_that("sim.dynamics warns when the sample-size target is never reached", {
+  s <- fresh.settings()
+  s$Sampling$targets <- list(I_samp = 1e6)   # impossible in the available time
+  mod <- Model$new(s)
+  set.seed(1)
+  expect_warning(
+    suppressMessages(sim.dynamics(mod, max.attempts = 2)),
+    "All attempts failed with insufficient sample size"
+  )
+})
+
+test_that("sim.dynamics reports each failed attempt", {
+  s <- fresh.settings()
+  s$Sampling$targets <- list(I_samp = 1e6)
+  mod <- Model$new(s)
+  set.seed(1)
+  expect_message(
+    suppressWarnings(sim.dynamics(mod, max.attempts = 1)),
+    "Failed sample size requirements"
+  )
+})
+
+test_that("get.counts warns if the dynamics are already counted", {
+  mod <- Model$new(fresh.settings())
+  set.seed(1)
+  dyn <- sim.dynamics(mod, counted = TRUE)
+  expect_warning(get.counts(dyn), "already counted")
+})
