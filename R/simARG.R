@@ -588,6 +588,10 @@ resolve.arg <- function(arg.result, seq.length = 9000L) {
   }
   if (rho.given) return(rho)
   yaml.rate <- mod$get.parameters()$rho.per.site
+  if (is.character(yaml.rate)) {
+    # YAML 1.1 reads e.g. 1e-8 (no decimal point) as text; "fast" stays NA
+    yaml.rate <- suppressWarnings(as.numeric(yaml.rate))
+  }
   if (!is.null(yaml.rate)) {
     check(yaml.rate, "Parameters: rho.per.site")
     return(yaml.rate * seq.length)

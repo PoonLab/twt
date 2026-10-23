@@ -60,3 +60,12 @@ test_that("invalid per-nucleotide rates are rejected", {
 test_that("a zero per-nucleotide rate gives no recombination", {
   expect_equal(.resolve.rho(1e-4, FALSE, 0, 9000L, mock.model()), 0)
 })
+
+
+test_that("a YAML rate written as text, like 1e-8, is read as a number", {
+  rho <- .resolve.rho(1e-4, FALSE, NULL, 9000L, mock.model(rho.per.site = "1e-8"))
+  expect_equal(rho, 1e-8 * 9000)
+  expect_error(.resolve.rho(1e-4, FALSE, NULL, 9000L,
+                            mock.model(rho.per.site = "fast")),
+               regexp = "rho.per.site")
+})
