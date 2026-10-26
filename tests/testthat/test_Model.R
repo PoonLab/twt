@@ -114,3 +114,135 @@ test_that("Reject misspecified model", {
   expect_error(f(set1), regexp="must be a positive integer")
   
 })
+
+fresh.settings <- function() yaml.load_file("test_SIR.yaml")
+
+# --- Model: unrecognized compartment names ----------------------------------
+
+test_that("Model getters warn and return NULL for unknown compartments", {
+  mod <- Model$new(fresh.settings())
+  expect_warning(res <- mod$get.bottleneck.size("nope"),
+                 "Unrecognized compartment name")
+  expect_null(res)
+  expect_warning(res <- mod$get.coalescent.rate("nope"),
+                 "Unrecognized compartment name")
+  expect_null(res)
+  expect_warning(res <- mod$get.pop.size("nope"),
+                 "Unrecognized compartment name")
+  expect_null(res)
+})
+
+
+# --- Model: compartment validation ------------------------------------------
+
+test_that("Model rejects a compartment without size or infected flag", {
+  s <- fresh.settings()
+  s$Compartments$S$size <- NULL
+  expect_error(Model$new(s), "must specify initial `size`", fixed = TRUE)
+
+  s <- fresh.settings()
+  s$Compartments$S$infected <- NULL
+  expect_error(Model$new(s), "must specify `infected`", fixed = TRUE)
+})
+
+test_that("Model rejects migration/transmission to undeclared compartments", {
+  s <- fresh.settings()
+  s$Compartments$S$migration <- list(Z = 0.1)
+  expect_error(Model$new(s), "`migration` contains undeclared Compartment",
+               fixed = TRUE)
+
+  s <- fresh.settings()
+  s$Compartments$I$transmission <- list(Z = list(I = 0.1))
+  expect_error(Model$new(s), "`transmission` contains undeclared Compartment",
+               fixed = TRUE)
+})
+
+
+# --- Model: Sampling validation ---------------------------------------------
+
+test_that("Model rejects misspecified Sampling fields", {
+  s <- fresh.settings()
+  s$Sampling$mode <- NULL
+  expect_error(Model$new(s), "'mode' is a required field", fixed = TRUE)
+
+  s <- fresh.settings()
+  s$Sampling$mode <- "bogus"
+  expect_error(Model$new(s), "not recognized", fixed = TRUE)
+
+  for (mode in c("compartment", "fraction")) {
+    s <- fresh.settings()
+    s$Sampling$mode <- mode
+    s$Sampling$targets <- NULL
+    expect_error(Model$new(s), "must specify `targets`", fixed = TRUE)
+
+    s <- fresh.settings()
+    s$Sampling$mode <- mode
+    s$Sampling$targets <- list(Z = 5)
+    expect_error(Model$new(s), "has not been declared in Compartments",
+                 fixed = TRUE)
+
+    s <- fresh.settings()
+    s$Sampling$mode <- mode
+    s$Sampling$targets <- list(I_samp = 0)
+    expect_error(Model$new(s), "must be a positive integer", fixed = TRUE)
+  }
+})
+
+test_that("a rate expression that is not numeric is rejected", {
+  s <- fresh.settings()
+  s$Compartments$I$migration$R <- "'not a number'"
+  expect_error(Model$new(s), "does not evaluate to a numeric value", fixed = TRUE)
+})
+
+test_that("birth and death must not be associative arrays", {
+  s <- fresh.settings()
+  s$Compartments$S$birth <- list(a = 1)
+  expect_error(Model$new(s), "`birth` should be a number or R expression",
+               fixed = TRUE)
+
+  s <- fresh.settings()
+  s$Compartments$S$death <- list(a = 1)
+  expect_error(Model$new(s), "`death` should be a number or R expression",
+               fixed = TRUE)
+})
+
+test_that("migration and transmission must be associative arrays", {
+  s <- fresh.settings()
+  s$Compartments$I$migration <- "gamma*I"
+  expect_error(Model$new(s), "`migration` should be an associative array",
+               fixed = TRUE)
+
+  s <- fresh.settings()
+  s$Compartments$S$transmission <- "beta*S*I"
+  expect_error(Model$new(s), "`transmission` should be an associative array",
+               fixed = TRUE)
+
+  s <- fresh.settings()
+  s$Compartments$S$transmission <- list(I = "beta*S*I")
+  expect_error(Model$new(s), "must be an associative array", fixed = TRUE)
+})
+
+test_that("bottleneck.size, coalescent.rate and pop.size must not be lists", {
+  s <- fresh.settings()
+  s$Compartments$I$bottleneck.size <- list(a = 1)
+  expect_error(Model$new(s),
+               "`bottleneck.size` should be a number or R expression",
+               fixed = TRUE)
+
+  s <- fresh.settings()
+  s$Compartments$I$coalescent.rate <- list(a = 1)
+  expect_error(Model$new(s),
+               "`coalescent.rate` should be a number or R expression",
+               fixed = TRUE)
+
+  s <- fresh.settings()
+  s$Compartments$I$pop.size <- list(a = 1)
+  expect_error(Model$new(s), "`pop.size` should be a number or R expression",
+               fixed = TRUE)
+})
+
+test_that("a compartment with no connections is rejected", {
+  s <- fresh.settings()
+  s$Compartments$Z <- list(infected = FALSE, size = 0)
+  expect_error(Model$new(s), "Isolated compartments detected", fixed = TRUE)
+})
