@@ -104,6 +104,7 @@ test_that("Pool: activate.new.slot enforces pool.size", {
 })
 
 test_that("Pool: activate.new.slot requires init.pool first", {
+  skip("Deprecated: redundant: covered by 'Pool: methods error clearly before init.pool is called'")
   h <- Host$new(compartment="I")
   expect_error(h$activate.new.slot(Pathogen$new()), "initializing")
 })

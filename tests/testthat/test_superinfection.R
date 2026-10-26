@@ -64,6 +64,7 @@ try_model <- function(path) {
 # --- .filter.firsts ---
 
 test_that(".filter.firsts: multiple infections to same host — only earliest kept", {
+  skip("Deprecated: redundant: covered by 'Filter out superinfection events' in test_OuterTree.R")
   events <- data.frame(
     time = c(1.0, 2.0, 3.0, 4.0),
     event = c("transmission", "transmission", "transmission", "migration"),
@@ -78,6 +79,7 @@ test_that(".filter.firsts: multiple infections to same host — only earliest ke
 })
 
 test_that(".filter.firsts: no superinfection — log returned unchanged", {
+  skip("Deprecated: redundant: covered by 'Filter out superinfection events' in test_OuterTree.R")
   events <- data.frame(
     time = c(1.0, 2.0, 3.0),
     event = c("transmission", "transmission", "migration"),
@@ -89,6 +91,7 @@ test_that(".filter.firsts: no superinfection — log returned unchanged", {
 })
 
 test_that(".filter.firsts: three transmissions to same host — one survives", {
+  skip("Deprecated: redundant: covered by 'Filter out superinfection events' in test_OuterTree.R")
   events <- data.frame(
     time = c(1.0, 2.5, 4.0),
     event = c("transmission", "transmission", "transmission"),
@@ -117,6 +120,7 @@ test_that(".filter.firsts: migration events preserved after filtering", {
 })
 
 test_that(".filter.firsts: unaffected hosts retain all rows after filtering", {
+  skip("Deprecated: redundant: covered by 'Filter out superinfection events' in test_OuterTree.R")
   events <- data.frame(
     time = c(1.0, 1.5, 2.0, 3.0, 4.0),
     event = c("transmission", "transmission", "transmission", "migration", "migration"),
@@ -131,6 +135,7 @@ test_that(".filter.firsts: unaffected hosts retain all rows after filtering", {
 })
 
 test_that(".filter.firsts: surviving row has correct source host (earliest donor)", {
+  skip("Deprecated: redundant: covered by 'Filter out superinfection events' in test_OuterTree.R")
   events <- data.frame(
     time = c(1.0, 2.0),
     event = c("transmission", "transmission"),
@@ -156,6 +161,7 @@ test_that(".filter.firsts: simultaneous transmissions to same host — one kept"
 })
 
 test_that(".filter.firsts: each host appears at most once as to.host after filtering", {
+  skip("Deprecated: redundant: covered by 'Filter out superinfection events' in test_OuterTree.R")
   events <- data.frame(
     time = c(1.0, 2.0, 3.0, 4.0, 5.0),
     event = rep("transmission", 5),
@@ -179,6 +185,7 @@ test_that("edge case: empty event log", {
 })
 
 test_that("edge case: single transmission passes through unchanged", {
+  skip("Deprecated: redundant: covered by 'Filter out superinfection events' in test_OuterTree.R")
   events <- data.frame(
     time = 1.0, event = "transmission",
     from.host = "H1", to.host = "H2",
@@ -206,6 +213,7 @@ test_that("edge case: all migrations — .filter.firsts returns unchanged", {
 # --- .relabel.nodes ---
 
 test_that(".relabel.nodes: errors if superinfection events still present", {
+  skip("Deprecated: redundant: covered by 'Migration events relabel nodes' in test_OuterTree.R")
   targets <- list(I_samp = 5)
   events <- data.frame(
     time = c(1.0, 2.0, 3.0),
@@ -221,6 +229,7 @@ test_that(".relabel.nodes: errors if superinfection events still present", {
 })
 
 test_that(".relabel.nodes: sampled compartment migration gets _sample suffix", {
+  skip("Deprecated: redundant: covered by 'Migration events relabel nodes' in test_OuterTree.R")
   targets <- list(I_samp = 5)
   events <- data.frame(
     time = c(1.0, 2.0),
@@ -255,6 +264,7 @@ test_that(".relabel.nodes: non-sampled migration gets numeric suffixes", {
 })
 
 test_that(".relabel.nodes: each host appears exactly once as to.host in transmissions", {
+  skip("Deprecated: redundant: covered by 'Migration events relabel nodes' in test_OuterTree.R")
   targets <- list(I_samp = 5)
   events <- data.frame(
     time = c(1.0, 2.0, 3.0),
@@ -275,6 +285,7 @@ test_that(".relabel.nodes: each host appears exactly once as to.host in transmis
 # --- compartment size invariance ---
 
 test_that("superinfection (I->I) doesn't change compartment sizes", {
+  skip("Deprecated: only checks a hand-built data frame, not package code")
   events <- data.frame(
     time = c(1.0, 2.0, 3.0),
     event = c("transmission", "transmission", "migration"),
@@ -294,6 +305,7 @@ test_that("superinfection (I->I) doesn't change compartment sizes", {
 })
 
 test_that("normal transmission (S->I) decrements S and increments I", {
+  skip("Deprecated: only checks a hand-built data frame, not package code")
   events <- data.frame(
     time = c(1.0, 2.0),
     event = c("transmission", "transmission"),
@@ -308,6 +320,7 @@ test_that("normal transmission (S->I) decrements S and increments I", {
 })
 
 test_that("superinfection doesn't increment I; normal transmission does", {
+  skip("Deprecated: only checks a hand-built data frame, not package code")
   events <- data.frame(
     time = c(1.0, 2.0, 3.0, 4.0),
     event = c("transmission", "transmission", "transmission", "migration"),
@@ -324,6 +337,7 @@ test_that("superinfection doesn't increment I; normal transmission does", {
 })
 
 test_that("zero sigma: no I->I transmission events", {
+  skip("Deprecated: only checks a hand-built data frame, not package code")
   events <- data.frame(
     time = c(1.0, 2.0, 3.0),
     event = c("transmission", "transmission", "migration"),
@@ -340,6 +354,7 @@ test_that("zero sigma: no I->I transmission events", {
 # --- host-level SI semantics ---
 
 test_that("superinfection occurs after recipient's first infection", {
+  skip("Deprecated: only checks a hand-built data frame, not package code")
   events <- data.frame(
     time = c(1.0, 3.0, 5.0),
     event = c("transmission", "transmission", "migration"),
@@ -358,6 +373,7 @@ test_that("superinfection occurs after recipient's first infection", {
 })
 
 test_that("superinfection: donor and recipient are distinct hosts", {
+  skip("Deprecated: only checks a hand-built data frame, not package code")
   events <- data.frame(
     time = c(1.0, 2.0, 3.0),
     event = c("transmission", "transmission", "migration"),
@@ -394,6 +410,7 @@ test_that("model: compartment I flagged infected=TRUE", {
 })
 
 test_that("model YAML: compartment I has size=2 and bottleneck.size=1", {
+  skip("Deprecated: checks the fixture YAML file, not package code")
   try_model(SUPERINF_INNER_PATH)
   cfg <- read_yaml(SUPERINF_INNER_PATH)
   expect_equal(cfg$Compartments$I$size, 2)
@@ -444,6 +461,7 @@ test_that("sim.outer.tree: returns OuterTree with at least one transmission even
 })
 
 test_that("sim.outer.tree: every to.host is a valid host in the log", {
+  skip("Deprecated: cannot fail: to.host is part of the set it is compared against")
   mod <- try_model(SUPERINF_PATH)
   outer <- .get_valid_outer(mod)
   if (is.null(outer)) skip("No seed produced a valid outer tree")
