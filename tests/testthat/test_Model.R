@@ -187,3 +187,62 @@ test_that("Model rejects misspecified Sampling fields", {
     expect_error(Model$new(s), "must be a positive integer", fixed = TRUE)
   }
 })
+
+test_that("a rate expression that is not numeric is rejected", {
+  s <- fresh.settings()
+  s$Compartments$I$migration$R <- "'not a number'"
+  expect_error(Model$new(s), "does not evaluate to a numeric value", fixed = TRUE)
+})
+
+test_that("birth and death must not be associative arrays", {
+  s <- fresh.settings()
+  s$Compartments$S$birth <- list(a = 1)
+  expect_error(Model$new(s), "`birth` should be a number or R expression",
+               fixed = TRUE)
+
+  s <- fresh.settings()
+  s$Compartments$S$death <- list(a = 1)
+  expect_error(Model$new(s), "`death` should be a number or R expression",
+               fixed = TRUE)
+})
+
+test_that("migration and transmission must be associative arrays", {
+  s <- fresh.settings()
+  s$Compartments$I$migration <- "gamma*I"
+  expect_error(Model$new(s), "`migration` should be an associative array",
+               fixed = TRUE)
+
+  s <- fresh.settings()
+  s$Compartments$S$transmission <- "beta*S*I"
+  expect_error(Model$new(s), "`transmission` should be an associative array",
+               fixed = TRUE)
+
+  s <- fresh.settings()
+  s$Compartments$S$transmission <- list(I = "beta*S*I")
+  expect_error(Model$new(s), "must be an associative array", fixed = TRUE)
+})
+
+test_that("bottleneck.size, coalescent.rate and pop.size must not be lists", {
+  s <- fresh.settings()
+  s$Compartments$I$bottleneck.size <- list(a = 1)
+  expect_error(Model$new(s),
+               "`bottleneck.size` should be a number or R expression",
+               fixed = TRUE)
+
+  s <- fresh.settings()
+  s$Compartments$I$coalescent.rate <- list(a = 1)
+  expect_error(Model$new(s),
+               "`coalescent.rate` should be a number or R expression",
+               fixed = TRUE)
+
+  s <- fresh.settings()
+  s$Compartments$I$pop.size <- list(a = 1)
+  expect_error(Model$new(s), "`pop.size` should be a number or R expression",
+               fixed = TRUE)
+})
+
+test_that("a compartment with no connections is rejected", {
+  s <- fresh.settings()
+  s$Compartments$Z <- list(infected = FALSE, size = 0)
+  expect_error(Model$new(s), "Isolated compartments detected", fixed = TRUE)
+})
