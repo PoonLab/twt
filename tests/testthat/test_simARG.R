@@ -13,8 +13,8 @@ RHO     <- 0.3
 }
 
 outer.tree     <- .make.outer()
-result.rho0    <- suppressWarnings(sim.arg(outer.tree, rho=0,   seq.length=SEQ.LEN))
-result.rho03   <- suppressWarnings(sim.arg(outer.tree, rho=RHO, seq.length=SEQ.LEN))
+result.rho0    <- suppressWarnings(sim.arg(outer.tree, rho.per.genome=0,   seq.length=SEQ.LEN))
+result.rho03   <- suppressWarnings(sim.arg(outer.tree, rho.per.genome=RHO, seq.length=SEQ.LEN))
 resolved.rho0  <- resolve.arg(result.rho0,  seq.length=SEQ.LEN)
 resolved.rho03 <- resolve.arg(result.rho03, seq.length=SEQ.LEN)
 
@@ -516,4 +516,29 @@ test_that(".do.recombination reuses an already-active lineage as the other paren
   expect_equal(sum(sapply(host.pathogens, function(p) p$get.name() == "P_other_active")), 1)
 
   expect_equal(length(events.logged), 2)
+})
+
+
+# ---- recombination-rate arguments
+fake.mod <- function(p = list()) list(get.parameters = function() p)
+
+test_that(".resolve.rho follows its order of precedence", {
+  m <- fake.mod()
+  expect_equal(.resolve.rho(NULL, NULL, 9000, m), 1e-4)
+  expect_equal(.resolve.rho(2e-3, NULL, 9000, m), 2e-3)
+  expect_equal(.resolve.rho(NULL, 1e-6, 9000, m), 9e-3)
+  expect_equal(.resolve.rho(NULL, NULL, 9000,
+                            fake.mod(list(rho.per.site = "1e-6"))), 9e-3)
+  expect_error(.resolve.rho(1e-3, 1e-6, 9000, m), "not both")
+  expect_error(.resolve.rho(-1, NULL, 9000, m), "non-negative")
+})
+
+test_that("deprecated rho still works, with a warning", {
+  expect_warning(sim.arg(outer.tree, rho = 0, seq.length = SEQ.LEN),
+                 "deprecated")
+})
+
+test_that("rho and rho.per.genome together is an error", {
+  expect_error(sim.arg(outer.tree, rho = 0, rho.per.genome = 0,
+                       seq.length = SEQ.LEN), "deprecated alias")
 })

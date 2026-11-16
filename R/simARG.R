@@ -100,10 +100,10 @@
 #' single ancestor (MRCA per segment).
 #'
 #' @param outer  R6 object of class `OuterTree`
-#' @param rho    numeric, genome-level recombination rate: expected number of
-#'   recombination events per lineage per unit time across the whole genome
-#'   (not per nucleotide). Each event places one breakpoint uniformly along
-#'   the genome. Cannot be combined with `rho.per.site`.
+#' @param rho.per.genome  numeric, genome-level recombination rate: expected
+#'   number of recombination events per lineage per unit time across the whole
+#'   genome (not per nucleotide). Each event places one breakpoint uniformly
+#'   along the genome. Cannot be combined with `rho.per.site`.
 #' @param seq.length  integer, genome length in bp (for breakpoint sampling,
 #'   and to convert a per-nucleotide rate to a genome-level rate)
 #' @param skip.recomb.free  logical, if TRUE precompute which hosts can
@@ -114,23 +114,33 @@
 #' @param rho.per.site  numeric, per-nucleotide recombination rate per lineage
 #'   per unit time. The genome-level rate is rho.per.site * seq.length, so the
 #'   same value describes the same biology for any seq.length. If NULL (the
-#'   default) and `rho` is not given, the model YAML is checked for
-#'   `Parameters: rho.per.site`; if that is absent too, `rho` is used.
+#'   default) and `rho.per.genome` is not given, the model YAML is checked for
+#'   `Parameters: rho.per.site`; if that is absent too, a genome-level rate
+#'   of 1e-4 is used.
+#' @param rho  deprecated alias for `rho.per.genome`; gives a warning.
 #'
 #' @return R6 object of class `InnerTree` (ARG events recorded in log)
 #' @export
-sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L,
-                     skip.recomb.free = FALSE,
-                     bidirectional.recomb = TRUE,
-                     rho.per.site = NULL) {
+sim.arg <- function(outer, rho.per.genome = NULL, seq.length = 9000L,
+                    skip.recomb.free = FALSE,
+                    bidirectional.recomb = TRUE,
+                    rho.per.site = NULL,
+                    rho = NULL) {
   if (!is.R6(outer) || !is.element("OuterTree", class(outer))) {
     stop("Input argument must be an R6 object of class `OuterTree`")
+  }
+  if (!is.null(rho)) {
+    if (!is.null(rho.per.genome)) {
+      stop("Specify `rho.per.genome` only; `rho` is its deprecated alias")
+    }
+    warning("`rho` is deprecated; use `rho.per.genome` (per genome) ",
+            "or `rho.per.site` (per nucleotide)")
+    rho.per.genome <- rho
   }
 
   inner <- InnerTree$new(outer)
   mod   <- inner$get.model()
-  rho.given <- !missing(rho)
-  rho <- .resolve.rho(rho, rho.given, rho.per.site, seq.length, mod)
+  rho <- .resolve.rho(rho.per.genome, rho.per.site, seq.length, mod)
   active   <- inner$get.active()
   inactive <- inner$get.inactive()
 
@@ -347,7 +357,7 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L,
       stop(sprintf(
         "Host %s's lineage pool is full (%d/%d slots), can't assign a new one. ",
         host$get.name(), host$count.active.slots(), host$get.pool.size()),
-        "Increase p.size, decrease rho, or add coalescent merging to the pool.")
+        "Increase p.size, decrease the recombination rate, or add coalescent merging to the pool.")
     }
     host$activate.new.slot(pathogen)
   }
@@ -571,28 +581,31 @@ resolve.arg <- function(arg.result, seq.length = 9000L) {
 # Resolve the genome-level recombination rate (events per lineage per unit
 # time) used by sim.arg. Order of precedence:
 #   1. `rho.per.site` argument: per-nucleotide rate, times seq.length
-#   2. `rho` argument, if the caller supplied it: already genome-level
+#   2. `rho.per.genome` argument: already genome-level
 #   3. `Parameters: rho.per.site` in the model YAML: per-nucleotide rate
-#   4. the default genome-level `rho`
+#   4. the default genome-level rate, 1e-4
 # The multiplier is seq.length (not seq.length - 1): reported rates are
 # normalized by genome length.
 #' @keywords internal
 #' @noRd
-.resolve.rho <- function(rho, rho.given, rho.per.site, seq.length, mod) {
+.resolve.rho <- function(rho.per.genome, rho.per.site, seq.length, mod,
+                         default = 1e-4) {
   check <- function(x, what) {
     if (!is.numeric(x) || length(x) != 1 || is.na(x) || x < 0) {
       stop(what, " must be a single non-negative number")
     }
   }
   if (!is.null(rho.per.site)) {
-    if (rho.given) {
-      stop("Specify either rho (per genome) or rho.per.site (per nucleotide), ",
-           "not both")
+    if (!is.null(rho.per.genome)) {
+      stop("Specify either rho.per.genome or rho.per.site, not both")
     }
     check(rho.per.site, "rho.per.site")
     return(rho.per.site * seq.length)
   }
-  if (rho.given) return(rho)
+  if (!is.null(rho.per.genome)) {
+    check(rho.per.genome, "rho.per.genome")
+    return(rho.per.genome)
+  }
   yaml.rate <- mod$get.parameters()$rho.per.site
   if (is.character(yaml.rate)) {
     # YAML 1.1 reads e.g. 1e-8 (no decimal point) as text; "fast" stays NA
@@ -602,5 +615,5 @@ resolve.arg <- function(arg.result, seq.length = 9000L) {
     check(yaml.rate, "Parameters: rho.per.site")
     return(yaml.rate * seq.length)
   }
-  rho
+  default
 }
