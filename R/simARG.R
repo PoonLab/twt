@@ -200,10 +200,16 @@ sim.arg <- function(outer, rho = 1e-4, seq.length = 9000L,
   count <- active$count.type()
   if (count == 1) {
     root     <- active$get.hosts()[[1]]
+    # Collapse the index host's remaining lineages at the time of the last
+    # event rather than drawing fresh waiting times for each one.  Drawing
+    # them walks cur.time backwards past the start of the simulation: with
+    # bottleneck.size k and a slow within-host coalescent, k-1 exponential
+    # waits at mean 1/(choose(k,2)*rate) are stacked below t=0, which put the
+    # inner-tree root 10-17 years before the index infection for
+    # coalescent.rate 0.1 / bottleneck 5.  The index host has no ancestor, so
+    # its lineages must all meet at or after its own infection time.
     cur.time <- e$time
     while (root$count.pathogens() > 1) {
-      wait <- .rcoal(active, mod, envir = env)
-      cur.time <- cur.time - wait$dt
       .do.coalescent(root$get.name(), inner, cur.time)
     }
   } else if (count > 1) {

@@ -71,10 +71,15 @@ sim.inner.tree <- function(outer) {
   } else {
     # finish coalescence in last host
     root <- active$get.hosts()[[1]]
+    # The index case is the only host that never passes through a
+    # transmission bottleneck. Drawing waiting times here lets its
+    # lineages coalesce in unbounded pre-epidemic time, which produces a
+    # genealogy older than the epidemic and violates the assumption --
+    # shared by the SIR model and by BDSIR -- that the outbreak starts
+    # from a single founding lineage. Collapse them at the index host's
+    # own time, exactly as a bottleneck of one would.
     cur.time <- e$time
     while (root$count.pathogens() > 1) {
-      wait.time <- .rcoal(active, mod, envir=env)
-      cur.time <- cur.time - wait.time$dt
       .do.coalescent(root$get.name(), inner, cur.time)
     }
   }
