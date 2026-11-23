@@ -96,19 +96,58 @@ OuterTree <- R6Class(
 #' @noRd
 .reorder.events <- function(events, node, order='postorder', decreasing=TRUE,
                             result=c()) {
-  if (order=='preorder') {
-    result <- c(result, node)  # append parent before children
+  # Iterative traversal with an explicit stack: the recursive version
+  # overflowed R's node stack on large epidemics (deep transmission trees).
+  stopifnot(order %in% c('preorder', 'postorder'))
+  # Index the event table once: the per-node scans were quadratic in the
+  # number of events, which dominates on large epidemics.
+  keep <- !is.na(events$to.host)
+  kids.by.parent <- split(events$to.host[keep], events$from.host[keep])
+  times.by.child <- split(events$time[keep], events$to.host[keep])
+  kids.of <- function(nd) {
+    children <- kids.by.parent[[nd]]
+    if (is.null(children)) return(character(0))
+    children <- unique(children)
+    if (length(children) == 0) return(character(0))
+    inf.times <- sapply(children, function(child) times.by.child[[child]])
+    as.character(children[order(inf.times, decreasing = decreasing)])
   }
-  children <- na.omit(unique(events$to.host[events$from.host==node]))
-  inf.times <- sapply(children, function(child) 
-    events$time[events$to.host==child])
-  for (child in children[order(inf.times, decreasing=decreasing)]) {
-    result <- .reorder.events(events, child, order, decreasing, result)
+  # Guard against cycles: superinfection is logged as a transmission into an
+  # already-infected host (from.comp != "S"), and following such an edge can
+  # close a loop in what is assumed to be a host tree.  Without this the
+  # traversal runs forever; the recursive version used to die with
+  # "node stack overflow".
+  seen <- new.env(hash = TRUE, parent = emptyenv())
+  note <- function(nd) {
+    if (!is.null(seen[[nd]])) {
+      stop("cycle in the host tree at ", nd,
+           ": check for a transmission event into an already-infected host")
+    }
+    assign(nd, TRUE, envir = seen)
   }
-  if (order=='postorder') {
-    result <- c(result, node)  # append children before parent
+  out <- as.list(result)
+  if (order == 'preorder') {
+    stack <- list(as.character(node))
+    while (length(stack)) {
+      nd <- stack[[length(stack)]]; stack[[length(stack)]] <- NULL
+      note(nd); out[[length(out) + 1L]] <- nd
+      for (k in rev(kids.of(nd))) stack[[length(stack) + 1L]] <- k
+    }
+  } else {
+    stack <- list(list(node = as.character(node), expanded = FALSE))
+    while (length(stack)) {
+      top <- stack[[length(stack)]]; stack[[length(stack)]] <- NULL
+      if (top$expanded) {
+        note(top$node); out[[length(out) + 1L]] <- top$node
+      } else {
+        stack[[length(stack) + 1L]] <- list(node = top$node, expanded = TRUE)
+        for (k in rev(kids.of(top$node))) {
+          stack[[length(stack) + 1L]] <- list(node = k, expanded = FALSE)
+        }
+      }
+    }
   }
-  return(result)
+  unlist(out, use.names = FALSE)
 }
 
 
@@ -297,13 +336,13 @@ plot.OuterTree <- function(obj, pad=1.05, legend.pos='bottomright',
       recip.y <- .find.node.at(si$to.host,   si$time, events, nodes)
       if (!is.na(donor.y) && !is.na(recip.y)) {
         arrows(x0=si$time, y0=donor.y, y1=recip.y,
-               length=0.08, lwd=2, lty=2, col='steelblue')
+               length=0.08, lwd=2, lty=1, col='steelblue')
       }
     }
     if (legend.pos != 'none') {
-      legend(legend.pos, legend=c('transmission', 'superinfection'),
-             col=c('orangered', 'steelblue'),
-             lty=c(1, 2), lwd=2, bty='n', cex=0.8)
+      legend(legend.pos, legend=c('transmission', 'superinfection', 'sampled host', 'unsampled host'),
+             col=c('orangered', 'steelblue', 'black', 'grey'),
+             lty=c(1, 1), lwd=2, bty='n', cex=0.8)
     }
   }
 }
@@ -384,9 +423,13 @@ as.phylo.OuterTree <- function(obj) {
   tip.label <- preorder[grepl("_sample$", preorder)]
   nodes <- c(tip.label, node.label)
   
-  edge <- matrix(0, nrow=nrow(edge.list), ncol=2)
+  edge <- matrix(0L, nrow=nrow(edge.list), ncol=2)
   edge[,1] <- match(edge.list$label1, nodes)
   edge[,2] <- match(edge.list$label2, nodes)
+  # ape's reorderRcpp reads this as an integer matrix; a double one is
+  # reinterpreted as garbage indices (segfault in write.tree).
+  storage.mode(edge) <- "integer"
+  stopifnot(!anyNA(edge), max(edge) <= length(nodes))
   
   phy <- list(
     tip.label = tip.label,

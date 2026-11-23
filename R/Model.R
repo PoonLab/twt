@@ -318,6 +318,11 @@ Model <- R6Class(
           }
           private$check.expression(params$coalescent.rate, env)
           private$coalescent.rates[[src]] <- params$coalescent.rate
+        } else if (isTRUE(params$infected)) {
+          warning(src, ": coalescent.rate is not set -- assuming instantaneous ",
+                  "coalescence (Inf), i.e. the pathogen tree follows the ",
+                  "transmission tree. Set coalescent.rate explicitly in the ",
+                  "yaml to model within-host diversity.")
         }
         
         # check population sizes
