@@ -96,19 +96,45 @@ OuterTree <- R6Class(
 #' @noRd
 .reorder.events <- function(events, node, order='postorder', decreasing=TRUE,
                             result=c()) {
-  if (order=='preorder') {
-    result <- c(result, node)  # append parent before children
+  # Iterative traversal with an explicit stack: the recursive version
+  # overflowed R's node stack on large epidemics (deep transmission trees).
+  stopifnot(order %in% c('preorder', 'postorder'))
+  # Index the event table once: the per-node scans were quadratic in the
+  # number of events, which dominates on large epidemics.
+  keep <- !is.na(events$to.host)
+  kids.by.parent <- split(events$to.host[keep], events$from.host[keep])
+  times.by.child <- split(events$time[keep], events$to.host[keep])
+  kids.of <- function(nd) {
+    children <- kids.by.parent[[nd]]
+    if (is.null(children)) return(character(0))
+    children <- unique(children)
+    if (length(children) == 0) return(character(0))
+    inf.times <- sapply(children, function(child) times.by.child[[child]])
+    as.character(children[order(inf.times, decreasing = decreasing)])
   }
-  children <- na.omit(unique(events$to.host[events$from.host==node]))
-  inf.times <- sapply(children, function(child) 
-    events$time[events$to.host==child])
-  for (child in children[order(inf.times, decreasing=decreasing)]) {
-    result <- .reorder.events(events, child, order, decreasing, result)
+  out <- as.list(result)
+  if (order == 'preorder') {
+    stack <- list(as.character(node))
+    while (length(stack)) {
+      nd <- stack[[length(stack)]]; stack[[length(stack)]] <- NULL
+      out[[length(out) + 1L]] <- nd
+      for (k in rev(kids.of(nd))) stack[[length(stack) + 1L]] <- k
+    }
+  } else {
+    stack <- list(list(node = as.character(node), expanded = FALSE))
+    while (length(stack)) {
+      top <- stack[[length(stack)]]; stack[[length(stack)]] <- NULL
+      if (top$expanded) {
+        out[[length(out) + 1L]] <- top$node
+      } else {
+        stack[[length(stack) + 1L]] <- list(node = top$node, expanded = TRUE)
+        for (k in rev(kids.of(top$node))) {
+          stack[[length(stack) + 1L]] <- list(node = k, expanded = FALSE)
+        }
+      }
+    }
   }
-  if (order=='postorder') {
-    result <- c(result, node)  # append children before parent
-  }
-  return(result)
+  unlist(out, use.names = FALSE)
 }
 
 
