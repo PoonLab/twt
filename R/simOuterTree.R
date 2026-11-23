@@ -40,8 +40,10 @@ sim.outer.tree <- function(dynamics) {
       size <- length(idx)
       target <- targets[[cn]]
       if (size < target) {
-        stop("Insufficient number in sampling compartment ", 
-             cn, " (", size , "<", target, ")")
+        stop("Insufficient number in sampling compartment ", cn,
+             " (", size, "<", target, "): ",
+             if (size == 0) "the outbreak died out before any host was sampled"
+             else "the epidemic was still growing at the end of simTime; a longer simTime may reach the target")
       }
       if (size > target) {
         # downsample sampling events
