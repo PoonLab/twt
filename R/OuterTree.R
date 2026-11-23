@@ -112,12 +112,25 @@ OuterTree <- R6Class(
     inf.times <- sapply(children, function(child) times.by.child[[child]])
     as.character(children[order(inf.times, decreasing = decreasing)])
   }
+  # Guard against cycles: superinfection is logged as a transmission into an
+  # already-infected host (from.comp != "S"), and following such an edge can
+  # close a loop in what is assumed to be a host tree.  Without this the
+  # traversal runs forever; the recursive version used to die with
+  # "node stack overflow".
+  seen <- new.env(hash = TRUE, parent = emptyenv())
+  note <- function(nd) {
+    if (!is.null(seen[[nd]])) {
+      stop("cycle in the host tree at ", nd,
+           ": check for a transmission event into an already-infected host")
+    }
+    assign(nd, TRUE, envir = seen)
+  }
   out <- as.list(result)
   if (order == 'preorder') {
     stack <- list(as.character(node))
     while (length(stack)) {
       nd <- stack[[length(stack)]]; stack[[length(stack)]] <- NULL
-      out[[length(out) + 1L]] <- nd
+      note(nd); out[[length(out) + 1L]] <- nd
       for (k in rev(kids.of(nd))) stack[[length(stack) + 1L]] <- k
     }
   } else {
@@ -125,7 +138,7 @@ OuterTree <- R6Class(
     while (length(stack)) {
       top <- stack[[length(stack)]]; stack[[length(stack)]] <- NULL
       if (top$expanded) {
-        out[[length(out) + 1L]] <- top$node
+        note(top$node); out[[length(out) + 1L]] <- top$node
       } else {
         stack[[length(stack) + 1L]] <- list(node = top$node, expanded = TRUE)
         for (k in rev(kids.of(top$node))) {
