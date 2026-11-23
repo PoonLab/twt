@@ -297,13 +297,13 @@ plot.OuterTree <- function(obj, pad=1.05, legend.pos='bottomright',
       recip.y <- .find.node.at(si$to.host,   si$time, events, nodes)
       if (!is.na(donor.y) && !is.na(recip.y)) {
         arrows(x0=si$time, y0=donor.y, y1=recip.y,
-               length=0.08, lwd=2, lty=2, col='steelblue')
+               length=0.08, lwd=2, lty=1, col='steelblue')
       }
     }
     if (legend.pos != 'none') {
-      legend(legend.pos, legend=c('transmission', 'superinfection'),
-             col=c('orangered', 'steelblue'),
-             lty=c(1, 2), lwd=2, bty='n', cex=0.8)
+      legend(legend.pos, legend=c('transmission', 'superinfection', 'sampled host', 'unsampled host'),
+             col=c('orangered', 'steelblue', 'black', 'grey'),
+             lty=c(1, 1), lwd=2, bty='n', cex=0.8)
     }
   }
 }
@@ -384,9 +384,13 @@ as.phylo.OuterTree <- function(obj) {
   tip.label <- preorder[grepl("_sample$", preorder)]
   nodes <- c(tip.label, node.label)
   
-  edge <- matrix(0, nrow=nrow(edge.list), ncol=2)
+  edge <- matrix(0L, nrow=nrow(edge.list), ncol=2)
   edge[,1] <- match(edge.list$label1, nodes)
   edge[,2] <- match(edge.list$label2, nodes)
+  # ape's reorderRcpp reads this as an integer matrix; a double one is
+  # reinterpreted as garbage indices (segfault in write.tree).
+  storage.mode(edge) <- "integer"
+  stopifnot(!anyNA(edge), max(edge) <= length(nodes))
   
   phy <- list(
     tip.label = tip.label,
